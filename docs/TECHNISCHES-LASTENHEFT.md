@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| Version | 0.3 (Entwurf) |
+| Version | 0.3.1 (Entwurf) |
 | Stand | 2026-10-20 |
 | Einrichtung | Hort an der Montessorischule (Elterninitiative, Verein) |
 | Zielgruppe | Entwickler:innen und KI-Coding-Agents |
-| Fachliche Basis | Lastenheft v0.2 (PDF, 2 Seiten, für die Abstimmung mit Menschen). Dieses Dokument konkretisiert es technisch. |
+| Fachliche Basis | Lastenheft v0.4 (`docs/lastenheft-elternstunden-v0.4.pdf`, 2 Seiten, für die Abstimmung mit Menschen). Dieses Dokument konkretisiert es technisch. Im Folgenden kurz "Lastenheft (PDF)". |
 
 **Änderungshistorie**
 
@@ -15,6 +15,7 @@
 | 0.1 | 2026-10-20 | Erster Entwurf. |
 | 0.2 | 2026-10-20 | Anmeldung ohne Passwort (D-24): Registrierung und Anmeldung per E-Mail-Link (Magic Link) oder OIDC. Passwort und TOTP nur noch für den Master-Admin. Entfallen: Passwort-Registrierung, Passwort-Reset, Konto-Sperre, Passwort-Policy. Neu: SEC-17, OPS-13, OPEN-20, OPEN-21, AC-AUTH neu gefasst. Betroffen: Abschnitte 2 bis 10, 12, 13, 15 bis 17. |
 | 0.3 | 2026-10-20 | Technisches Review (31 Befunde) eingearbeitet, bewusst schlank gehalten. Neu: Browser-Bindung von Claim und Link (`auth_binding`-Cookie), Auth-Outbox `auth_request`, zwei DB-Rollen (OPS-14), injizierte Uhr (0.4 Regel 7), OIDC-Regeln (PKCE explizit, schlanker Principal, Google-E-Mail nur bei `@gmail.com` oder `hd` vertrauenswürdig), Sessions enden bei Status-, Rollen- und Familienwechsel, Master-Härtung (TOTP-Replay, Argon2id-Mindestparameter), Admin-TOTP-Ablauf, Fehlerformat und API-Konventionen präzisiert, PDF ohne externe Ressourcen, Backup ohne Sessions und Tokens, Claim-Löschfrist, IP-Kürzung in Logs. Fehler behoben: Off-by-one beim Zielkind-Limit, Sammelbestätigung in abgeschlossenen Jahren, Volume-Pfad `postgres:18`. Neue Abnahmekriterien (AC-AUTH-08a/b und 14 bis 23, AC-MASTER-06/07, AC-REG-13 bis 16, AC-OIDC-09 bis 13, AC-SEC-09 bis 13, AC-MAIL, AC-ENTRY-11/12, AC-FAM-04, AC-DP, AC-ADM-01, AC-BAK-09). |
+| 0.3.1 | 2026-10-20 | Lastenheft-PDF auf v0.4 gebracht (F3 ohne Passwort, offene Punkte 6 und 7 an D-24 angepasst) und Verweise darauf vereinheitlicht ("Lastenheft (PDF)"). |
 
 ---
 
@@ -30,7 +31,7 @@ Jede Entscheidung und Anforderung trägt einen Status:
 | `[PROPOSED]` | Vorschlag, noch nicht bestätigt | Darf als Default umgesetzt werden. Muss änderbar bleiben (Konfiguration oder klar isolierte Stelle). Nicht als Fakt behandeln. |
 | `[OPEN]` | Ungeklärt | **Nicht raten.** Nur den angegebenen Interim-Default umsetzen und im Code mit `// OPEN-xx` markieren, oder beim Auftraggeber nachfragen. Siehe Abschnitt 16. |
 
-Bei Konflikten gilt: `[DECIDED]` vor Lastenheft v0.2 vor diesem Dokument vor eigenen Annahmen.
+Bei Konflikten gilt: `[DECIDED]` vor Lastenheft (PDF) vor diesem Dokument vor eigenen Annahmen.
 
 ### 0.2 Normative Wörter
 
@@ -50,7 +51,7 @@ Bei Konflikten gilt: `[DECIDED]` vor Lastenheft v0.2 vor diesem Dokument vor eig
 | `NFR-xx` | Nichtfunktional (Abschnitt 14) |
 | `AC-xx` | Abnahmekriterium (Abschnitt 15) |
 | `OPEN-xx` | Offene Frage (Abschnitt 16) |
-| `F1`..`F10`, `N1`..`N6` | Verweise auf das Lastenheft v0.2 |
+| `F1`..`F10`, `N1`..`N6` | Verweise auf das Lastenheft (PDF) |
 
 ### 0.4 Arbeitsregeln
 
@@ -191,7 +192,7 @@ Alle Container laufen auf **einem** VPS per Docker Compose. Nur Caddy veröffent
 /backend     Spring Boot (Gradle/Maven), src/main, src/test, db/migration
 /frontend    React + TypeScript + Vite
 /ops         docker-compose.yml, caddy/Caddyfile, backup/, scripts/, runbooks/
-/docs        Diese Spezifikation, ADRs, Lastenheft v0.2
+/docs        Diese Spezifikation, ADRs, Lastenheft (PDF)
 ```
 
 ### 4.4 Backend-Paketstruktur `[PROPOSED]`
@@ -546,7 +547,7 @@ Regeln:
 
 ## 7. Funktionale Spezifikation
 
-### 7.0 Zuordnung zum Lastenheft v0.2
+### 7.0 Zuordnung zum Lastenheft (PDF)
 
 | Lastenheft | Thema | Spezifikation |
 |---|---|---|
