@@ -2,11 +2,18 @@
 
 | | |
 |---|---|
-| Version | 0.1 (Entwurf) |
+| Version | 0.2 (Entwurf) |
 | Stand | 2026-10-20 |
 | Einrichtung | Hort an der Montessorischule (Elterninitiative, Verein) |
 | Zielgruppe | Entwickler:innen und KI-Coding-Agents |
 | Fachliche Basis | Lastenheft v0.2 (PDF, 2 Seiten, für die Abstimmung mit Menschen). Dieses Dokument konkretisiert es technisch. |
+
+**Änderungshistorie**
+
+| Version | Datum | Änderung |
+|---|---|---|
+| 0.1 | 2026-10-20 | Erster Entwurf. |
+| 0.2 | 2026-10-20 | Anmeldung ohne Passwort (D-24): Registrierung und Anmeldung per E-Mail-Link (Magic Link) oder OIDC. Passwort und TOTP nur noch für den Master-Admin. Entfallen: Passwort-Registrierung, Passwort-Reset, Konto-Sperre, Passwort-Policy. Neu: SEC-17, OPS-13, OPEN-20, OPEN-21, AC-AUTH neu gefasst. Betroffen: Abschnitte 2 bis 10, 12, 13, 15 bis 17. |
 
 ---
 
@@ -88,7 +95,7 @@ Laut Website des Horts: 65 Vollzeitplätze, etwa 70 Kinder in drei Gruppen. Erwa
 | D-05 | Selbstregistrierung ohne manuellen Admin-Aufwand. Zuordnung zur Familie über **Name + Geburtsdatum des Kindes**. Admins können die Zuordnung nachträglich korrigieren. Die Kinderliste ist nie öffentlich. | `[DECIDED]` | Auftraggeber |
 | D-06 | Schutz der Registrierung gegen Bots und Ratversuche durch **Captcha** und Rate-Limits. | `[DECIDED]` | Auftraggeber |
 | D-07 | Produkt für Captcha: **ALTCHA** (selbst gehostet, MIT-Lizenz). | `[PROPOSED]` | Recherche, siehe Abschnitt 18 |
-| D-08 | Login mit **E-Mail + Passwort** und zusätzlich per **OIDC** (Anmeldung mit Google-Konto, "Gmail"), damit die Registrierung für Eltern einfacher wird. Weitere Anbieter siehe OPEN-15. Beide Wege führen zum selben Nutzerkonto-Modell. | E-Mail+Passwort `[DECIDED]`, OIDC mit Google `[DECIDED]` (Wunsch 2026-10-20), weitere Anbieter `[OPEN]` | Auftraggeber |
+| D-08 | Registrierung und Anmeldung **ohne Passwort**: per **E-Mail-Link** (Magic Link, FS-AUTH 7.2) oder per **OIDC** (Anmeldung mit Google-Konto, "Gmail"). Weitere Anbieter siehe OPEN-15. Beide Wege führen zum selben Nutzerkonto-Modell. Ausnahme Master-Admin: D-22, D-24. | E-Mail-Link `[DECIDED]` (2026-10-20, ersetzt E-Mail + Passwort), OIDC mit Google `[DECIDED]` (Wunsch 2026-10-20), weitere Anbieter `[OPEN]` | Auftraggeber |
 | D-09 | Stundenerfassung: Einheit 15 Minuten. Schnellauswahl (0,5 h, 1 h, 2 h, 3 h) **oder** exakt per Datums- und Uhrzeit-Picker. Kurzer Freitext zur Tätigkeit ist **Pflicht**. | `[DECIDED]` | Auftraggeber |
 | D-10 | Ein Admin **bestätigt** erfasste Stunden. Nur bestätigte Stunden zählen für das Soll. Die Familie sieht bestätigte und offene Stunden **getrennt**. | `[DECIDED]` | Auftraggeber |
 | D-11 | Admin-Übersicht: dauerhaft sichtbarer Hinweis, welche Familien im Schuljahr noch keine 10 h erreicht haben. Liste sortier- und durchsuchbar. | `[DECIDED]` | Auftraggeber |
@@ -101,9 +108,10 @@ Laut Website des Horts: 65 Vollzeitplätze, etwa 70 Kinder in drei Gruppen. Erwa
 | D-18 | Betrieb als **Docker**-Container (Docker Compose) auf einem **IONOS VPS** (z. B. M+: 2 vCores, 4 GB RAM, 120 GB NVMe). | Docker `[DECIDED]`, VPS `[PROPOSED]` | Auftraggeber / Recherche |
 | D-19 | Backup: täglich automatisch, verschlüsselt, auf mindestens zwei externe Ziele (IONOS Object Storage, Borg-Bucket, optional Google Drive oder Microsoft-Cloud). Restore nur durch Master-Admin. | Anforderung `[DECIDED]`, Werkzeuge `[PROPOSED]` | Auftraggeber / Vorschlag |
 | D-20 | Authentifizierung per serverseitiger Session (Cookie `HttpOnly`, `Secure`, `SameSite=Lax`) mit CSRF-Schutz, **kein** JWT im Browser. | `[PROPOSED]` | Vorschlag |
-| D-21 | Passwort-Hashing mit **Argon2id**. | `[PROPOSED]` | Vorschlag |
-| D-22 | Der **Master-Admin** ist ein Nutzer mit Rolle `MASTER_ADMIN`, dessen Zugangsdaten **per Konfiguration** (Umgebungsvariablen) definiert und beim Start in die DB synchronisiert werden. Die UI kann ihn weder ändern noch löschen. Dadurch funktioniert der Zugang auch, wenn kein Admin mehr existiert. Er meldet sich **nur lokal** (Passwort, TOTP) an, **nie** per OIDC, damit der Notzugang nicht von einem externen Anbieter abhängt. | `[PROPOSED]` | Vorschlag |
+| D-21 | Passwort-Hashing mit **Argon2id**, **nur** für das Passwort des Master-Admins (D-22). Andere Konten haben kein Passwort (D-24). | `[PROPOSED]` | Vorschlag |
+| D-22 | Der **Master-Admin** ist ein Nutzer mit Rolle `MASTER_ADMIN`, dessen Zugangsdaten **per Konfiguration** (Umgebungsvariablen) definiert und beim Start in die DB synchronisiert werden. Die UI kann ihn weder ändern noch löschen. Dadurch funktioniert der Zugang auch, wenn kein Admin mehr existiert. Er meldet sich **nur lokal** (Passwort, TOTP) an, **nie** per OIDC und **nie** per E-Mail-Link, damit der Notzugang weder von einem externen Anbieter noch vom Mailversand abhängt. | `[PROPOSED]` | Vorschlag |
 | D-23 | OIDC-Anbindung über **Spring Security `oauth2Login`** (Authorization Code Flow mit PKCE), anbieterneutral per Konfiguration. Kein JavaScript-SDK des Anbieters im Browser, nur Redirect. Die Identität wird über `(iss, sub)` geführt, nie über die E-Mail allein. Automatisches Verknüpfen mit bestehenden Konten nur unter den Bedingungen aus FS-AUTH. | `[PROPOSED]` | Vorschlag |
+| D-24 | **Nutzer haben kein Passwort.** Registrierung und Anmeldung laufen ausschließlich per E-Mail-Link (Magic Link) oder OIDC (D-08). Einzige Ausnahme ist der Master-Admin: Er meldet sich lokal mit Passwort plus TOTP aus der Server-Konfiguration an (Notzugang, unabhängig von Mail und Identitätsanbieter, D-22). **Begründung:** Eltern melden sich selten an und vergessen Passwörter. Ohne Passwörter entfallen Passwort-Reset, Konto-Sperre nach Fehlversuchen, Passwort-Policy und das Risiko wiederverwendeter oder geleakter Passwörter. Der Zugang zum Postfach war über den Passwort-Reset ohnehin schon der Wiederherstellungsweg. **Folgen:** Das Mailkonto ist der Kontozugang (OPEN-09). Die Mailzustellung wird betriebskritisch (OPS-13). | `[DECIDED]` | Auftraggeber, 2026-10-20 |
 
 ---
 
@@ -115,10 +123,12 @@ Laut Website des Horts: 65 Vollzeitplätze, etwa 70 Kinder in drei Gruppen. Erwa
 | Schuljahr | Abrechnungszeitraum. Datensatz `school_year` mit Start- und Enddatum (Standard 1.9. bis 31.8.). |
 | Familie (`family`) | Gruppe aus 1..n Kindern und 0..n Nutzern. Träger des Stundenkontos. |
 | Kind (`child`) | Zentrale Stammdaten-Entität. Gehört zu genau einer Familie. |
-| Nutzer (`app_user`) | Login-Konto einer Person (Elternteil oder Admin). |
+| Nutzer (`app_user`) | Login-Konto einer Person (Elternteil oder Admin). Hat **kein** Passwort (D-24), Anmeldung per E-Mail-Link oder OIDC. |
 | Familienmitglied | Nutzer mit Rolle `FAMILY_MEMBER`, der einer Familie zugeordnet ist. |
 | Admin | Nutzer mit Rolle `ADMIN`. |
-| Master-Admin | Notzugang, per Konfiguration definiert, hat alle Admin-Rechte plus Backup und Restore. |
+| Master-Admin | Notzugang, per Konfiguration definiert, hat alle Admin-Rechte plus Backup und Restore. Das **einzige** Konto mit Passwort plus TOTP (D-22). |
+| E-Mail-Link (Magic Link) | Einmal-Link per Mail, mit dem sich ein Nutzer ohne Passwort anmeldet oder seine Registrierung abschließt. 15 Minuten gültig, einmal einlösbar (FS-AUTH 7.2, SEC-17). |
+| Unbestätigt | Status `PENDING_VERIFICATION`: registriert, aber den E-Mail-Link noch nicht eingelöst. Kein Zugang. Wird nach 24 Stunden gelöscht (7.2). |
 | Soll | Pro Familie und Schuljahr geforderte Minuten (`school_year.required_minutes`, Standard 600). |
 | Bestätigt / Offen | Status eines Eintrags: `CONFIRMED` (von Admin bestätigt, zählt) oder `OPEN` (erfasst, zählt noch nicht). |
 | Zwischenstand | Abrechnung für ein noch laufendes Schuljahr. |
@@ -160,7 +170,8 @@ Alle Container laufen auf **einem** VPS per Docker Compose. Nur Caddy veröffent
 | Build | Gradle oder Maven | `[OPEN]` OPEN-08, Interim: Gradle |
 | Persistenz | Spring Data JPA (Hibernate) plus Flyway-Migrationen | `[PROPOSED]` |
 | Datenbank | PostgreSQL, Major-Version fixieren (aktuelle stabile Major, vom Spring-Boot-Treiber unterstützt) | `[PROPOSED]` |
-| Security | Spring Security (Session, CSRF, Argon2id), Bucket4j oder gleichwertig für Rate-Limits | `[PROPOSED]` |
+| Security | Spring Security (Session, CSRF), Argon2id nur für das Master-Passwort (D-21), Bucket4j oder gleichwertig für Rate-Limits | `[PROPOSED]` |
+| E-Mail-Link | Eigene Endpunkte (FS-AUTH 7.2). Spring Security One-Time-Token-Login KANN als Basis dienen, aber nur mit eigener Token-Speicherung nach SEC-17 (nur Hash, 15 Minuten, ältere Token ungültig) | `[PROPOSED]` |
 | OIDC-Login | Spring Security `oauth2Login` (OpenID Connect, Authorization Code mit PKCE). Anbieter per Konfiguration: Google zuerst, weitere siehe OPEN-15 | Google `[DECIDED]`, Technik `[PROPOSED]` |
 | API-Doku | springdoc-openapi (OpenAPI 3), Frontend-Client daraus generiert | `[PROPOSED]` |
 | PDF | Serverseitig aus HTML/CSS (z. B. openhtmltopdf) oder PDFBox/OpenPDF. Wahl frei, solange Layout aus FS-PDF erreicht wird und Lizenz kompatibel ist. | `[PROPOSED]` |
@@ -187,7 +198,7 @@ Ein Paket pro fachlichem Modul, darin Schichten `web` (Controller, DTOs), `servi
 
 | Modul | Inhalt |
 |---|---|
-| `auth` | Registrierung, Login, Verifizierung, Passwort-Reset, Captcha, Rate-Limits, Master-Login |
+| `auth` | Registrierung, E-Mail-Link (Anfordern, Einlösen, Aufräumen), OIDC, Captcha, Rate-Limits, Master-Login |
 | `family` | Familie, Kind, Einschreibung, Nutzer-Zuordnung, Claims |
 | `schoolyear` | Schuljahre, Stichtage, Soll |
 | `timeentry` | Einträge, Bestätigung, Validierung |
@@ -284,31 +295,32 @@ CREATE TABLE child_enrollment (
 );
 
 -- ---------------------------------------------------------------
--- Nutzer (D-08, D-13)
+-- Nutzer (D-08, D-13, D-24)
 -- ---------------------------------------------------------------
 CREATE TYPE user_role   AS ENUM ('FAMILY_MEMBER', 'ADMIN', 'MASTER_ADMIN');
-CREATE TYPE user_status AS ENUM ('PENDING_VERIFICATION', 'ACTIVE', 'LOCKED', 'DISABLED');
+CREATE TYPE user_status AS ENUM ('PENDING_VERIFICATION', 'ACTIVE', 'DISABLED');  -- PENDING = E-Mail-Link noch nicht eingelöst
 
 CREATE TABLE app_user (
     id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     email              citext      NOT NULL UNIQUE,
-    password_hash      text,                                 -- Argon2id (D-21). NULL bei reinen OIDC-Konten (INV-11)
+    password_hash      text,                                 -- Argon2id (D-21), NUR für MASTER_ADMIN (D-24)
     display_name       text        NOT NULL CHECK (btrim(display_name) <> ''),
     role               user_role   NOT NULL DEFAULT 'FAMILY_MEMBER',
     status             user_status NOT NULL DEFAULT 'PENDING_VERIFICATION',
     family_id          uuid REFERENCES family (id),          -- NULL = unzugeordnet
     managed_by_config  boolean     NOT NULL DEFAULT false,   -- true nur für den Master-Admin (D-22)
-    email_verified_at  timestamptz,
-    failed_login_count integer     NOT NULL DEFAULT 0,
-    locked_until       timestamptz,
+    email_verified_at  timestamptz,                          -- gesetzt beim ersten Einlösen eines E-Mail-Links oder per OIDC
     totp_secret_enc    bytea,                                -- verschlüsselt, siehe SEC-05 (OPEN-09)
     last_login_at      timestamptz,
     created_at         timestamptz NOT NULL DEFAULT now(),
     updated_at         timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT app_user_master_ck CHECK (managed_by_config = (role = 'MASTER_ADMIN')),
-    CONSTRAINT app_user_master_pw_ck CHECK (role <> 'MASTER_ADMIN' OR password_hash IS NOT NULL)  -- D-22: Master nur lokal
+    -- D-24: nur der Master hat ein Passwort, und er MUSS eins haben (D-22: Master nur lokal)
+    CONSTRAINT app_user_password_master_only_ck CHECK ((password_hash IS NOT NULL) = (role = 'MASTER_ADMIN'))
 );
 CREATE INDEX app_user_family_idx ON app_user (family_id);
+-- INV-08: höchstens ein per Konfiguration verwalteter Nutzer
+CREATE UNIQUE INDEX app_user_single_master_idx ON app_user (managed_by_config) WHERE managed_by_config;
 
 -- Externe Identitäten per OIDC (D-08, D-23). Schlüssel ist (provider, subject), nie die E-Mail.
 CREATE TABLE user_identity (
@@ -341,17 +353,19 @@ CREATE TABLE registration_claim (
 );
 CREATE INDEX registration_claim_key_idx ON registration_claim (claim_key, created_at);
 
-CREATE TYPE token_purpose AS ENUM ('EMAIL_VERIFICATION', 'PASSWORD_RESET');
+-- E-Mail-Link (FS-AUTH 7.2, SEC-17). Ein Mechanismus für Anmeldung und Registrierungsabschluss.
+CREATE TYPE token_purpose AS ENUM ('LOGIN');
 
 CREATE TABLE user_token (
     id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id    uuid          NOT NULL REFERENCES app_user (id) ON DELETE CASCADE,
     purpose    token_purpose NOT NULL,
     token_hash text          NOT NULL UNIQUE,                -- SHA-256 hex des Zufallstokens, Klartext wird nie gespeichert
-    expires_at timestamptz   NOT NULL,
-    used_at    timestamptz,
+    expires_at timestamptz   NOT NULL,                       -- created_at + 15 Minuten
+    used_at    timestamptz,                                  -- gesetzt beim Einlösen, danach ungültig
     created_at timestamptz   NOT NULL DEFAULT now()
 );
+CREATE INDEX user_token_user_idx ON user_token (user_id, purpose);  -- ältere Token beim Neuanfordern entfernen
 
 -- ---------------------------------------------------------------
 -- Elternstunden (D-09, D-10)
@@ -432,8 +446,8 @@ Sessions: **Spring Session JDBC** legt seine Tabellen (`spring_session`, `spring
 | INV-08 | Es gibt höchstens einen Nutzer mit `managed_by_config = true`. | DB-Constraint plus Start-Synchronisation |
 | INV-09 | Schuljahre überlappen sich nicht. Beim Ändern der Stichtage DARF kein bestehender Eintrag außerhalb des neuen Bereichs landen (sonst Ablehnung mit klarer Fehlermeldung). | DB-Constraint, Service |
 | INV-10 | Nutzer ohne Familie (`family_id IS NULL`, Rolle `FAMILY_MEMBER`) sehen und erfassen **keine** Familiendaten. | Service, Test |
-| INV-11 | Jedes Konto hat mindestens eine Anmeldemöglichkeit: `password_hash` gesetzt **oder** mindestens eine `user_identity`. Die letzte Anmeldemöglichkeit darf nicht entfernt werden. | Service, Test |
-| INV-12 | Ein `MASTER_ADMIN` hat **keine** `user_identity` (kein OIDC-Login). | Service, Test |
+| INV-11 | Jedes Konto (außer `MASTER_ADMIN`) hat **immer** seine E-Mail-Adresse als Anmeldeweg (E-Mail-Link, D-24). OIDC-Identitäten kommen hinzu und dürfen jederzeit entfernt werden. | Service, Test |
+| INV-12 | Ein `MASTER_ADMIN` hat **keine** `user_identity` (kein OIDC-Login) und erhält **keine** E-Mail-Links (kein `user_token`). Er meldet sich nur per Passwort plus TOTP an (D-22). | Service, Test |
 
 ### 5.5 Schuljahr-Logik
 
@@ -484,7 +498,7 @@ Rollen: `FAMILY_MEMBER` (zugeordnet oder unzugeordnet), `ADMIN`, `MASTER_ADMIN`.
 
 | Aktion | Unzugeordnet | FAMILY_MEMBER | ADMIN | MASTER_ADMIN |
 |---|---|---|---|---|
-| Registrieren, Login, Passwort ändern/zurücksetzen | ja | ja | ja | ja |
+| Registrieren, Anmelden per E-Mail-Link oder OIDC, Abmelden | ja | ja | ja | nur Master-Login mit Passwort plus TOTP (D-22), Abmelden ja |
 | Eigene Familienübersicht, Einträge und Mitgliederstatus sehen | nein (nur Hinweis "Zuordnung ausstehend") | ja | ja (falls selbst Familie zugeordnet) | ja |
 | Einträge für **eigene** Familie erfassen | nein | ja | ja | ja |
 | Eigene `OPEN`-Einträge ändern oder löschen | nein | ja | ja | ja |
@@ -516,7 +530,7 @@ Regeln:
 |---|---|---|
 | F1 Kinderliste | Stammdaten Kinder, Familien | FS-ADM (7.7) |
 | F2 Schuljahr | Schuljahre, Stichtage, Soll | 5.5, FS-ADM (7.7) |
-| F3 Registrierung | Selbstregistrierung (lokal und OIDC), Zuordnung, Bot-Schutz | FS-REG (7.1), FS-AUTH (7.2) |
+| F3 Registrierung | Selbstregistrierung (E-Mail-Link und OIDC, ohne Passwort, D-24), Zuordnung, Bot-Schutz | FS-REG (7.1), FS-AUTH (7.2) |
 | F4 Familienstatus | Hinweis auf fehlenden Partner | FS-FAM (7.3) |
 | F5 Korrektur | Admin korrigiert Zuordnung | FS-ADM (7.7), FS-REG (7.1) |
 | F6 Stunden erfassen | Schnellauswahl, exakt, Freitext | FS-ENTRY (7.4) |
@@ -536,7 +550,7 @@ Eltern registrieren sich selbst, ohne dass ein Admin vorab Codes verteilt oder K
 
 Es gibt zwei Registrierungswege, die dasselbe Zuordnungsverfahren nutzen:
 
-- **Weg A, lokal:** E-Mail + Passwort, mit Captcha und E-Mail-Bestätigung.
+- **Weg A, E-Mail-Link:** Formular mit Name, E-Mail und Kinderdaten, mit Captcha. Das Einlösen des E-Mail-Links bestätigt die Adresse **und** schaltet das Konto frei (D-24). Kein Passwort.
 - **Weg B, OIDC:** Anmeldung mit Google (weitere Anbieter siehe OPEN-15). Die E-Mail-Adresse ist beim Anbieter bereits bestätigt.
 
 #### 7.1.2 Eingaben für die Zuordnung (Claim)
@@ -547,8 +561,8 @@ Es gibt zwei Registrierungswege, die dasselbe Zuordnungsverfahren nutzen:
 | `child.lastName` | Pflicht, 1 bis 80 Zeichen |
 | `child.birthDate` | Pflicht, gültiges Datum, nicht in der Zukunft, nicht älter als 25 Jahre |
 
-Zusätzlich bei Weg A: `displayName` (1 bis 80), `email` (gültig, höchstens 254 Zeichen), `password` (SEC-03), Captcha-Nachweis (SEC-04), Bestätigung der Datenschutzhinweise (DP-03).
-Bei Weg B: `displayName` wird aus dem `name`-Claim vorbelegt und ist editierbar. Kein Passwort.
+Zusätzlich bei Weg A: `displayName` (1 bis 80), `email` (gültig, höchstens 254 Zeichen), Captcha-Nachweis (SEC-04), Bestätigung der Datenschutzhinweise (DP-03).
+Bei Weg B: `displayName` wird aus dem `name`-Claim vorbelegt und ist editierbar.
 
 #### 7.1.3 Normalisierung für den Abgleich
 
@@ -577,18 +591,25 @@ Der Abgleich ist **exakte Gleichheit** auf `(first_name_norm, last_name_norm, bi
 
 `claim_key = SHA-256-hex( first_norm + "|" + last_norm + "|" + birth_date(ISO) )`.
 
-#### 7.1.4 Ablauf Weg A (lokal)
+#### 7.1.4 Ablauf Weg A (E-Mail-Link)
 
 1. Client holt eine Captcha-Challenge (`GET /api/v1/auth/captcha`), löst sie im Browser und sendet das Formular mit Nachweis (`POST /api/v1/auth/register`).
-2. Server prüft Captcha, Eingabevalidierung und Rate-Limits (SEC-04). Bei Überschreitung: `429` mit neutraler Meldung.
-3. Server antwortet **immer identisch** mit `202 Accepted` und der Meldung "Wir haben dir eine E-Mail geschickt. Bitte bestätige deine Adresse.", unabhängig davon, ob die E-Mail schon existiert oder ob ein Kind passt (kein Orakel).
-   - E-Mail ist **neu**: Konto anlegen (`PENDING_VERIFICATION`, Rolle `FAMILY_MEMBER`, `family_id` NULL), `registration_claim` speichern, Bestätigungs-Mail senden.
-   - E-Mail existiert **bereits**: kein neues Konto. Stattdessen Hinweis-Mail an die bestehende Adresse ("Jemand hat sich mit deiner Adresse registriert. Du warst das? Dann melde dich an oder setze dein Passwort zurück.").
+2. Server prüft Captcha, Eingabevalidierung und Rate-Limits (SEC-04). Ungültiges Captcha: `400 CAPTCHA_INVALID`. IP- oder globales Limit überschritten: `429` mit neutraler Meldung. Das Limit je Ziel-E-Mail verwirft still (9.1).
+3. Server antwortet **immer identisch** mit `202 Accepted` und der Meldung "Wir haben dir eine E-Mail geschickt. Klicke auf den Link darin, um dich anzumelden.", unabhängig davon, ob die E-Mail schon existiert oder ob ein Kind passt (kein Orakel). Die Antwortzeit hängt nicht vom Fall ab (Mailversand asynchron, 7.11).
+
+   | Fall | Verhalten |
+   |---|---|
+   | E-Mail ist **neu** | Konto anlegen (`PENDING_VERIFICATION`, Rolle `FAMILY_MEMBER`, `family_id` NULL, `password_hash` NULL), `registration_claim` speichern, `LOGIN`-Token erzeugen (7.2), Mail "Registrierung bestätigen" senden. |
+   | Konto existiert (`ACTIVE` oder `PENDING_VERIFICATION`) | Kein neues Konto, die neuen Kinderdaten werden verworfen. Neuen `LOGIN`-Token erzeugen (ältere werden ungültig) und Mail "Bereits registriert" mit Anmeldelink senden. |
+   | Konto ist `MASTER_ADMIN` oder `DISABLED` | Nichts anlegen, **keine** Mail. Audit ohne E-Mail im Klartext. |
+
 4. Beim Anlegen des Claims wird der Abgleich berechnet:
    - Zähle `registration_claim` mit gleichem `claim_key` in den letzten 24 Stunden. Sind es mehr als `max-claims-per-target` (Standard 5, konfigurierbar), ist das Ergebnis `THROTTLED`, **ohne** Kind-Lookup.
    - Sonst: Kinder mit gleichem Namen (normalisiert) und Geburtsdatum suchen. Genau eine Familie: `MATCHED` (mit `matched_child_id`). Keine: `NO_MATCH`. Mehrere verschiedene Familien: `AMBIGUOUS`.
-5. Der Nutzer bestätigt die E-Mail (`POST /api/v1/auth/verify-email`, Token aus der Mail). Status wird `ACTIVE`, `email_verified_at` gesetzt.
+5. Der Nutzer öffnet den Link und löst ihn auf der Bestätigungsseite per Klick ein (`POST /api/v1/auth/magic-link/redeem`, 7.2). Erst dann wird der Status `ACTIVE`, `email_verified_at` gesetzt und eine Session angelegt. **Vor dem Einlösen gibt es keinen Zugang.**
 6. **Erst jetzt** wird bei `MATCHED` die Familie zugeordnet (`app_user.family_id`), `claim.resolved_at` gesetzt, Audit `USER_ASSIGNED_TO_FAMILY` (`method=AUTO_MATCH`) geschrieben und die Benachrichtigung aus 7.1.6 versendet.
+7. Ist der Link abgelaufen, fordert der Nutzer auf `/login` einen neuen an. Für ein unbestätigtes Konto erzeugt das einen neuen `LOGIN`-Token, das Einlösen schließt die Registrierung wie in Schritt 5 und 6 ab.
+8. **Aufräumen:** Konten, die 24 Stunden nach `created_at` noch `PENDING_VERIFICATION` sind, löscht ein täglicher Job physisch, samt `registration_claim` und `user_token` (Cascade). Das ist eine bewusste Ausnahme zu DP-05, weil diese Konten nie aktiv waren. Das Limit pro Zielkind (24 Stunden) bleibt davon unberührt.
 
 #### 7.1.5 Ablauf Weg B (OIDC)
 
@@ -600,12 +621,14 @@ Der Abgleich ist **exakte Gleichheit** auf `(first_name_norm, last_name_norm, bi
 |---|---|
 | Identität `(iss, sub)` existiert | Anmelden (Status `ACTIVE`). Fertig. |
 | Kein Konto mit dieser E-Mail | Pending-Zustand in der Server-Session halten (`iss`, `sub`, E-Mail, Name). **Noch kein** DB-Konto. Weiter mit Schritt 4. |
-| Konto mit dieser E-Mail existiert, `email_verified_at` gesetzt, Rolle nicht `MASTER_ADMIN` | Identität verknüpfen, anmelden. Audit `IDENTITY_LINKED`. |
-| Konto mit dieser E-Mail existiert, **nicht** bestätigt (`PENDING_VERIFICATION`) | Identität verknüpfen, E-Mail als bestätigt markieren **und `password_hash` auf NULL setzen** (Schutz vor Vorab-Übernahme: Wer die Adresse nur eingetippt hat, verliert das Passwort). Anmelden. |
-| Konto ist `MASTER_ADMIN` | Ablehnen: "Dieses Konto kann nur lokal angemeldet werden." (INV-12) |
-| Konto ist `LOCKED` oder `DISABLED` | Ablehnen mit neutraler Meldung. |
+| Konto mit dieser (vom Anbieter verifizierten) E-Mail existiert, `ACTIVE`, Rolle nicht `MASTER_ADMIN` | Identität verknüpfen, anmelden. Audit `IDENTITY_LINKED`. |
+| Konto mit dieser E-Mail existiert, **unbestätigt** (`PENDING_VERIFICATION`) | Identität verknüpfen, Status `ACTIVE`, `email_verified_at` setzen (der Anbieter hat die Adresse bestätigt), Zuordnung wie 7.1.4 Schritt 6, anmelden. Audit `IDENTITY_LINKED`. |
+| Konto ist `MASTER_ADMIN` | Ablehnen: "Dieses Konto kann sich nur über den Master-Login anmelden." (INV-12) |
+| Konto ist `DISABLED` | Ablehnen mit neutraler Meldung. |
 
-4. "Noch ein Schritt": Das Kind-Formular (7.1.2) wird angezeigt. Nach dem Absenden legt der Server Konto (`ACTIVE`, `email_verified_at` gesetzt, `password_hash` NULL), `user_identity` und `registration_claim` an und berechnet den Abgleich wie in 7.1.4 Schritt 4. Bei `MATCHED` wird sofort zugeordnet (7.1.4 Schritt 6).
+Eine Vorab-Übernahme (fremdes Konto mit der Adresse des Opfers samt Passwort anlegen) ist ausgeschlossen, weil kein Konto ein Passwort hat (D-24). Wer eine Adresse nur eingetippt hat, kommt ohne Zugriff auf das Postfach nicht in das Konto.
+
+4. "Noch ein Schritt": Das Kind-Formular (7.1.2) wird angezeigt. Nach dem Absenden legt der Server Konto (`ACTIVE`, `email_verified_at` gesetzt), `user_identity` und `registration_claim` an und berechnet den Abgleich wie in 7.1.4 Schritt 4. Bei `MATCHED` wird sofort zugeordnet (7.1.4 Schritt 6).
 5. Captcha: Auf Weg B **kein** Captcha `[PROPOSED]`, weil der Anbieter-Login bereits eine Hürde ist. Die Rate-Limits pro Zielkind (SEC-04) gelten unverändert.
 
 #### 7.1.6 Benachrichtigung bei Zuordnung
@@ -624,15 +647,55 @@ Siehe FS-FAM. Für die Zuordnung des zweiten Elternteils gilt derselbe Ablauf: E
 
 ---
 
-### 7.2 FS-AUTH: Anmeldung, Sitzung, Passwort, OIDC
+### 7.2 FS-AUTH: Anmeldung, Sitzung, E-Mail-Link, OIDC
 
-#### Lokales Login (D-08)
+Grundsatz (D-24): Nutzer haben **kein Passwort**. Es gibt genau zwei Anmeldewege, den E-Mail-Link und OIDC. Registrierung (7.1.4) und Anmeldung nutzen denselben Link-Mechanismus. Einzige Ausnahme ist der Master-Login (unten).
 
-- `POST /api/v1/auth/login` mit E-Mail und Passwort (und TOTP-Code, falls für das Konto aktiv).
-- Fehlermeldung immer neutral: "E-Mail oder Passwort stimmt nicht." Auch bei unbestätigtem, gesperrtem oder unbekanntem Konto. Bei unbekannter E-Mail wird ein Dummy-Hash geprüft (konstante Antwortzeit).
-- Nur `ACTIVE`-Konten können sich anmelden. `PENDING_VERIFICATION`-Nutzer können eine neue Bestätigungs-Mail anfordern (rate-limitiert, neutrale Antwort).
-- Konto-Sperre nach Fehlversuchen: ab 5 Fehlversuchen `locked_until` mit steigender Dauer (1, 5, 15, 60 Minuten), Zähler wird bei Erfolg zurückgesetzt. Zusätzlich IP-Rate-Limit (SEC-04).
-- Konten, die **nur** über OIDC existieren (`password_hash` NULL), können sich lokal erst anmelden, wenn sie per "Passwort festlegen" (Reset-Mail) ein Passwort gesetzt haben `[PROPOSED]`.
+#### E-Mail-Link (Magic Link, D-08, D-24)
+
+**Anfordern**
+
+- `POST /api/v1/auth/magic-link` mit `email` und Captcha-Nachweis (SEC-04).
+- Antwort **immer** `202 Accepted` mit derselben neutralen Meldung: "Wenn es ein Konto gibt, haben wir dir eine E-Mail geschickt. Der Link ist 15 Minuten gültig." Status, Body, Header und Antwortzeit hängen nicht vom Fall ab (Mailversand asynchron, 7.11). Ausnahmen: `400 CAPTCHA_INVALID` und `429` für IP- oder globale Limits (9.1). Beide hängen nicht von der Ziel-E-Mail ab.
+- Fallunterscheidung (nur serverseitig sichtbar):
+
+| Fall | Verhalten |
+|---|---|
+| Konto `ACTIVE` | `LOGIN`-Token erzeugen, Mail "Anmeldelink" senden. |
+| Konto `PENDING_VERIFICATION` | `LOGIN`-Token erzeugen, Mail "Anmeldelink" senden. Das Einlösen schließt die Registrierung ab (7.1.4 Schritt 5 und 6). |
+| Keine E-Mail bekannt | **Kein** Token, **kein** Konto. Mail "Kein Konto": Es gibt kein Konto mit dieser Adresse, mit Link auf die Registrierung (`/register`). |
+| Konto `MASTER_ADMIN` oder `DISABLED` | Kein Token, **keine** Mail (INV-12). Audit ohne E-Mail im Klartext. |
+| Limit je Ziel-E-Mail überschritten (9.1) | Kein Token, keine Mail. Antwort trotzdem `202` (stilles Verwerfen, Metrik). |
+
+**Token** (Details SEC-17)
+
+- 32 Byte (256 Bit) aus einem CSPRNG, base64url-kodiert. In der DB steht nur der SHA-256-Hash (`user_token`, Zweck `LOGIN`). Der Klartext steht ausschließlich in der Mail.
+- 15 Minuten gültig (`expires_at`), **einmal** einlösbar (`used_at`).
+- Eine neue Anfrage (auch eine erneute Registrierung) macht alle älteren, nicht eingelösten `LOGIN`-Token des Nutzers ungültig, indem sie gelöscht werden.
+
+**Link und Bestätigungsseite**
+
+- Link: `https://{APP_DOMAIN}/login/link#token={token}` `[PROPOSED]`. Der Token steht im **URL-Fragment**. Er wird beim Abruf nicht an den Server übertragen, landet nicht in Server- oder Proxy-Logs und nicht im `Referer`.
+- Ein **GET** auf den Link verbraucht den Token **nie**. Mail-Scanner und Link-Vorschauen rufen Links vorab ab, das darf weder anmelden noch den Token entwerten. Es gibt keinen Endpunkt, der einen Token per GET einlöst.
+- Die SPA zeigt auf `/login/link` eine Bestätigungsseite mit der Schaltfläche "Jetzt anmelden" und entfernt das Fragment sofort aus der Adresszeile (`history.replaceState`).
+- Erst der Klick sendet `POST /api/v1/auth/magic-link/redeem` mit `{token}` (CSRF-geschützt wie jeder `POST`).
+
+**Einlösen**
+
+- Der Server prüft und entwertet atomar: `UPDATE user_token SET used_at = now() WHERE token_hash = :hash AND purpose = 'LOGIN' AND used_at IS NULL AND expires_at > now() RETURNING user_id`. Zusätzlich muss das Konto `ACTIVE` oder `PENDING_VERIFICATION` sein und darf nicht `MASTER_ADMIN` sein.
+- Erfolg: Bei `PENDING_VERIFICATION` wird der Status `ACTIVE`, `email_verified_at` gesetzt und zugeordnet (7.1.4 Schritt 6). Danach wird eine **neue** Session angelegt (neue Session-ID, SEC-09), `last_login_at` gesetzt und `200` mit den Daten von `GET /me` geliefert. Audit `MAGIC_LINK_REDEEMED`.
+- Fehler: Unbekannter, abgelaufener, bereits eingelöster oder ersetzter Token liefern **dieselbe** Antwort `400 LINK_INVALID` ("Der Link ist abgelaufen oder wurde schon benutzt. Fordere einfach einen neuen an."). Der Grund wird nicht unterschieden (SEC-16).
+- Geräteübergreifend: Der Link funktioniert in jedem Browser, nicht nur in dem, der ihn angefordert hat (OPEN-21). Ein zusätzlicher Code für den Gerätewechsel ist offen (OPEN-20).
+
+**Aufräumen**
+
+- Ein täglicher Job löscht abgelaufene und eingelöste Token sowie unbestätigte Konten nach 24 Stunden (7.1.4 Schritt 8).
+
+#### Master-Login (D-22) `[PROPOSED]`
+
+- `POST /api/v1/auth/master/login` mit E-Mail, Passwort und TOTP-Code. Eigene Seite `/login/master`, die von der normalen Anmeldeseite nicht verlinkt ist.
+- Fehlermeldung immer neutral: "Anmeldung fehlgeschlagen." Kein Unterschied zwischen falscher E-Mail, falschem Passwort und falschem Code. Bei unbekannter E-Mail wird ein Dummy-Hash geprüft (konstante Antwortzeit).
+- Strenge IP-Limits (9.1). Der Master kann weder E-Mail-Link noch OIDC nutzen (INV-12).
 
 #### OIDC-Login (D-08, D-23)
 
@@ -658,8 +721,8 @@ spring:
 - Weitere Anbieter werden durch **zusätzliche Konfigurationsblöcke** ergänzt (generischer `issuer-uri`), ohne Codeänderung. Welche Anbieter aktiv sind: OPEN-15. Interim: nur Google.
 - Der Server MUSS `iss`, `aud`, Signatur, `exp` und `nonce` validieren (Spring tut das für OIDC; Test erforderlich) und `email_verified = true` verlangen.
 - **Kein JavaScript-SDK** des Anbieters im Frontend. Der Button ist ein normaler Link auf den Einstiegs-Endpunkt (DP-04). Der Button MUSS die Branding-Vorgaben des Anbieters erfüllen (UI-06).
-- Die Anmeldung wird **nach** dem Callback zu einer normalen Server-Session (Cookie), identisch zum lokalen Login.
-- **Profil:** Eingeloggte Nutzer KÖNNEN weitere Anbieter verknüpfen und Verknüpfungen entfernen, sofern INV-11 eingehalten wird. Verknüpfen verlangt eine erneute Anmeldung (frisches Login nicht älter als 5 Minuten).
+- Die Anmeldung wird **nach** dem Callback zu einer normalen Server-Session (Cookie), identisch zum E-Mail-Link.
+- **Profil:** Eingeloggte Nutzer KÖNNEN weitere Anbieter verknüpfen und Verknüpfungen jederzeit entfernen. Der E-Mail-Link bleibt immer als Anmeldeweg erhalten (INV-11). Verknüpfen verlangt eine erneute Anmeldung (frisches Login nicht älter als 5 Minuten).
 - `MASTER_ADMIN` kann OIDC **nicht** nutzen (D-22, INV-12).
 - ADMIN-Konten dürfen sich per OIDC anmelden. Die zweite Faktor-Frage ist in OPEN-09 offen.
 
@@ -671,17 +734,7 @@ spring:
 | `ADMIN` | 30 Minuten | 8 Stunden |
 | `MASTER_ADMIN` | 15 Minuten | 4 Stunden |
 
-Alle Werte `[PROPOSED]` und konfigurierbar. Sessions in Spring Session JDBC. Bei Passwortänderung oder -reset werden alle anderen Sessions des Nutzers beendet.
-
-#### Passwort zurücksetzen
-
-- `POST /api/v1/auth/password-reset/request` (Captcha, Rate-Limit), Antwort immer `202` mit neutraler Meldung.
-- Token: 32 Byte Zufall (CSPRNG), base64url, gültig 1 Stunde, einmalig. In der DB nur der SHA-256-Hash (`user_token`).
-- `POST /api/v1/auth/password-reset/confirm` mit Token und neuem Passwort (SEC-03). Beendet alle Sessions.
-
-#### E-Mail-Bestätigung
-
-- Token wie oben, gültig 24 Stunden. Link: `https://{domain}/verify-email?token=...`.
+Alle Werte `[PROPOSED]` und konfigurierbar. Sessions in Spring Session JDBC. Jede Anmeldung (E-Mail-Link, OIDC, Master-Login) erzeugt eine neue Session-ID. Sessions auf anderen Geräten bleiben bestehen. Admins können alle Sessions eines Nutzers beenden (FS-ADM).
 
 ---
 
@@ -817,7 +870,7 @@ Alle Funktionen nur für `ADMIN` und `MASTER_ADMIN`, jede Änderung mit Audit-Ei
 | Kinder | Anlegen (Vorname, Nachname, Geburtsdatum, Familie oder neue Familie, optional `external_ref`), bearbeiten, Familie wechseln. **Kein physisches Löschen** (DP-05). `*_norm`-Felder werden bei jeder Änderung neu berechnet. |
 | Einschreibung | Pro Schuljahr festlegen, welche Kinder eingeschrieben sind. Funktion "Einschreibung aus Vorjahr übernehmen" `[PROPOSED]`. Siehe OPEN-04. |
 | Familien | Anlegen, Bezeichnung und Notiz bearbeiten. Zusammenführen zweier Familien (Kinder, Nutzer, Einträge verschieben) ist **Phase 2** `[PROPOSED]`. |
-| Nutzer | Suchen, Zuordnung zu Familie setzen oder entfernen (F5), Rolle setzen (D-13), deaktivieren, Passwort-Reset-Mail auslösen, alle Sessions beenden. |
+| Nutzer | Suchen, Zuordnung zu Familie setzen oder entfernen (F5), Rolle setzen (D-13), deaktivieren, alle Sessions beenden. |
 | Schuljahre | Anlegen, Label, Stichtage und `required_minutes` ändern (INV-09), abschließen und wieder öffnen (OPEN-06). |
 | Import | CSV-Import für Kinder `[PROPOSED]`, siehe unten. Quelle der Kinderliste: OPEN-03. |
 
@@ -884,7 +937,7 @@ Beim Start (Profil `prod`):
 
 #### Verhalten
 
-- Anmeldung über das normale lokale Login (Passwort plus TOTP), mit strengeren Limits (SEC-04). **Kein OIDC.**
+- Anmeldung nur über den eigenen Master-Login (Passwort plus TOTP, FS-AUTH 7.2), mit strengeren Limits (SEC-04). **Kein OIDC, kein E-Mail-Link** (D-22, INV-12). Damit funktioniert der Notzugang auch, wenn Mailversand oder Identitätsanbieter ausfallen.
 - Hat alle Admin-Rechte und zusätzlich: Admin-Rollen vergeben, API-Clients verwalten, Backup-Bereich (11.6).
 - Zugriff auf das Master-Konto kann **nicht** über die UI verloren gehen (kann dort weder geändert noch gelöscht werden). Ist der Zugang verloren (Passwort oder TOTP weg), stellt man ihn per Serverzugriff wieder her: Umgebungsvariablen ändern, Container neu starten (Runbook OPS-08).
 
@@ -918,13 +971,15 @@ Transaktionale Mails (Deutsch, Du-Form, Klartext plus HTML, keine Tracking-Pixel
 
 | Mail | Auslöser | Inhalt |
 |---|---|---|
-| Bestätigung | Registrierung Weg A | Link zur E-Mail-Bestätigung (24 h gültig) |
-| Registrierungshinweis | Registrierung mit bereits bekannter Adresse | Hinweis, Anmelden oder Passwort zurücksetzen |
-| Passwort zurücksetzen | Reset-Anfrage | Link (1 h gültig) |
-| Passwort festlegen | OIDC-Konto möchte lokales Passwort | wie Reset |
+| Registrierung bestätigen | Registrierung Weg A mit neuer Adresse (7.1.4) | E-Mail-Link (15 Minuten gültig). Hinweis: Ohne Klick wird die Registrierung nach 24 Stunden gelöscht, ein neuer Link lässt sich auf der Anmeldeseite anfordern. |
+| Bereits registriert | Registrierung mit bereits bekannter Adresse (7.1.4) | Hinweis "Du hast schon ein Konto" plus E-Mail-Link (15 Minuten gültig) |
+| Anmeldelink | Anfrage `POST /auth/magic-link` für ein aktives oder unbestätigtes Konto (7.2) | E-Mail-Link (15 Minuten gültig, einmal einlösbar) |
+| Kein Konto | Anfrage `POST /auth/magic-link` für eine unbekannte Adresse (7.2) | Hinweis, dass es kein Konto gibt, Link auf die Registrierung. Kein Token. |
 | Neue Zuordnung | Automatische Zuordnung zu Familie mit bestehenden Mitgliedern (7.1.6) | Name des neuen Mitglieds, Hinweis an Hort-Team |
 
-Technik: Spring Mail über SMTP. Versand **asynchron** mit bis zu 3 Wiederholungen. Ein Versandfehler wird geloggt (ohne Adresse im Klartext) und führt **nicht** zu einer anderen Antwort an den Client (kein Orakel). Absenderadresse und SMTP-Dienst: OPEN-07. Zugangsdaten nur per Umgebungsvariable oder Docker Secret.
+Jede Mail mit Link enthält den Satz "Du hast diese Mail nicht angefordert? Dann ignoriere sie einfach." Der Link steht als Schaltfläche und zusätzlich als Klartext-URL in der Mail.
+
+Technik: Spring Mail über SMTP. Versand **asynchron** mit bis zu 3 Wiederholungen. Mails mit E-Mail-Link werden nur innerhalb der Token-Gültigkeit (15 Minuten) wiederholt. Ein Versandfehler wird geloggt (ohne Adresse und ohne Token im Klartext) und führt **nicht** zu einer anderen Antwort an den Client (kein Orakel). Absenderadresse und SMTP-Dienst: OPEN-07. Zugangsdaten nur per Umgebungsvariable oder Docker Secret. Seit D-24 ist der Mailversand betriebskritisch (OPS-13).
 
 ---
 
@@ -953,20 +1008,17 @@ Rollen: **A** = anonym, **U** = angemeldet (jede Rolle), **F** = `FAMILY_MEMBER`
 | Methode und Pfad | Rolle | Spezifikation |
 |---|---|---|
 | `GET /auth/captcha` | A | SEC-04, FS-REG |
-| `POST /auth/register` | A | FS-REG Weg A |
-| `POST /auth/verify-email` | A | FS-AUTH |
-| `POST /auth/verify-email/resend` | A | FS-AUTH |
-| `POST /auth/login` | A | FS-AUTH |
+| `POST /auth/register` | A | FS-REG Weg A (immer `202`) |
+| `POST /auth/magic-link` | A | E-Mail-Link anfordern (immer `202`), FS-AUTH |
+| `POST /auth/magic-link/redeem` | A | E-Mail-Link einlösen, legt Session an, FS-AUTH |
+| `POST /auth/master/login` | A | Master-Login mit Passwort plus TOTP (D-22), FS-AUTH |
 | `POST /auth/logout` | U | FS-AUTH |
-| `POST /auth/password-reset/request` | A | FS-AUTH |
-| `POST /auth/password-reset/confirm` | A | FS-AUTH |
 | `GET /oauth2/authorization/{id}`, `GET /login/oauth2/code/{id}` | A | FS-AUTH OIDC (Spring-Standardpfade, außerhalb `/api/v1`) |
 | `GET /auth/oidc/pending` | A (Pending-Session) | Daten für Schritt "Noch ein Schritt" (FS-REG 7.1.5) |
 | `POST /auth/oidc/complete` | A (Pending-Session) | Kinderdaten absenden, Konto anlegen |
 | `GET /me` | U | Profil, Rolle, Familienstatus, Verknüpfungen |
 | `PATCH /me` | U | Anzeigename ändern |
-| `POST /me/password` | U | Passwort ändern/setzen |
-| `POST /me/identities/{provider}/link`, `DELETE /me/identities/{id}` | U | Verknüpfungen (INV-11) |
+| `POST /me/identities/{provider}/link`, `DELETE /me/identities/{id}` | U | Verknüpfungen, Entfernen immer erlaubt (INV-11) |
 | `PUT /me/claim` | U (unzugeordnet) | Kinderdaten korrigieren (max. 3) |
 | `GET /me/family/overview` | F | FS-FAM |
 | `GET /me/family/entries` | F | Liste, filterbar nach Schuljahr |
@@ -982,7 +1034,7 @@ Rollen: **A** = anonym, **U** = angemeldet (jede Rolle), **F** = `FAMILY_MEMBER`
 | `GET /admin/users`, `GET /admin/users/{id}` | AD | FS-ADM |
 | `PUT /admin/users/{id}/family`, `DELETE /admin/users/{id}/family` | AD | Zuordnung (F5) |
 | `PUT /admin/users/{id}/role` | AD | Rolle (`FAMILY_MEMBER` oder `ADMIN`) |
-| `POST /admin/users/{id}/disable`, `…/enable`, `…/send-password-reset`, `…/terminate-sessions` | AD | FS-ADM |
+| `POST /admin/users/{id}/disable`, `…/enable`, `…/terminate-sessions` | AD | FS-ADM |
 | `GET /admin/entries?status=OPEN` | AD | FS-CONF |
 | `POST /admin/entries/{id}/confirm`, `POST /admin/entries/confirm` (Bulk) | AD | FS-CONF |
 | `POST /admin/families/{id}/entries`, `PATCH/DELETE /admin/entries/{id}` | AD | Korrekturen (INV-07) |
@@ -1003,20 +1055,21 @@ Grundhaltung: Die App verarbeitet Daten von Minderjährigen. Sicherheit hat Vorr
 |---|---|
 | SEC-01 | **Deny by default.** Jede Endpunkt-Methode deklariert ihre Rolle explizit (Abschnitt 6). Ein nicht deklarierter Endpunkt ist gesperrt. Ein Test MUSS alle Endpunkte per Reflection oder OpenAPI prüfen, dass eine Rollenregel existiert. |
 | SEC-02 | **Transport.** Nur HTTPS. HTTP leitet auf HTTPS um. HSTS (`max-age=31536000`, `includeSubDomains` erst nach stabiler Domain-Einrichtung). TLS-Zertifikate automatisch über Caddy. |
-| SEC-03 | **Passwörter.** Argon2id (Spring `Argon2PasswordEncoder`, Parameter so wählen, dass ein Hash auf dem Ziel-VPS etwa 250 bis 500 ms dauert). Länge 10 bis 128 Zeichen, **keine** Zusammensetzungsregeln. Ablehnen: Passwort gleich E-Mail oder Name, und Einträge einer mitgelieferten Liste häufiger Passwörter. Bei Passwortänderung Mail an den Nutzer. |
+| SEC-03 | **Passwort nur für den Master-Admin (D-22, D-24).** Nutzerkonten haben kein Passwort (`password_hash` NULL, per CHECK-Constraint erzwungen). Das Master-Passwort wird mit Argon2id gehasht (Spring `Argon2PasswordEncoder`, Parameter so wählen, dass ein Hash auf dem Ziel-VPS etwa 250 bis 500 ms dauert). Der Hash kommt ausschließlich aus der Konfiguration (OPS-12) und lässt sich über UI und API nicht ändern. |
 | SEC-04 | **Bot-Schutz und Rate-Limits** (siehe 9.1). |
-| SEC-05 | **Zweiter Faktor (TOTP, RFC 6238).** `MASTER_ADMIN`: Pflicht in Produktion. `ADMIN`: optional aktivierbar, Pflicht siehe OPEN-09. Secret verschlüsselt gespeichert (AES-GCM, Schlüssel `APP_ENCRYPTION_KEY`), 10 Einmal-Wiederherstellungscodes (nur als Hash gespeichert). |
+| SEC-05 | **Zweiter Faktor (TOTP, RFC 6238).** `MASTER_ADMIN`: Pflicht in Produktion. `ADMIN`: optional aktivierbar, wirkt bei E-Mail-Link und OIDC. Pflicht für Admins siehe OPEN-09 (neu bewertet, weil seit D-24 das Mailkonto der Admin-Zugang ist). Secret verschlüsselt gespeichert (AES-GCM, Schlüssel `APP_ENCRYPTION_KEY`), 10 Einmal-Wiederherstellungscodes (nur als Hash gespeichert). |
 | SEC-06 | **OIDC-Härtung.** Authorization Code mit PKCE, `state` und `nonce` Pflicht. Prüfen: Signatur, `iss`, `aud`, `exp`, `nonce`. `email_verified = true` Pflicht. Identitätsschlüssel ist `(iss, sub)`. Feste, in der Konfiguration hinterlegte Redirect-URIs. Scopes nur `openid profile email`. Access- und Refresh-Tokens werden **nicht** gespeichert. Verknüpfungsregeln: FS-AUTH und 7.1.5. Logout beendet nur die lokale Session. |
 | SEC-07 | **Injection.** Ausschließlich parametrisierte Abfragen. Sortierfelder und Filter aus Requests nur über Whitelist. Eingaben per Bean Validation. Im Frontend kein `dangerouslySetInnerHTML`, Ausgaben sind escaped. |
 | SEC-08 | **Zugriffskontrolle gegen IDOR.** `family_id` für `FAMILY_MEMBER` kommt **immer aus der Session**, nie aus Pfad oder Body. Zugriffe auf fremde Ressourcen liefern `404`. Pro Endpunkt MUSS es einen Test "Nutzer aus Familie A greift auf Daten von Familie B zu" geben. |
 | SEC-09 | **Session und CSRF.** Cookie `HttpOnly`, `Secure`, `SameSite=Lax`, Präfix `__Host-` wo möglich. Session-Fixation-Schutz (neue Session-ID nach Login). CSRF-Token für alle zustandsändernden Requests. Logout invalidiert serverseitig. |
 | SEC-10 | **HTTP-Header** (Caddy und Spring): `Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`. Zusätzlich `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, `Permissions-Policy` ohne Kamera/Mikrofon/Geolocation, HSTS. Keine Inline-Skripte, keine externen Ressourcen (Schriften, Skripte, Bilder) von Dritten. |
-| SEC-11 | **Audit-Log.** Protokolliert werden mindestens: Login-Erfolg und -Fehlschlag (ohne Passwort), Rollenänderungen, Zuordnungen (auto und manuell), Bestätigungen, Änderungen und Löschungen von Einträgen, Stammdatenänderungen, Schuljahr-Änderungen, PDF-Erzeugung, API-Client-Verwaltung, Backup-/Restore-Aktionen, Verknüpfen von OIDC-Identitäten. Die Tabelle ist **append-only**: Der Datenbank-Nutzer der App erhält auf `audit_log` nur `INSERT` und `SELECT` `[PROPOSED]`. Aufbewahrungsfrist: OPEN-16. |
+| SEC-11 | **Audit-Log.** Protokolliert werden mindestens: E-Mail-Link angefordert (nur Nutzer-ID, bei unbekannter Adresse nur als Metrik), eingelöst und ungültig, Master-Login-Erfolg und -Fehlschlag (ohne Passwort und Code), Rollenänderungen, Zuordnungen (auto und manuell), Bestätigungen, Änderungen und Löschungen von Einträgen, Stammdatenänderungen, Schuljahr-Änderungen, PDF-Erzeugung, API-Client-Verwaltung, Backup-/Restore-Aktionen, Verknüpfen von OIDC-Identitäten. Die Tabelle ist **append-only**: Der Datenbank-Nutzer der App erhält auf `audit_log` nur `INSERT` und `SELECT` `[PROPOSED]`. Aufbewahrungsfrist: OPEN-16. |
 | SEC-12 | **Logging ohne personenbezogene Daten.** Keine Passwörter, Tokens, E-Mail-Adressen, Kindernamen, Geburtsdaten oder Freitexte in Logs und Fehlermeldungen. Stattdessen IDs und `traceId`. JSON-Logs mit Korrelations-ID. |
 | SEC-13 | **Geheimnisse.** Nur per Umgebungsvariable oder Docker Secret, nie im Repository oder Image. CI prüft mit gitleaks. Rotation dokumentiert (Runbook OPS-08). |
 | SEC-14 | **Lieferkette und Container.** Abhängigkeits-Scan (OWASP Dependency-Check oder Trivy, `npm audit`), SBOM (CycloneDX), Image-Scan in CI. Container: Nicht-Root-Nutzer, `read_only` wo möglich, `cap_drop: [ALL]`, `no-new-privileges`, Basis-Images fixiert (Digest), automatische Update-PRs (Renovate oder Dependabot). |
 | SEC-15 | **Server-Härtung** (VPS): SSH nur mit Schlüssel, Root-Login aus, Firewall nur 22/80/443, fail2ban, automatische Sicherheitsupdates. Befehle in OPS-06. |
-| SEC-16 | **Fehlerbehandlung.** Auth-Fehler immer neutral formuliert. Keine Unterscheidung zwischen "Nutzer unbekannt" und "Passwort falsch". Keine Stacktraces nach außen. |
+| SEC-16 | **Fehlerbehandlung.** Auth-Fehler immer neutral formuliert. Keine Unterscheidung zwischen bekanntem und unbekanntem Konto (Registrierung, Link-Anfrage) und keine Angabe, warum ein Link ungültig ist (unbekannt, abgelaufen, benutzt, ersetzt). Master-Login: keine Unterscheidung zwischen falscher E-Mail, falschem Passwort und falschem Code. Keine Stacktraces nach außen. |
+| SEC-17 | **E-Mail-Link-Härtung** (FS-AUTH 7.2). Token mit 256 Bit aus einem CSPRNG, base64url. In der DB nur der SHA-256-Hash. Gültig 15 Minuten, einmal einlösbar, atomar entwertet. Eine neue Anfrage macht ältere Token ungültig. Der Token steht im URL-Fragment, nie im Query-String, in Logs, Fehlermeldungen oder Metriken. Ein GET verbraucht nie einen Token, eingelöst wird nur per `POST` mit CSRF-Token. Nach dem Einlösen gibt es eine neue Session-ID. Links funktionieren geräteübergreifend (OPEN-21). Limits gegen Mail-Bombing laut 9.1. |
 
 ### 9.1 SEC-04 im Detail: Bot-Schutz und Rate-Limits
 
@@ -1027,7 +1080,7 @@ Grundhaltung: Die App verarbeitet Daten von Minderjährigen. Sicherheit hat Vorr
 3. Der Server verifiziert **jeden** Nachweis mit der offiziellen ALTCHA-Java-Bibliothek: Signatur gültig, nicht abgelaufen (Gültigkeit 5 Minuten), **nicht wiederverwendet** (Replay-Schutz: bereits eingelöste Challenges bis zum Ablauf im Speicher oder in der DB vermerken).
 4. Schwierigkeit (`maxNumber`) so einstellen, dass das Lösen auf einem durchschnittlichen Smartphone etwa 1 bis 3 Sekunden dauert. Wert konfigurierbar.
 5. Das Widget wird **lokal gebündelt** (kein CDN, SEC-10).
-6. Pflicht bei: Registrierung Weg A, Passwort-Reset-Anfrage, Bestätigungs-Mail erneut senden.
+6. Pflicht bei: Registrierung Weg A und E-Mail-Link anfordern. Nicht beim Einlösen eines Links und nicht beim Master-Login (Notzugang, dort greifen strenge IP-Limits).
 
 **Rate-Limits** (Standardwerte, konfigurierbar; Antwort `429` mit `Retry-After`):
 
@@ -1036,10 +1089,10 @@ Grundhaltung: Die App verarbeitet Daten von Minderjährigen. Sicherheit hat Vorr
 | Registrierung Weg A | IP | 5 pro Stunde, 20 pro Tag |
 | Registrierung gesamt | global | 200 pro Stunde, bei Überschreitung Alarm an Master |
 | **Zuordnungsversuche pro Zielkind** | `claim_key` | **5 pro 24 Stunden**, über alle Wege und IPs (aus `registration_claim`, überlebt Neustarts) |
-| Login lokal | IP | 10 pro 15 Minuten |
-| Login lokal | Konto | Sperre nach 5 Fehlversuchen, steigend 1, 5, 15, 60 Minuten |
-| Passwort-Reset anfordern | E-Mail (gehasht) und IP | 3 pro Stunde je E-Mail, 10 pro Stunde je IP |
-| Bestätigungs-Mail erneut | E-Mail | 3 pro Stunde |
+| **Mails mit E-Mail-Link (Mail-Bombing)** | Ziel-E-Mail (gehasht), Registrierung und Link-Anfrage zusammen | **5 pro Stunde**. Bei Überschreitung trotzdem `202`, aber kein Token und keine Mail (stilles Verwerfen, Metrik), damit die Antwort kein Orakel wird. |
+| E-Mail-Link anfordern | IP | 20 pro Stunde |
+| E-Mail-Link anfordern | global | 200 pro Stunde, bei Überschreitung Alarm an Master |
+| E-Mail-Link einlösen | IP | 30 pro 15 Minuten |
 | OIDC-Callback | IP | 30 pro Minute |
 | Master-Login | IP | 5 pro 15 Minuten, danach Sperre |
 | Eintrag erfassen | Nutzer | 60 pro Stunde |
@@ -1047,7 +1100,14 @@ Grundhaltung: Die App verarbeitet Daten von Minderjährigen. Sicherheit hat Vorr
 
 Umsetzung: Bucket4j (oder gleichwertig) im Speicher für IP- und Nutzerlimits. Die **IP** MUSS aus dem vom Caddy gesetzten Header kommen. Spring MUSS so konfiguriert sein, dass nur dem Caddy-Container vertraut wird (`server.forward-headers-strategy` und Trusted-Proxy-Einstellung), sonst ist das Limit per Header-Fälschung umgehbar. Das Limit pro Zielkind ist bewusst **datenbankbasiert**.
 
-**Bekannte Restschwäche (bewusst akzeptiert, D-05):** Name plus Geburtsdatum eines Kindes sind für Dritte (z. B. andere Eltern) teils bekannt oder erratbar. Gegenmaßnahmen: Captcha und Limits (oben), E-Mail-Bestätigung vor Zuordnung, Benachrichtigung der Familie und Admin-Widget bei automatischer Zuordnung (7.1.6), Familien sehen nur Vornamen der Kinder und keine Kontaktdaten. Verschärfungen (z. B. Admin-Freigabe neuer Mitglieder) sind in OPEN-12 offen.
+**Bekannte Restschwäche (bewusst akzeptiert, D-05):** Name plus Geburtsdatum eines Kindes sind für Dritte (z. B. andere Eltern) teils bekannt oder erratbar. Gegenmaßnahmen: Captcha und Limits (oben), Zuordnung erst nach Einlösen des E-Mail-Links, Benachrichtigung der Familie und Admin-Widget bei automatischer Zuordnung (7.1.6), Familien sehen nur Vornamen der Kinder und keine Kontaktdaten. Verschärfungen (z. B. Admin-Freigabe neuer Mitglieder) sind in OPEN-12 offen.
+
+**Restschwächen des E-Mail-Links (bewusst akzeptiert, D-24):**
+
+- Wer das Postfach (oder das Google-Konto) eines Nutzers kontrolliert, kontrolliert dessen Konto. Bei Admins betrifft das den Zugang zu allen Kinderdaten (OPEN-09).
+- Anfragen für fremde Adressen erzeugen Mails an Dritte ("Kein Konto", "Anmeldelink"). Das begrenzen Captcha und die Limits oben.
+- Wiederholte Anfragen für eine fremde Adresse machen den zuletzt verschickten Link des Opfers ungültig. Auch das begrenzt das Limit je Ziel-E-Mail.
+- Ein fremder Link kann einem Nutzer untergeschoben werden, der sich damit im Konto des Angreifers anmeldet. Abhilfe wäre die Bindung an den anfragenden Browser (OPEN-21).
 
 ---
 
@@ -1057,13 +1117,13 @@ Hinweis: Dieser Abschnitt beschreibt technische und organisatorische Anforderung
 
 | ID | Anforderung |
 |---|---|
-| DP-01 | **Datenkategorien:** Kinder (Vorname, Nachname, Geburtsdatum), Eltern (Name, E-Mail, ggf. OIDC-Kennung `sub`), Elternstunden (Datum, Dauer, Freitext), Audit-Log, Sessions. Keine besonderen Kategorien nach Art. 9 DSGVO vorgesehen. In der UI steht beim Freitext der Hinweis "Bitte keine sensiblen Daten eintragen." |
+| DP-01 | **Datenkategorien:** Kinder (Vorname, Nachname, Geburtsdatum), Eltern (Name, E-Mail, ggf. OIDC-Kennung `sub`), Elternstunden (Datum, Dauer, Freitext), Audit-Log, Sessions, Anmeldetoken (nur Hash, höchstens 15 Minuten gültig, danach gelöscht). Keine besonderen Kategorien nach Art. 9 DSGVO vorgesehen. In der UI steht beim Freitext der Hinweis "Bitte keine sensiblen Daten eintragen." |
 | DP-02 | **Datensparsamkeit und Need-to-know.** Familien sehen nur Vornamen ihrer Kinder und Anzeigenamen der Mitglieder. PDFs enthalten keine Geburtsdaten und keine E-Mail-Adressen. Integrations-Scopes trennen Geburtsdatum von übrigen Kinderdaten. |
 | DP-03 | **Transparenz.** Seiten "Datenschutz" und "Impressum" sind aus jedem Screen erreichbar, auch vor dem Login. Texte liefert der Verein (Platzhalter bis dahin). Bei Registrierung Weg A: Pflicht-Checkbox "Ich habe die Datenschutzhinweise gelesen." Bei Weg B: Hinweis vor dem Redirect, welche Daten der Anbieter erhält und welche zurückkommen (Name, E-Mail). |
-| DP-04 | **OIDC (Google) datenschutzfreundlich.** Freiwillig, der lokale Login bleibt gleichwertig verfügbar. **Kein** JavaScript-SDK und keine Ressourcen des Anbieters auf Seiten vor dem Klick. Erst der Klick auf den Button leitet zum Anbieter weiter (Datenübermittlung an einen Anbieter möglicherweise außerhalb der EU). Angeforderte Daten: nur `openid`, `profile`, `email`. Rechtliche Bewertung: OPEN-16. |
-| DP-05 | **Löschung und Anonymisierung.** Es gibt Admin-Funktionen: (a) Nutzer anonymisieren (E-Mail wird `deleted-{id}@invalid`, Name "Gelöschter Nutzer", `password_hash` NULL, Identitäten und Tokens gelöscht, Status `DISABLED`; Einträge bleiben erhalten, `created_by` zeigt auf den anonymisierten Nutzer). (b) Kind anonymisieren (Namen auf Initialen, Geburtsdatum auf das Jahr) nach Austritt und Ablauf der Aufbewahrungsfrist. (c) Familie löschen nur, wenn keine Daten in Aufbewahrungsfrist hängen. Fristen: OPEN-16. In Backups wirkt Löschung mit Ablauf der Backup-Aufbewahrung (BAK-02), das ist zu dokumentieren. |
+| DP-04 | **OIDC (Google) datenschutzfreundlich.** Freiwillig, die Anmeldung per E-Mail-Link bleibt gleichwertig verfügbar. **Kein** JavaScript-SDK und keine Ressourcen des Anbieters auf Seiten vor dem Klick. Erst der Klick auf den Button leitet zum Anbieter weiter (Datenübermittlung an einen Anbieter möglicherweise außerhalb der EU). Angeforderte Daten: nur `openid`, `profile`, `email`. Rechtliche Bewertung: OPEN-16. |
+| DP-05 | **Löschung und Anonymisierung.** Es gibt Admin-Funktionen: (a) Nutzer anonymisieren (E-Mail wird `deleted-{id}@invalid`, Name "Gelöschter Nutzer", Identitäten und Tokens gelöscht, Status `DISABLED`; Einträge bleiben erhalten, `created_by` zeigt auf den anonymisierten Nutzer). Unbestätigte Registrierungen, die nie aktiv waren, werden nach 24 Stunden physisch gelöscht (7.1.4 Schritt 8). (b) Kind anonymisieren (Namen auf Initialen, Geburtsdatum auf das Jahr) nach Austritt und Ablauf der Aufbewahrungsfrist. (c) Familie löschen nur, wenn keine Daten in Aufbewahrungsfrist hängen. Fristen: OPEN-16. In Backups wirkt Löschung mit Ablauf der Backup-Aufbewahrung (BAK-02), das ist zu dokumentieren. |
 | DP-06 | **Betroffenenrechte.** Berichtigung durch Admins (FS-ADM). Auskunft und Export: Admin-Funktion "Daten einer Familie exportieren" (JSON und PDF) `[PROPOSED]`, Phase 2. |
-| DP-07 | **Auftragsverarbeitung.** Mit dem Hoster (IONOS) und jedem Cloud-Backup-Anbieter (Google Drive oder Microsoft, falls genutzt) ist ein Auftragsverarbeitungsvertrag zu schließen. Hosting in Deutschland oder der EU. Backups werden **clientseitig verschlüsselt** (restic, rclone crypt), Cloud-Anbieter sehen nur Chiffretext. |
+| DP-07 | **Auftragsverarbeitung.** Mit dem Hoster (IONOS), dem SMTP-Anbieter (OPEN-07, er verarbeitet alle E-Mail-Adressen und Anmeldelinks) und jedem Cloud-Backup-Anbieter (Google Drive oder Microsoft, falls genutzt) ist ein Auftragsverarbeitungsvertrag zu schließen. Hosting in Deutschland oder der EU. Backups werden **clientseitig verschlüsselt** (restic, rclone crypt), Cloud-Anbieter sehen nur Chiffretext. |
 | DP-08 | **Dokumentation.** Verzeichnis der Verarbeitungstätigkeiten und TOM-Beschreibung führt der Verein. Die Abschnitte 9, 11 und 12 dieses Dokuments sind dafür die technische Grundlage. |
 | DP-09 | **Keine Tracker.** Keine Analytics, keine externen Schriften, keine CDNs, keine Social-Plugins. Cookies: nur technisch notwendige (Session, CSRF). Ob dadurch kein Cookie-Banner nötig ist, bestätigt der Datenschutzbeauftragte des Vereins. |
 
@@ -1423,7 +1483,7 @@ Hinweise: `/actuator/*` wird **nicht** durchgereicht (SEC-15, OPS-07). `style-sr
 | `master_admin_password_hash` | **Secret** | Argon2id-Hash des Master-Passworts |
 | `master_admin_totp_secret` | **Secret** | Base32-Secret für TOTP |
 | `MASTER_ADMIN_EMAIL`, `MASTER_ADMIN_DISPLAY_NAME` | Env | Master-Konto (FS-MASTER) |
-| `SMTP_HOST`, `SMTP_PORT`, `MAIL_FROM` | Env | Mailversand (OPEN-07) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `MAIL_FROM` | Env | Mailversand (OPEN-07), betriebskritisch (OPS-13) |
 | `smtp_password` | **Secret** | SMTP-Zugang |
 | `GOOGLE_CLIENT_ID` | Env | OIDC-Client (Google) |
 | `google_client_secret` | **Secret** | OIDC-Client-Secret |
@@ -1478,12 +1538,13 @@ Wichtig: **Docker umgeht `ufw`** für veröffentlichte Ports. Deshalb veröffent
 
 | ID | Anforderung |
 |---|---|
-| OPS-07 | **Monitoring:** `/actuator/health/liveness` und `/readiness` nur im Docker-Netz. Externer Uptime-Check auf eine öffentliche, einfache Prüfseite (z. B. `/api/v1/status` ohne Details). Alarm per Mail an den Master. Plattenplatz und Container-Neustarts überwachen. Metriken (Micrometer) nur intern. |
-| OPS-08 | **Runbooks** (in `/docs/runbooks`, jeweils Schritt für Schritt): Deployment, Rollback, Restore (11.4), Totalverlust (11.5), **Master-Zugang verloren** (siehe unten), Secrets rotieren, Admin-Rolle vergeben, OS- und Image-Updates, Zertifikatsproblem. |
-| OPS-09 | **Domain und TLS:** A/AAAA-Eintrag auf den VPS, Ports 80/443 erreichbar, Caddy holt Zertifikate selbst. Die Domain ist Voraussetzung für OIDC und Mailversand (SPF/DKIM). Offen: OPEN-13. |
+| OPS-07 | **Monitoring:** `/actuator/health/liveness` und `/readiness` nur im Docker-Netz. Externer Uptime-Check auf eine öffentliche, einfache Prüfseite (z. B. `/api/v1/status` ohne Details). Alarm per Mail an den Master. Plattenplatz, Container-Neustarts und Mailversand (OPS-13) überwachen. Metriken (Micrometer) nur intern. |
+| OPS-08 | **Runbooks** (in `/docs/runbooks`, jeweils Schritt für Schritt): Deployment, Rollback, Restore (11.4), Totalverlust (11.5), **Master-Zugang verloren** (siehe unten), **Mailversand gestört** (OPS-13), Secrets rotieren, Admin-Rolle vergeben, OS- und Image-Updates, Zertifikatsproblem. |
+| OPS-09 | **Domain und TLS:** A/AAAA-Eintrag auf den VPS, Ports 80/443 erreichbar, Caddy holt Zertifikate selbst. Die Domain ist Voraussetzung für OIDC und Mailversand (SPF, DKIM, DMARC, siehe OPS-13). Offen: OPEN-13. |
 | OPS-10 | **Ressourcen** (VPS M+ mit 4 GB): `app` 1 GB, `db` 768 MB, `caddy` 128 MB, `backup` 256 MB, Rest für Betriebssystem. JVM mit `-XX:MaxRAMPercentage=60`. |
 | OPS-11 | **Updates:** Renovate oder Dependabot erzeugt PRs. Monatliches Wartungsfenster für Basis-Images und OS. Sicherheitsupdates des OS automatisch (`unattended-upgrades`). |
-| OPS-12 | Das Projekt liefert `ops/scripts/hash-password.sh`, das einen Argon2id-Hash im von der App erwarteten Format ausgibt (für `master_admin_password_hash`). |
+| OPS-12 | Das Projekt liefert `ops/scripts/hash-password.sh`, das einen Argon2id-Hash im von der App erwarteten Format ausgibt (für `master_admin_password_hash`, das einzige Passwort im System, D-24). |
+| OPS-13 | **Mailzustellung ist betriebskritisch (D-24).** Ohne Mail kann sich niemand per E-Mail-Link anmelden oder registrieren. Es bleiben nur OIDC und der Master-Login. Pflicht vor Go-live: SPF, DKIM und DMARC für die Absenderdomain (DMARC zunächst `p=quarantine` mit Berichten, nach stabiler Beobachtung `p=reject`). Versand über einen SMTP-Anbieter mit TLS (OPEN-07). Zustelltest bei Gmail, GMX, web.de, T-Online und Outlook. Monitoring der Versandfehler (Metrik) mit Alarm an den Master bei Ausfall oder erhöhter Fehlerquote. Nach jedem Deployment eine Test-Mail als Smoke-Test. |
 
 **Runbook "Master-Zugang verloren":**
 
@@ -1492,6 +1553,13 @@ Wichtig: **Docker umgeht `ufw`** für veröffentlichte Ports. Deshalb veröffent
 3. Hash in `secrets/master_admin_password_hash` schreiben (Rechte 600). Bei verlorenem TOTP zusätzlich ein neues Secret in `secrets/master_admin_totp_secret` hinterlegen.
 4. `docker compose up -d --force-recreate app`.
 5. Anmelden. Beim Start schreibt die App einen Audit-Eintrag `MASTER_CREDENTIALS_SYNCED` (Akteur `SYSTEM`).
+
+**Runbook "Mailversand gestört"** (Kurzfassung, Details in `/docs/runbooks`):
+
+1. Als Master anmelden (der Master-Login ist unabhängig von Mail).
+2. Versandfehler-Metrik und App-Logs prüfen (`traceId`, keine Adressen in Logs).
+3. SMTP-Anbieter-Status, Zugangsdaten (`smtp_password`) und DNS-Einträge (SPF, DKIM, DMARC) prüfen.
+4. Nach der Behebung eine Test-Mail senden. Betroffene Nutzer fordern einfach einen neuen Link an (alte Links sind nach 15 Minuten ohnehin abgelaufen).
 
 ---
 
@@ -1504,7 +1572,7 @@ Wichtig: **Docker umgeht `ufw`** für veröffentlichte Ports. Deshalb veröffent
 | UI-03 | **Mobile first.** Basis 360 px Breite, einspaltig. Tippflächen mindestens 44×44 px. Wichtige Aktionen im Daumenbereich (unten). Keine Hover-Abhängigkeit. Safe-Area-Insets beachten. Keine horizontale Scrollleiste ab 320 px. Ab 768 px: Admin-Listen als Tabelle, darunter als Karten. Zielgeräte: aktuelle und vorherige Version von iOS Safari und Android Chrome, dazu aktuelle Desktop-Browser. |
 | UI-04 | **Erfassung in höchstens 4 Interaktionen** für den Standardfall (Öffnen, Dauer-Chip, Text, Absenden). Primäre Schaltfläche "Stunden eintragen" ist auf der Familienübersicht dauerhaft erreichbar. Erfassung als Bottom-Sheet. Datum standardmäßig heute. Nach dem Absenden: Hinweis "Eingetragen. Wartet auf Bestätigung." und aktualisierte Fortschrittsanzeige. |
 | UI-05 | **Screens** (Tabelle unten). |
-| UI-06 | **Login und Registrierung.** Oben "Mit Google anmelden" (Link auf `/oauth2/authorization/google`), dann Trenner "oder", dann E-Mail/Passwort. Der Google-Button MUSS die Branding-Vorgaben des Anbieters einhalten (Prüfung vor Go-live). Keine Anbieter-Skripte (DP-04). |
+| UI-06 | **Login und Registrierung (ohne Passwort, D-24).** Oben "Mit Google anmelden" (Link auf `/oauth2/authorization/google`), dann Trenner "oder", dann ein Feld "E-Mail" und die Schaltfläche "Anmeldelink schicken". Es gibt kein Passwortfeld. Nach dem Absenden: "Schau in dein Postfach. Der Link ist 15 Minuten gültig." mit der Möglichkeit, erneut zu senden. Die Bestätigungsseite `/login/link` zeigt eine große Schaltfläche "Jetzt anmelden". Bei ungültigem Link erscheint der Text aus 7.2 plus das Feld zum erneuten Anfordern. Der Google-Button MUSS die Branding-Vorgaben des Anbieters einhalten (Prüfung vor Go-live). Keine Anbieter-Skripte (DP-04). |
 | UI-07 | **Fortschrittsanzeige.** Balken oder Ring: bestätigt als Vollfläche, offen als schraffiert oder heller. Text: "4 h 30 min von 10 h bestätigt", darunter "plus 1 h wartet auf Bestätigung". Bei Erfüllung: "Geschafft! Eure 10 Stunden sind erfüllt." |
 | UI-08 | **Zustände.** Lade-Skelette, freundliche Leerzustände ("Noch keine Stunden eingetragen. Tippe auf 'Stunden eintragen'."), Fehlermeldungen verständlich und ohne technische Details, Inline-Validierung mit denselben Regeln wie serverseitig (Zod). Offline: Banner "Keine Verbindung". Es gibt **kein** Offline-Schreiben. |
 | UI-09 | **Barrierefreiheit WCAG 2.2 AA.** Semantisches HTML, beschriftete Felder, sichtbarer Fokus, `aria-live` für Rückmeldungen, `aria-sort` in Tabellenköpfen, Bedienung per Tastatur, Skalierung bis 200 %, `prefers-reduced-motion` beachten. |
@@ -1517,16 +1585,16 @@ Wichtig: **Docker umgeht `ufw`** für veröffentlichte Ports. Deshalb veröffent
 
 | Route | Rolle | Inhalt |
 |---|---|---|
-| `/login` | anonym | Google-Button, E-Mail/Passwort, Links "Passwort vergessen", "Registrieren" |
-| `/register` | anonym | Weg A: Name, E-Mail, Passwort, Kinderdaten, Captcha, Datenschutz-Checkbox. Daneben "Mit Google registrieren" |
+| `/login` | anonym | Google-Button, E-Mail-Feld "Anmeldelink schicken" (mit Captcha), danach Hinweis "Schau in dein Postfach", Link "Registrieren" |
+| `/register` | anonym | Weg A: Name, E-Mail, Kinderdaten, Captcha, Datenschutz-Checkbox. Daneben "Mit Google registrieren" |
 | `/register/claim` | OIDC-Pending | "Noch ein Schritt": Kinderdaten, Anzeigename |
-| `/verify-email` | anonym | Token einlösen, Ergebnis anzeigen |
-| `/forgot-password`, `/reset-password` | anonym | Reset-Ablauf |
+| `/login/link` | anonym | Bestätigungsseite für den E-Mail-Link: Token aus dem URL-Fragment, Schaltfläche "Jetzt anmelden", erst der Klick löst ein (7.2) |
+| `/login/master` | anonym | Master-Login: E-Mail, Passwort, TOTP-Code. Von `/login` aus nicht verlinkt (7.2) |
 | `/pending` | unzugeordnet | Wartescreen mit Kinderdaten-Korrektur (max. 3) |
 | `/` | Familie | Familienübersicht (FS-FAM): Fortschritt, Schaltfläche "Stunden eintragen", Einträge, Partnerhinweis |
 | `/entries/new` (als Sheet über `/`) | Familie | Erfassen (FS-ENTRY) |
 | `/family` | Familie | Mitglieder, Kinder (Vornamen), Partnerhinweis |
-| `/profile` | angemeldet | Anzeigename, Passwort, Verknüpfungen (Google), Abmelden, ggf. TOTP |
+| `/profile` | angemeldet | Anzeigename, E-Mail (nur Anzeige, Anmeldeweg), Verknüpfungen (Google), Abmelden, ggf. TOTP (Admins) |
 | `/admin` | Admin | Dashboard: Hinweisleiste, Widgets (Zu bestätigen, Unzugeordnete, Neue Zuordnungen) |
 | `/admin/families`, `/admin/families/:id` | Admin | Übersicht (FS-ADMOV), Familiendetail |
 | `/admin/entries` | Admin | Zu bestätigen (FS-CONF) |
@@ -1575,17 +1643,18 @@ Notation: Gegeben / Wenn / Dann. Jedes Kriterium MUSS als automatisierter Test e
 
 | ID | Kriterium |
 |---|---|
-| AC-REG-01 | **Treffer.** Gegeben Kind "Anna Müller", geboren 2017-05-03, in Familie F. Wenn sich ein Elternteil mit gültigem Captcha mit "mueller", "anna", 03.05.2017 registriert und die E-Mail bestätigt, dann ist `family_id` = F, es gibt einen Audit-Eintrag `USER_ASSIGNED_TO_FAMILY` mit `method=AUTO_MATCH`. |
-| AC-REG-02 | **Kein Orakel.** Statuscode, Body und Antwort-Header sind identisch für: Treffer, kein Treffer, bereits registrierte E-Mail, `THROTTLED`. Ein Test vergleicht die Antworten. |
+| AC-REG-01 | **Treffer.** Gegeben Kind "Anna Müller", geboren 2017-05-03, in Familie F. Wenn sich ein Elternteil mit gültigem Captcha mit "mueller", "anna", 03.05.2017 registriert und den E-Mail-Link einlöst, dann ist `family_id` = F, es gibt einen Audit-Eintrag `USER_ASSIGNED_TO_FAMILY` mit `method=AUTO_MATCH`. |
+| AC-REG-02 | **Kein Orakel.** Statuscode, Body und Antwort-Header von `POST /auth/register` sind identisch für: Treffer, kein Treffer, bereits registrierte E-Mail (aktiv und unbestätigt), deaktiviertes Konto, Master-E-Mail, `THROTTLED`. Ein Test vergleicht die Antworten. |
 | AC-REG-03 | **Zweiter Elternteil.** Registriert sich ein zweiter Elternteil mit denselben Kinderdaten, landet er in Familie F. Für das erste Mitglied wechselt `partnerHint` auf `false` und es erhält die Mail "Neue Zuordnung". |
-| AC-REG-04 | **Tippfehler.** Bei "Mueler" (falsch) bleibt der Nutzer nach Bestätigung unzugeordnet (`NO_MATCH`). Er sieht den Wartescreen. Der Admin sieht ihn im Widget mit Kandidat "Anna Müller". Nach Zuordnung durch den Admin sieht der Nutzer die Familienübersicht. |
+| AC-REG-04 | **Tippfehler.** Bei "Mueler" (falsch) bleibt der Nutzer nach dem Einlösen des E-Mail-Links unzugeordnet (`NO_MATCH`). Er sieht den Wartescreen. Der Admin sieht ihn im Widget mit Kandidat "Anna Müller". Nach Zuordnung durch den Admin sieht der Nutzer die Familienübersicht. |
 | AC-REG-05 | **Limit pro Zielkind.** Bei 6 Registrierungen mit identischen Kinderdaten innerhalb 24 Stunden von verschiedenen IPs ist ab der 6. das Ergebnis `THROTTLED` ohne Kind-Lookup. Das Limit überlebt einen Neustart der App. |
-| AC-REG-06 | **Captcha.** Fehlender, ungültiger, abgelaufener oder wiederverwendeter Nachweis führt zu `400 CAPTCHA_INVALID`. |
+| AC-REG-06 | **Captcha.** Fehlender, ungültiger, abgelaufener oder wiederverwendeter Nachweis führt bei `POST /auth/register` und `POST /auth/magic-link` zu `400 CAPTCHA_INVALID`. |
 | AC-REG-07 | **Geschwister.** Hat Familie F zwei Kinder, genügt die Angabe eines der beiden. |
 | AC-REG-08 | **Mehrdeutig.** Passen Name und Geburtsdatum auf Kinder in **verschiedenen** Familien, ist das Ergebnis `AMBIGUOUS` und der Nutzer bleibt unzugeordnet. |
 | AC-REG-09 | **Normalisierung.** Alle Testvektoren aus 7.1.3 ergeben die genannten Werte (Unit-Test). |
-| AC-REG-10 | **Zuordnung erst nach E-Mail-Bestätigung.** Vor der Bestätigung ist `family_id` NULL und kein Login möglich. |
+| AC-REG-10 | **Zugang und Zuordnung erst nach dem Klick.** Nach der Registrierung und vor dem Einlösen des Links (`POST /auth/magic-link/redeem`) ist das Konto `PENDING_VERIFICATION`, `family_id` ist NULL, `email_verified_at` ist NULL, es gibt keine Session und geschützte Endpunkte liefern `401`. Nach dem Einlösen ist das Konto `ACTIVE`, `email_verified_at` ist gesetzt, eine Session besteht und die Zuordnung ist erfolgt (bei `MATCHED`). |
 | AC-REG-11 | **Korrektur durch Nutzer.** Ein unzugeordneter Nutzer kann die Kinderdaten höchstens 3-mal korrigieren, danach `409`. Jede Korrektur zählt für das Limit pro Zielkind. |
+| AC-REG-12 | **Aufräumen.** Ein Konto, das 24 Stunden nach der Registrierung noch `PENDING_VERIFICATION` ist, wird vom Job samt `registration_claim` und `user_token` gelöscht. Ein jüngeres unbestätigtes Konto und alle aktiven Konten bleiben unberührt (Test mit simulierter Uhr). |
 
 ### 15.2 OIDC (FS-AUTH)
 
@@ -1593,23 +1662,30 @@ Notation: Gegeben / Wenn / Dann. Jedes Kriterium MUSS als automatisierter Test e
 |---|---|
 | AC-OIDC-01 | **Neuer Nutzer.** Callback mit gültigem Token und `email_verified=true`, unbekannte E-Mail: Es entsteht noch **kein** DB-Konto. Nach Absenden der Kinderdaten existieren Konto (`ACTIVE`), `user_identity` und `registration_claim`. Bei Treffer ist die Familie sofort zugeordnet. |
 | AC-OIDC-02 | **E-Mail nicht bestätigt.** `email_verified=false` führt zu Ablehnung ohne Konto. |
-| AC-OIDC-03 | **Verknüpfen.** Existiert ein bestätigtes lokales Konto mit gleicher E-Mail, wird die Identität verknüpft und der Nutzer angemeldet. |
-| AC-OIDC-04 | **Vorab-Übernahme verhindert.** Existiert ein **unbestätigtes** lokales Konto mit gleicher E-Mail, wird verknüpft, die E-Mail als bestätigt markiert und `password_hash` auf NULL gesetzt. Das ursprünglich gesetzte Passwort funktioniert danach nicht mehr. |
+| AC-OIDC-03 | **Verknüpfen.** Existiert ein `ACTIVE`-Konto mit derselben (vom Anbieter verifizierten) E-Mail, wird die Identität verknüpft, der Nutzer angemeldet und `IDENTITY_LINKED` auditiert. Der E-Mail-Link funktioniert für dieses Konto weiterhin. |
+| AC-OIDC-04 | **Unbestätigtes Konto.** Existiert ein `PENDING_VERIFICATION`-Konto mit derselben E-Mail, wird verknüpft, das Konto ist danach `ACTIVE` mit gesetztem `email_verified_at`, die Zuordnung erfolgt wie nach dem Einlösen eines Links (bei `MATCHED`), und der Nutzer ist angemeldet. |
 | AC-OIDC-05 | **Master.** Ein OIDC-Login mit der E-Mail des Master-Admins wird abgelehnt. |
 | AC-OIDC-06 | **Manipulation.** Falscher `state`, falscher `nonce`, falsches `aud`, falscher `iss`, abgelaufenes Token oder ungültige Signatur führen zur Ablehnung (Test mit gemocktem Anbieter). |
-| AC-OIDC-07 | **Letzte Anmeldemöglichkeit.** Das Entfernen der letzten Anmeldemöglichkeit (INV-11) wird mit `409` abgelehnt. |
+| AC-OIDC-07 | **Verknüpfung entfernen.** Auch die einzige OIDC-Identität eines Kontos lässt sich entfernen (`204`). Danach meldet sich der Nutzer per E-Mail-Link an (INV-11). |
 | AC-OIDC-08 | **Keine Tokenspeicherung.** Access- und Refresh-Token des Anbieters liegen weder in DB noch in der Session (Test auf Persistenz). |
 
 ### 15.3 Anmeldung (FS-AUTH)
 
 | ID | Kriterium |
 |---|---|
-| AC-AUTH-01 | Login-Fehlerantworten sind für unbekannte E-Mail, falsches Passwort und unbestätigtes Konto **identisch**. |
-| AC-AUTH-02 | Nach 5 Fehlversuchen ist das Konto 1 Minute gesperrt. Das richtige Passwort wird in der Sperre abgelehnt. Die Dauer steigt bei weiteren Serien. |
-| AC-AUTH-03 | Passwort-Reset beendet alle Sessions des Nutzers. Ein Reset-Token ist nur einmal und nur 1 Stunde gültig. |
-| AC-AUTH-04 | Eine Admin-Session ohne Aktivität für 30 Minuten wird mit `401` beendet. |
-| AC-AUTH-05 | Passwörter unter 10 Zeichen, gleich der E-Mail oder aus der Liste häufiger Passwörter werden abgelehnt. |
-| AC-AUTH-06 | `POST` ohne gültigen CSRF-Token wird mit `403` abgelehnt. |
+| AC-AUTH-01 | **Neutrale Anfrage.** `POST /auth/magic-link` liefert für aktive, unbestätigte, unbekannte und deaktivierte E-Mail sowie für die Master-E-Mail identischen Status (`202`), Body und Header. Ein Test vergleicht die Antworten. |
+| AC-AUTH-02 | **Scanner-Prefetch.** Ein `GET` auf den Link aus der Mail (inklusive aller Ressourcen und API-Aufrufe, die die Bestätigungsseite ohne Klick auslöst) verbraucht den Token nicht und legt keine Session an. Ein anschließender `POST /auth/magic-link/redeem` meldet an. Es gibt keinen Endpunkt, der einen Token per `GET` einlöst (E2E und Integrationstest). |
+| AC-AUTH-03 | **Einmalig.** Ein zweites Einlösen desselben Tokens liefert `400 LINK_INVALID`, auch direkt nach dem ersten Erfolg. |
+| AC-AUTH-04 | **Abgelaufen.** Ein Token, der älter als 15 Minuten ist, liefert `400 LINK_INVALID` (Test mit simulierter Uhr, 14:59 ok, 15:01 abgelehnt). |
+| AC-AUTH-05 | **Ersetzt.** Nach einer zweiten Anfrage für dieselbe E-Mail liefert der erste Token `400 LINK_INVALID`, der zweite meldet an. |
+| AC-AUTH-06 | **Gleiche Fehlerantwort.** Unbekannter, abgelaufener, eingelöster und ersetzter Token liefern identischen Status, Body und Header. |
+| AC-AUTH-07 | **Nur Hash gespeichert.** `user_token.token_hash` ist der SHA-256-Hash des Tokens aus der Mail. Der Klartext-Token steht weder in der DB noch in Logs (Log-Scan). Der Token kodiert mindestens 256 Bit. |
+| AC-AUTH-08 | **Mail-Bombing.** Sechs Anfragen für dieselbe Ziel-E-Mail innerhalb einer Stunde (Registrierung und Link-Anfrage gemischt, verschiedene IPs) liefern sechsmal `202`, aber es gehen nur fünf Mails raus (Prüfung über Mailpit oder Mail-Mock). Das IP-Limit liefert `429` mit `Retry-After`. Alle Grenzwerte sind konfigurierbar. |
+| AC-AUTH-09 | **Unbekannte E-Mail.** Eine Link-Anfrage für eine unbekannte Adresse legt weder Konto noch Token an und verschickt die Mail "Kein Konto" mit Link auf die Registrierung. |
+| AC-AUTH-10 | **Kein Link für Master und deaktivierte Konten.** Für die Master-E-Mail und ein `DISABLED`-Konto entsteht kein Token und keine Mail. Ein vorhandener Token eines inzwischen deaktivierten Kontos liefert beim Einlösen `400 LINK_INVALID`. |
+| AC-AUTH-11 | Eine Admin-Session ohne Aktivität für 30 Minuten wird mit `401` beendet. |
+| AC-AUTH-12 | `POST` ohne gültigen CSRF-Token wird mit `403` abgelehnt, auch beim Einlösen eines Links. |
+| AC-AUTH-13 | **Session-Fixation.** Die Session-ID nach dem Einlösen unterscheidet sich von der davor. |
 
 ### 15.4 Stunden erfassen und bestätigen (FS-ENTRY, FS-CONF)
 
@@ -1670,7 +1746,7 @@ Notation: Gegeben / Wenn / Dann. Jedes Kriterium MUSS als automatisierter Test e
 |---|---|
 | AC-MASTER-01 | Start im Profil `prod` ohne `MASTER_ADMIN_EMAIL` oder Passwort-Hash bricht mit klarer Meldung ab. |
 | AC-MASTER-02 | Bei **null** Admins kann sich der Master anmelden und einen Nutzer zum Admin machen. |
-| AC-MASTER-03 | Das Master-Konto lässt sich über UI und API weder ändern noch löschen. OIDC-Login ist abgelehnt. |
+| AC-MASTER-03 | Das Master-Konto lässt sich über UI und API weder ändern noch löschen. OIDC-Login ist abgelehnt, und für die Master-E-Mail wird kein E-Mail-Link verschickt (AC-AUTH-10). |
 | AC-MASTER-04 | Wird Hash oder TOTP in der Konfiguration geändert, gilt nach Neustart der neue Wert, das alte Passwort funktioniert nicht mehr. Ein `SYSTEM`-Audit-Eintrag entsteht. |
 | AC-MASTER-05 | Ein `ADMIN` erhält auf `/master/*` und `/api/v1/master/*` `403`. |
 
@@ -1735,9 +1811,9 @@ Regel für KI-Agents: Bei jedem Punkt gilt der **Interim-Default**, bis der Auft
 | OPEN-04 | Welche Familien sind in einem Schuljahr soll-pflichtig? Wie ist es bei Einstieg im laufenden Jahr (anteilig?) oder bei Befreiung? | Einschreibung pro Kind und Schuljahr (`child_enrollment`), volles Soll von 10 h, keine Befreiungen, kein Anteilig. | 5.3, FS-ADM, 5.6 |
 | OPEN-05 | Restore per Server-Skript (Phase 1) oder zusätzlich per Knopf in der Master-UI? | Nur Skript. UI zeigt Status und löst Backups aus. | Abschnitt 11 |
 | OPEN-06 | Wie verhält sich ein abgeschlossenes Schuljahr (Nachträge, Korrekturen durch Admins)? | Abgeschlossen = schreibgeschützt für alle, Admin kann wieder öffnen. | INV-04 |
-| OPEN-07 | Welcher SMTP-Dienst und welche Absenderadresse? | SMTP per Konfiguration. Dev mit Mailpit. | FS-MAIL |
+| OPEN-07 | Welcher SMTP-Dienst und welche Absenderadresse? Seit D-24 **betriebskritisch**: Ohne Mail keine Anmeldung per Link (OPS-13). Der Anbieter muss SPF, DKIM und DMARC für die Absenderdomain unterstützen und einen AV-Vertrag anbieten (DP-07). | SMTP per Konfiguration. Dev mit Mailpit. | FS-MAIL, OPS-13 |
 | OPEN-08 | Java oder Kotlin? Gradle oder Maven? | Java, Gradle. | 4.2 |
-| OPEN-09 | Zweiter Faktor (TOTP) für Admins? Auch bei OIDC-Admins? | Pflicht nur für Master, für Admins optional. | SEC-05 |
+| OPEN-09 | Zweiter Faktor (TOTP) für Admins? **Neu bewertet nach D-24:** Ohne Passwort ist das Postfach (bzw. das Google-Konto) eines Admins der einzige Faktor für den Zugang zu allen Kinderdaten (Namen, Geburtsdaten). Ein kompromittiertes Mailkonto genügt. Der Aufwand für TOTP ist gering (wenige Admins). **Empfehlung:** TOTP für `ADMIN` vor Go-live zur Pflicht machen, sowohl beim E-Mail-Link als auch bei OIDC. | Pflicht nur für Master, für Admins optional aktivierbar (gilt für E-Mail-Link und OIDC). | SEC-05, FS-AUTH |
 | OPEN-10 | Obergrenze pro Eintrag (720 min)? Dürfen Einträge in der Zukunft liegen? | 720 min, keine Zukunftsdaten. | INV-03, DDL |
 | OPEN-11 | Admin-Workflow bei Abweichungen: Ablehnen mit Begründung oder Rückfrage? Darf die Familie eigene offene Einträge ändern? Was passiert bei Änderung bestätigter Einträge? | Kein Ablehnen. Familie darf offene ändern. Admin-Änderung setzt auf `OPEN` zurück (INV-06, INV-07). | FS-CONF |
 | OPEN-12 | Selbstkorrektur bei falscher automatischer Zuordnung (z. B. Familienmitglied meldet oder entfernt)? Admin-Freigabe neuer Mitglieder als Verschärfung? | Nur Mail an Mitglieder und Admin-Widget. | FS-REG 7.1.6 |
@@ -1748,6 +1824,8 @@ Regel für KI-Agents: Bei jedem Punkt gilt der **Interim-Default**, bis der Auft
 | OPEN-17 | Backup: Welche Cloud (Google Drive oder Microsoft)? Welcher Anbieter hinter dem Borg-Bucket? Aufbewahrung 14/8/12 passend? | restic nach IONOS S3 plus Borg-Bucket. Cloud-Ziel aus. Aufbewahrung 14/8/12. | Abschnitt 11 |
 | OPEN-18 | Dürfen Nutzer mehreren Familien angehören (Patchwork)? Gibt es eine Obergrenze für Mitglieder je Familie? | Genau eine Familie je Nutzer, keine Obergrenze. | 5.3 |
 | OPEN-19 | Echte Design-Werte des Horts (Farben, Schrift, Logo). Dafür wird ein Screenshot oder die Logo-Datei benötigt. | Platzhalter-Palette (UI-01). | UI-01, FS-PDF |
+| OPEN-20 | Soll die Mail mit dem E-Mail-Link zusätzlich einen 6-stelligen Code enthalten, für den Gerätewechsel (Mail am Handy, Anmeldung am PC)? Ein Code bräuchte eigene, strenge Versuchslimits je Token. | Nein. Nur der Link. | FS-AUTH, SEC-17 |
+| OPEN-21 | Soll der Link an den anfragenden Browser gebunden werden (z. B. Zufallswert im Cookie beim Anfordern, Einlösen nur im selben Browser)? Das schützt auch gegen untergeschobene fremde Links (9.1), scheitert aber, wenn die Mail auf einem anderen Gerät geöffnet wird. | Nein. Geräteübergreifend erlaubt. | FS-AUTH, SEC-17 |
 
 ---
 
@@ -1758,7 +1836,7 @@ Jeder Meilenstein ist erst fertig, wenn die zugehörigen Abnahmekriterien (Absch
 | Nr. | Meilenstein | Inhalt | Abnahme |
 |---|---|---|---|
 | M0 | Fundament | Repository-Layout, CI, `docker compose` für dev (DB, Mailpit, OIDC-Testanbieter), Flyway `V1`, Health-Endpunkte, Testcontainers, Fehlerformat, `AGENTS.md` | Pipeline grün, Start per Compose |
-| M1 | Lokale Anmeldung | Registrierung Weg A (ohne Zuordnung), Verifizierung, Login, Logout, Reset, Sessions, CSRF, Rate-Limits, ALTCHA, Mailversand, Master-Bootstrap, Security-Header | AC-AUTH, AC-REG-02, 06, 10, AC-MASTER, AC-SEC-01, 03, 05, 06 |
+| M1 | Anmeldung per E-Mail-Link | Registrierung Weg A (ohne Zuordnung), E-Mail-Link (Anfordern, Bestätigungsseite, Einlösen), Logout, Sessions, CSRF, Rate-Limits inkl. Mail-Bombing-Schutz, ALTCHA, Mailversand, Aufräum-Job, Master-Bootstrap, Master-Login (Passwort plus TOTP), Security-Header | AC-AUTH, AC-REG-02, 06, 10, 12, AC-MASTER, AC-SEC-01, 03, 05, 06 |
 | M2 | Stammdaten und Zuordnung | Schuljahre, Familien, Kinder, Einschreibung, Normalisierung, Abgleich, Claims, Zuordnung (auto und manuell), Admin-Widgets für Unzugeordnete, CSV-Import | AC-REG, AC-SY, AC-SEC-02 |
 | M3 | OIDC | Google-Login, Verknüpfungsregeln, "Noch ein Schritt", Profil-Verknüpfung | AC-OIDC |
 | M4 | Erfassen und Bestätigen | Einträge, Familienübersicht, Partnerhinweis, Admin-Bestätigung | AC-ENTRY, AC-CONF, AC-FAM |
