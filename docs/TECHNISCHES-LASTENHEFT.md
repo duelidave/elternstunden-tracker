@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 0.3.1 (Entwurf) |
+| Version | 0.4 (Entwurf) |
 | Stand | 2026-10-20 |
 | Einrichtung | Hort an der Montessorischule (Elterninitiative, Verein) |
 | Zielgruppe | Entwickler:innen und KI-Coding-Agents |
@@ -16,6 +16,7 @@
 | 0.2 | 2026-10-20 | Anmeldung ohne Passwort (D-24): Registrierung und Anmeldung per E-Mail-Link (Magic Link) oder OIDC. Passwort und TOTP nur noch für den Master-Admin. Entfallen: Passwort-Registrierung, Passwort-Reset, Konto-Sperre, Passwort-Policy. Neu: SEC-17, OPS-13, OPEN-20, OPEN-21, AC-AUTH neu gefasst. Betroffen: Abschnitte 2 bis 10, 12, 13, 15 bis 17. |
 | 0.3 | 2026-10-20 | Technisches Review (31 Befunde) eingearbeitet, bewusst schlank gehalten. Neu: Browser-Bindung von Claim und Link (`auth_binding`-Cookie), Auth-Outbox `auth_request`, zwei DB-Rollen (OPS-14), injizierte Uhr (0.4 Regel 7), OIDC-Regeln (PKCE explizit, schlanker Principal, Google-E-Mail nur bei `@gmail.com` oder `hd` vertrauenswürdig), Sessions enden bei Status-, Rollen- und Familienwechsel, Master-Härtung (TOTP-Replay, Argon2id-Mindestparameter), Admin-TOTP-Ablauf, Fehlerformat und API-Konventionen präzisiert, PDF ohne externe Ressourcen, Backup ohne Sessions und Tokens, Claim-Löschfrist, IP-Kürzung in Logs. Fehler behoben: Off-by-one beim Zielkind-Limit, Sammelbestätigung in abgeschlossenen Jahren, Volume-Pfad `postgres:18`. Neue Abnahmekriterien (AC-AUTH-08a/b und 14 bis 23, AC-MASTER-06/07, AC-REG-13 bis 16, AC-OIDC-09 bis 13, AC-SEC-09 bis 13, AC-MAIL, AC-ENTRY-11/12, AC-FAM-04, AC-DP, AC-ADM-01, AC-BAK-09). |
 | 0.3.1 | 2026-10-20 | Lastenheft-PDF auf v0.4 gebracht (F3 ohne Passwort, offene Punkte 6 und 7 an D-24 angepasst) und Verweise darauf vereinheitlicht ("Lastenheft (PDF)"). |
+| 0.4 | 2026-10-21 | API-first (D-25): gemeinsamer OpenAPI-Vertrag `api/openapi.yaml` als Quelle der Wahrheit, Backend-Interfaces und DTOs per openapi-generator, Frontend-Client und Zod-Schemas per orval, springdoc entfällt. Vertrag in OpenAPI 3.0.3 (ersetzt die 3.1-Vorgabe aus 0.3). Betroffen: 0.4, 2, 4.2 bis 4.4, 8.1, SEC-01, 12.5, 13.2. |
 
 ---
 
@@ -57,7 +58,7 @@ Bei Konflikten gilt: `[DECIDED]` vor Lastenheft (PDF) vor diesem Dokument vor ei
 
 1. Reihenfolge der Umsetzung: Meilensteine aus Abschnitt 17.
 2. Kein Feature über diese Spezifikation hinaus. Ideen gehören in Abschnitt 16, nicht in den Code.
-3. Jedes Feature gilt erst als fertig (Definition of Done), wenn: Code, Migrationen, Tests (Unit und Integration), Abnahmekriterien aus Abschnitt 15 grün, OpenAPI aktualisiert, keine neuen Warnungen der Security-Scans.
+3. Jedes Feature gilt erst als fertig (Definition of Done), wenn: Code, Migrationen, Tests (Unit und Integration), Abnahmekriterien aus Abschnitt 15 grün, API-Vertrag zuerst geändert und Code daraus generiert (D-25), keine neuen Warnungen der Security-Scans.
 4. Sprache: UI-Texte deutsch (Du-Form, freundlich, kurz). Code, Bezeichner, Commits, Logs englisch. Datenbankbezeichner `snake_case`, englisch.
 5. Zeitzone: Fachliche Daten in `Europe/Berlin`. Zeitstempel in der DB als `timestamptz` (UTC).
 6. Keine personenbezogenen Daten in Logs, URLs oder Fehlermeldungen (siehe SEC-12).
@@ -115,6 +116,7 @@ Laut Website des Horts: 65 Vollzeitplätze, etwa 70 Kinder in drei Gruppen. Erwa
 | D-22 | Der **Master-Admin** ist ein Nutzer mit Rolle `MASTER_ADMIN`, dessen Zugangsdaten **per Konfiguration** (Umgebungsvariablen) definiert und beim Start in die DB synchronisiert werden. Die UI kann ihn weder ändern noch löschen. Dadurch funktioniert der Zugang auch, wenn kein Admin mehr existiert. Er meldet sich **nur lokal** (Passwort, TOTP) an, **nie** per OIDC und **nie** per E-Mail-Link, damit der Notzugang weder von einem externen Anbieter noch vom Mailversand abhängt. | `[PROPOSED]` | Vorschlag |
 | D-23 | OIDC-Anbindung über **Spring Security `oauth2Login`** (Authorization Code Flow mit PKCE), anbieterneutral per Konfiguration. Kein JavaScript-SDK des Anbieters im Browser, nur Redirect. Die Identität wird über `(iss, sub)` geführt, nie über die E-Mail allein. Automatisches Verknüpfen mit bestehenden Konten nur unter den Bedingungen aus FS-AUTH. | `[PROPOSED]` | Vorschlag |
 | D-24 | **Nutzer haben kein Passwort.** Registrierung und Anmeldung laufen ausschließlich per E-Mail-Link (Magic Link) oder OIDC (D-08). Einzige Ausnahme ist der Master-Admin: Er meldet sich lokal mit Passwort plus TOTP aus der Server-Konfiguration an (Notzugang, unabhängig von Mail und Identitätsanbieter, D-22). **Begründung:** Eltern melden sich selten an und vergessen Passwörter. Ohne Passwörter entfallen Passwort-Reset, Konto-Sperre nach Fehlversuchen, Passwort-Policy und das Risiko wiederverwendeter oder geleakter Passwörter. Der Zugang zum Postfach war über den Passwort-Reset ohnehin schon der Wiederherstellungsweg. **Folgen:** Das Mailkonto ist der Kontozugang (OPEN-09). Die Mailzustellung wird betriebskritisch (OPS-13). | `[DECIDED]` | Auftraggeber, 2026-10-20 |
+| D-25 | **API-first.** Ein gemeinsamer OpenAPI-Vertrag `api/openapi.yaml` ist die Quelle der Wahrheit für die API. Backend und Frontend erzeugen ihren Code daraus: Spring die API-Interfaces und DTOs (die Controller sind handgeschrieben und implementieren die Interfaces), das Frontend den typisierten Client (TanStack-Query-Hooks) und Zod-Schemas. Jede API-Änderung beginnt im Vertrag. Werkzeuge: openapi-generator (Generator `spring`, `interfaceOnly`), orval (`react-query`, `zod`), Redocly CLI zum Linten. | Ansatz `[DECIDED]`, Werkzeuge `[PROPOSED]` | Auftraggeber, 2026-10-21 |
 
 ---
 
@@ -176,7 +178,7 @@ Alle Container laufen auf **einem** VPS per Docker Compose. Nur Caddy veröffent
 | Security | Spring Security (Session, CSRF), Argon2id nur für das Master-Passwort (D-21), Bucket4j oder gleichwertig für Rate-Limits | `[PROPOSED]` |
 | E-Mail-Link | Eigene Endpunkte und eigener Token-Speicher nach SEC-17 (FS-AUTH 7.2). **Nicht** Spring Security One-Time-Token-Login: `JdbcOneTimeTokenService` speichert den Token im Klartext, nutzt `?token=` im Query-String und war von CVE-2026-22751 betroffen (Mehrfach-Einlösung) | `[PROPOSED]` |
 | OIDC-Login | Spring Security `oauth2Login` (OpenID Connect, Authorization Code mit PKCE, explizit konfiguriert, siehe 7.2). Anbieter per Konfiguration: Google zuerst, weitere siehe OPEN-15 | Google `[DECIDED]`, Technik `[PROPOSED]` |
-| API-Doku | springdoc-openapi, **OpenAPI 3.1** (springdoc-Default ab 3.x). Frontend-Client daraus generiert mit einem 3.1-fähigen Generator (z. B. `openapi-typescript` plus `openapi-fetch`). CI prüft, dass Spezifikation und Client aktuell sind | `[PROPOSED]` |
+| API-Vertrag | API-first (D-25): `api/openapi.yaml` in **OpenAPI 3.0.3**. Grund: openapi-generator dokumentiert für den Generator `spring` keinen 3.1-Support, 3.0.3 läuft in allen Werkzeugen stabil. Wechsel auf 3.1, sobald der Generator es trägt. Backend: Gradle-Plugin `org.openapi.generator` (Generator `spring`, `interfaceOnly`, `useSpringBoot4`, `useJackson3`, `skipDefaultInterface`, Bean Validation), generiert nach `build/`. Frontend: orval (`react-query` mit `fetch`-Mutator, `zod`), generiert nach `src/api/generated/`. Generierter Code liegt nicht im Git. Lint: Redocly CLI. Kein springdoc | `[PROPOSED]` |
 | PDF | Serverseitig aus HTML/CSS (z. B. openhtmltopdf) oder PDFBox/OpenPDF. Wahl frei, solange Layout aus FS-PDF erreicht wird und Lizenz kompatibel ist. | `[PROPOSED]` |
 | Frontend | React, TypeScript, Vite, PWA-Plugin | `[PROPOSED]` |
 | Frontend-Bausteine | React Router, TanStack Query, React Hook Form plus Zod, Tailwind CSS mit zugänglichen Primitives (z. B. Radix/shadcn) | `[PROPOSED]` |
@@ -189,6 +191,7 @@ Alle Container laufen auf **einem** VPS per Docker Compose. Nur Caddy veröffent
 ### 4.3 Repository-Layout `[PROPOSED]`
 
 ```
+/api         OpenAPI-Vertrag (openapi.yaml), Quelle der Wahrheit für Backend und Frontend (D-25)
 /backend     Spring Boot (Gradle/Maven), src/main, src/test, db/migration
 /frontend    React + TypeScript + Vite
 /ops         docker-compose.yml, caddy/Caddyfile, backup/, scripts/, runbooks/
@@ -212,7 +215,9 @@ Ein Paket pro fachlichem Modul, darin Schichten `web` (Controller, DTOs), `servi
 | `audit` | Audit-Log |
 | `common` | Fehlerformat, Zeit/Zeitzone, Normalisierung, Konfiguration |
 
-Regeln: Controller enthalten keine Geschäftslogik. Entitäten verlassen die `web`-Schicht nie (nur DTOs). Alle Berechtigungsprüfungen zusätzlich auf Service-Ebene (`@PreAuthorize` oder explizit), nicht nur per URL-Muster.
+Generierter Code (D-25): API-Interfaces in `de.elternstunden.api`, DTOs in `de.elternstunden.api.model` (Suffix `Dto`). Die Controller der Module implementieren diese Interfaces.
+
+Regeln: Controller enthalten keine Geschäftslogik. Entitäten verlassen die `web`-Schicht nie (nach außen nur die generierten DTOs). Alle Berechtigungsprüfungen zusätzlich auf Service-Ebene (`@PreAuthorize` oder explizit), nicht nur per URL-Muster.
 
 ---
 
@@ -1082,7 +1087,7 @@ Technik: Spring Mail über SMTP. Die vier Auth-Mails (Registrierung bestätigen,
 | Request-Größe | JSON-Bodies höchstens 64 KB, CSV-Import höchstens 1 MB (`413`). |
 | CSRF | Alle zustandsändernden Requests (`POST/PUT/PATCH/DELETE`) tragen den CSRF-Token (Cookie `XSRF-TOKEN`, Header `X-XSRF-TOKEN`), auch anonyme Auth-Endpunkte. |
 | CORS | **Aus.** Same-Origin-Betrieb (SPA und API über dieselbe Domain). |
-| Dokumentation | **OpenAPI 3.1** aus dem Code (springdoc). Jede Operation dokumentiert Rolle, Fehlerantworten (`problem+json`) und Beispiele. In Produktion sind `/v3/api-docs` und Swagger UI aus. Der TypeScript-Client wird daraus generiert (4.2), nicht von Hand gepflegt. |
+| Dokumentation | **API-first** (D-25): Der Vertrag `api/openapi.yaml` (OpenAPI 3.0.3, 4.2) beschreibt jede Operation mit `operationId`, `tags`, Fehlerantworten (`problem+json`) und Beispielen. Die Erweiterung `x-roles` nennt die erlaubten Rollen (Kürzel aus 8.2) und ist Pflicht. Ein Test gleicht Vertrag und registrierte Handler ab: Jede Operation hat einen Handler, und es gibt keinen `/api`-Handler außerhalb des Vertrags. Doku-Endpunkte gibt es in der App nicht (kein springdoc). Der TypeScript-Client wird aus dem Vertrag generiert, nicht von Hand gepflegt. |
 | Versionierung | Brechende Änderungen nur mit neuer Major-Version im Pfad. Für die Integrations-API (FS-INT) wird eine Abkündigung mit den Headern `Deprecation` (RFC 9745) und `Sunset` (RFC 8594) mindestens 6 Monate vorher angekündigt. |
 | Idempotenz | `DELETE` und Bestätigung sind idempotent. `POST /auth/oidc/complete` ist idempotent (7.1.5). Doppelte Einträge: siehe FS-ENTRY. |
 
@@ -1143,7 +1148,7 @@ Grundhaltung: Die App verarbeitet Daten von Minderjährigen. Sicherheit hat Vorr
 
 | ID | Anforderung |
 |---|---|
-| SEC-01 | **Deny by default.** Jede Endpunkt-Methode deklariert ihre Rolle explizit (Abschnitt 6). Ein nicht deklarierter Endpunkt ist gesperrt. Ein Test MUSS alle Endpunkte per Reflection oder OpenAPI prüfen, dass eine Rollenregel existiert. |
+| SEC-01 | **Deny by default.** Jede Endpunkt-Methode deklariert ihre Rolle explizit (Abschnitt 6). Ein nicht deklarierter Endpunkt ist gesperrt. Ein Test MUSS alle Endpunkte gegen den API-Vertrag prüfen: Jede Operation hat `x-roles` (D-25, 8.1), und die tatsächliche Rollenregel stimmt damit überein (AC-SEC-09). |
 | SEC-02 | **Transport.** Nur HTTPS. HTTP leitet auf HTTPS um. HSTS (`max-age=31536000`, `includeSubDomains` erst nach stabiler Domain-Einrichtung). TLS-Zertifikate automatisch über Caddy. |
 | SEC-03 | **Passwort nur für den Master-Admin (D-22, D-24).** Nutzerkonten haben kein Passwort (`password_hash` NULL, per CHECK-Constraint erzwungen). Das Master-Passwort wird mit Argon2id gehasht (Spring `Argon2PasswordEncoder`, mindestens m = 19456 KiB, t = 2, p = 1, nicht die schwächeren Spring-Defaults; Parameter so wählen, dass ein Hash auf dem Ziel-VPS etwa 250 bis 500 ms dauert). Der Hash kommt ausschließlich aus der Konfiguration (OPS-12) und lässt sich über UI und API nicht ändern. |
 | SEC-04 | **Bot-Schutz und Rate-Limits** (siehe 9.1). |
@@ -1611,7 +1616,8 @@ Hinweise: `/actuator/*` wird **nicht** durchgereicht (SEC-15, OPS-07). `style-sr
 
 | Job | Inhalt |
 |---|---|
-| `backend` | Build, Unit- und Integrationstests (Testcontainers mit PostgreSQL), Coverage-Report |
+| `contract` | Lint des API-Vertrags (Redocly, D-25) |
+| `backend` | Code-Generierung aus dem Vertrag, Build, Unit- und Integrationstests (Testcontainers mit PostgreSQL), Coverage-Report |
 | `frontend` | Lint, TypeScript strict, Unit-Tests, Build |
 | `e2e` | Playwright gegen `docker compose` (Mobile-Viewport 390×844 und Desktop), inkl. Abnahmekriterien Abschnitt 15 |
 | `security` | gitleaks, Dependency-Check/Trivy (Abhängigkeiten und Images), `npm audit`, SBOM, optional ZAP Baseline gegen die Test-Umgebung |
@@ -1724,7 +1730,7 @@ Wichtig: **Docker umgeht `ufw`** für veröffentlichte Ports. Deshalb veröffent
 
 ### 13.2 Technische Vorgaben Frontend `[PROPOSED]`
 
-- React, TypeScript (`strict`), Vite. Datenzugriff mit TanStack Query, generiert aus der OpenAPI-Spezifikation. Formulare mit React Hook Form und Zod.
+- React, TypeScript (`strict`), Vite. Datenzugriff mit TanStack Query über den aus dem Vertrag generierten Client (orval, D-25). Formulare mit React Hook Form und den aus dem Vertrag generierten Zod-Schemas, damit Client und Server dieselben Regeln prüfen (UI-08).
 - Zugängliche UI-Primitives (Radix oder Äquivalent) mit Tailwind CSS und den Tokens aus UI-01.
 - Keine globale Zustandsbibliothek ohne Notwendigkeit. Serverzustand gehört in TanStack Query.
 - Anfangs-JavaScript höchstens 200 KB gzip (NFR-02). Routen werden per Code-Splitting geladen, Admin-Bereich separat.
