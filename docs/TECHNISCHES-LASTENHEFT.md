@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 0.4 (Entwurf) |
+| Version | 0.4.1 (Entwurf) |
 | Stand | 2026-10-20 |
 | Einrichtung | Hort an der Montessorischule (Elterninitiative, Verein) |
 | Zielgruppe | Entwickler:innen und KI-Coding-Agents |
@@ -17,6 +17,7 @@
 | 0.3 | 2026-10-20 | Technisches Review (31 Befunde) eingearbeitet, bewusst schlank gehalten. Neu: Browser-Bindung von Claim und Link (`auth_binding`-Cookie), Auth-Outbox `auth_request`, zwei DB-Rollen (OPS-14), injizierte Uhr (0.4 Regel 7), OIDC-Regeln (PKCE explizit, schlanker Principal, Google-E-Mail nur bei `@gmail.com` oder `hd` vertrauenswürdig), Sessions enden bei Status-, Rollen- und Familienwechsel, Master-Härtung (TOTP-Replay, Argon2id-Mindestparameter), Admin-TOTP-Ablauf, Fehlerformat und API-Konventionen präzisiert, PDF ohne externe Ressourcen, Backup ohne Sessions und Tokens, Claim-Löschfrist, IP-Kürzung in Logs. Fehler behoben: Off-by-one beim Zielkind-Limit, Sammelbestätigung in abgeschlossenen Jahren, Volume-Pfad `postgres:18`. Neue Abnahmekriterien (AC-AUTH-08a/b und 14 bis 23, AC-MASTER-06/07, AC-REG-13 bis 16, AC-OIDC-09 bis 13, AC-SEC-09 bis 13, AC-MAIL, AC-ENTRY-11/12, AC-FAM-04, AC-DP, AC-ADM-01, AC-BAK-09). |
 | 0.3.1 | 2026-10-20 | Lastenheft-PDF auf v0.4 gebracht (F3 ohne Passwort, offene Punkte 6 und 7 an D-24 angepasst) und Verweise darauf vereinheitlicht ("Lastenheft (PDF)"). |
 | 0.4 | 2026-10-21 | API-first (D-25): gemeinsamer OpenAPI-Vertrag `api/openapi.yaml` als Quelle der Wahrheit, Backend-Interfaces und DTOs per openapi-generator, Frontend-Client und Zod-Schemas per orval, springdoc entfällt. Vertrag in OpenAPI 3.0.3 (ersetzt die 3.1-Vorgabe aus 0.3). Betroffen: 0.4, 2, 4.2 bis 4.4, 8.1, SEC-01, 12.5, 13.2. |
+| 0.4.1 | 2026-10-21 | Rollenwechsel für manuelle Tests in der lokalen Entwicklung (D-26, FS-DEV 7.12, AC-DEV), Umsetzung in M1. |
 
 ---
 
@@ -117,6 +118,7 @@ Laut Website des Horts: 65 Vollzeitplätze, etwa 70 Kinder in drei Gruppen. Erwa
 | D-23 | OIDC-Anbindung über **Spring Security `oauth2Login`** (Authorization Code Flow mit PKCE), anbieterneutral per Konfiguration. Kein JavaScript-SDK des Anbieters im Browser, nur Redirect. Die Identität wird über `(iss, sub)` geführt, nie über die E-Mail allein. Automatisches Verknüpfen mit bestehenden Konten nur unter den Bedingungen aus FS-AUTH. | `[PROPOSED]` | Vorschlag |
 | D-24 | **Nutzer haben kein Passwort.** Registrierung und Anmeldung laufen ausschließlich per E-Mail-Link (Magic Link) oder OIDC (D-08). Einzige Ausnahme ist der Master-Admin: Er meldet sich lokal mit Passwort plus TOTP aus der Server-Konfiguration an (Notzugang, unabhängig von Mail und Identitätsanbieter, D-22). **Begründung:** Eltern melden sich selten an und vergessen Passwörter. Ohne Passwörter entfallen Passwort-Reset, Konto-Sperre nach Fehlversuchen, Passwort-Policy und das Risiko wiederverwendeter oder geleakter Passwörter. Der Zugang zum Postfach war über den Passwort-Reset ohnehin schon der Wiederherstellungsweg. **Folgen:** Das Mailkonto ist der Kontozugang (OPEN-09). Die Mailzustellung wird betriebskritisch (OPS-13). | `[DECIDED]` | Auftraggeber, 2026-10-20 |
 | D-25 | **API-first.** Ein gemeinsamer OpenAPI-Vertrag `api/openapi.yaml` ist die Quelle der Wahrheit für die API. Backend und Frontend erzeugen ihren Code daraus: Spring die API-Interfaces und DTOs (die Controller sind handgeschrieben und implementieren die Interfaces), das Frontend den typisierten Client (TanStack-Query-Hooks) und Zod-Schemas. Jede API-Änderung beginnt im Vertrag. Werkzeuge: openapi-generator (Generator `spring`, `interfaceOnly`), orval (`react-query`, `zod`), Redocly CLI zum Linten. | Ansatz `[DECIDED]`, Werkzeuge `[PROPOSED]` | Auftraggeber, 2026-10-21 |
+| D-26 | **Rollenwechsel für manuelle Tests (nur lokal).** In der lokalen Entwicklung kann man ohne Mail und ohne TOTP schnell zwischen Demo-Konten der Rollen Familienmitglied, unzugeordnet, Admin und Master wechseln (FS-DEV 7.12). In Produktion existiert die Funktion nicht. | Wunsch `[DECIDED]`, Ausgestaltung `[PROPOSED]` | Auftraggeber, 2026-10-21 |
 
 ---
 
@@ -1069,6 +1071,24 @@ Technik: Spring Mail über SMTP. Die vier Auth-Mails (Registrierung bestätigen,
 
 ---
 
+### 7.12 FS-DEV: Rollenwechsel für manuelle Tests (D-26) `[PROPOSED]`
+
+Ziel: Beim manuellen Testen in Sekunden zwischen den Rollen wechseln, ohne jedes Mal einen E-Mail-Link oder TOTP-Code zu brauchen.
+
+- **Nur im Profil `dev`.** Die Beans für Seed und Endpunkt existieren nur mit dem Profil `dev`. Ist zusätzlich `prod` aktiv, bricht der Start ab (Fail Fast). Im Produktions-Build des Frontends fehlt die Dev-Leiste vollständig.
+- **Demo-Konten:** Ein Seed nur für `dev` (eigener Flyway-Ort, z. B. `classpath:db/dev`, idempotent) legt an:
+  - `familie@dev.local`: `FAMILY_MEMBER` mit Demo-Familie
+  - `partner@dev.local`: zweites Mitglied derselben Familie
+  - `unzugeordnet@dev.local`: `FAMILY_MEMBER` ohne Familie, mit Claim
+  - `admin@dev.local`: `ADMIN`
+  - Master: das per Konfiguration verwaltete Konto mit Dev-Werten (7.9)
+  - Ab M2 kommen Demo-Schuljahr, Kinder und Einträge dazu.
+- **Endpunkt:** `POST /api/v1/dev/login-as` mit `{account}` (eines der Demo-Konten). Er meldet über denselben Codepfad an wie der E-Mail-Link (7.2 "Anmeldung technisch": neue Session-ID, neuer CSRF-Token, Rollen-Timeouts) und überspringt nur Mail und TOTP. Im Vertrag steht er mit Tag `dev`, `x-roles: [A]` und der Erweiterung `x-dev-only: true`.
+- **Dev-Leiste im Frontend:** Nur im Vite-Dev-Server (`import.meta.env.DEV`). Sie ist klein und unten eingeblendet, zeigt Rolle und Konto und hat je eine Schaltfläche pro Demo-Konto sowie "Abmelden".
+- Der echte Ablauf (E-Mail-Link über Mailpit, Google über den OIDC-Mock) bleibt lokal voll nutzbar.
+
+---
+
 ## 8. API-Konventionen und Übersicht
 
 ### 8.1 Konventionen
@@ -1138,6 +1158,7 @@ Rollen: **A** = anonym, **U** = angemeldet (jede Rolle), **F** = `FAMILY_MEMBER`
 | `GET /master/backups/status`, `POST /master/backups/run` | M | Abschnitt 11 |
 | `GET/POST/DELETE /master/api-clients` | M | FS-INT |
 | `GET /status` | A | Öffentliche, einfache Prüfseite ohne Details (OPS-07) |
+| `POST /dev/login-as` | A, nur Profil `dev` | Rollenwechsel für manuelle Tests (FS-DEV 7.12, `x-dev-only`) |
 | `GET /actuator/health/**` | intern | nur im Docker-Netz, nicht über Caddy (OPS-07) |
 
 ---
@@ -1964,6 +1985,14 @@ Notation: Gegeben / Wenn / Dann. Jedes Kriterium MUSS als automatisierter Test e
 | AC-DP-02 | **Claim-Frist.** Erledigte und ersetzte Claims sind 30 Tage nach `resolved_at` bzw. `superseded_at` gelöscht (Test mit simulierter Uhr). Der gültige Claim eines unzugeordneten Nutzers bleibt. |
 | AC-ADM-01 | **CSV-Import.** Der Dry-Run schreibt nichts. Ein fehlerhafter Import ändert nichts (eine Transaktion). Ein erneuter Import derselben Datei ist idempotent. Dateien über 1 MB ergeben `413`. |
 
+### 15.15 Lokaler Rollenwechsel (FS-DEV)
+
+| ID | Kriterium |
+|---|---|
+| AC-DEV-01 | **Nicht in Produktion.** Ohne Profil `dev` gibt es weder Demo-Konten noch `POST /dev/login-as` (Anfrage liefert `401` bzw. `404`, kein Handler). Ein Start mit den Profilen `dev` und `prod` zusammen bricht ab. |
+| AC-DEV-02 | **Wechsel.** Im Profil `dev` meldet `POST /dev/login-as` für jedes Demo-Konto an. `GET /me` zeigt danach die passende Rolle. Ein weiterer Aufruf wechselt das Konto mit neuer Session-ID. |
+| AC-DEV-03 | **Kein Frontend-Rest.** Der Produktions-Build des Frontends enthält keinen Code der Dev-Leiste (Suche nach einem eindeutigen Marker im Bundle). |
+
 ---
 
 ## 16. Offene Fragen (Register)
@@ -2003,7 +2032,7 @@ Jeder Meilenstein ist erst fertig, wenn die zugehörigen Abnahmekriterien (Absch
 | Nr. | Meilenstein | Inhalt | Abnahme |
 |---|---|---|---|
 | M0 | Fundament | Repository-Layout, CI, `docker compose` für dev (DB mit zwei Rollen nach OPS-14, Mailpit, OIDC-Testanbieter), Flyway `V1` plus Rechte-Migration, Health-Endpunkte, Testcontainers, Fehlerformat (8.1, auch für Security-Filter), injizierte Uhr (0.4 Regel 7), `AGENTS.md` | Pipeline grün, Start per Compose |
-| M1 | Anmeldung per E-Mail-Link | Registrierung Weg A (ohne Zuordnung), Auth-Outbox und Worker, Browser-Bindung, E-Mail-Link (Anfordern, Bestätigungsseite, Einlösen, Rückfrage anderes Gerät), Logout, Sessions (inkl. absoluter Dauer), CSRF, Rate-Limits inkl. Mail-Bombing-Schutz, ALTCHA, Mailversand, Aufräum-Job, Master-Bootstrap, Master-Login (Passwort plus TOTP), Security-Header | AC-AUTH außer 11, 18 und 23; AC-REG-02 und 10 nur für die Fälle ohne Abgleich; AC-REG-06, 12, 14; AC-MASTER; AC-MAIL; AC-SEC-01, 03, 05, 06, 11. AC-SEC-09 und 13 wachsen ab hier mit jedem Meilenstein mit |
+| M1 | Anmeldung per E-Mail-Link | Registrierung Weg A (ohne Zuordnung), Auth-Outbox und Worker, Browser-Bindung, E-Mail-Link (Anfordern, Bestätigungsseite, Einlösen, Rückfrage anderes Gerät), Logout, Sessions (inkl. absoluter Dauer), CSRF, Rate-Limits inkl. Mail-Bombing-Schutz, ALTCHA, Mailversand, Aufräum-Job, Master-Bootstrap, Master-Login (Passwort plus TOTP), Security-Header, lokaler Rollenwechsel (FS-DEV) | AC-AUTH außer 11, 18 und 23; AC-REG-02 und 10 nur für die Fälle ohne Abgleich; AC-REG-06, 12, 14; AC-MASTER; AC-MAIL; AC-SEC-01, 03, 05, 06, 11; AC-DEV. AC-SEC-09 und 13 wachsen ab hier mit jedem Meilenstein mit |
 | M2 | Stammdaten und Zuordnung | Schuljahre, Familien, Kinder, Einschreibung, Normalisierung, Abgleich, Claims (inkl. Browser-Bedingung und Löschfrist), Zuordnung (auto und manuell), Admin-Widgets für Unzugeordnete, Nutzerverwaltung (Rolle, Deaktivieren, Anonymisieren), CSV-Import | AC-REG vollständig, AC-AUTH-11 und 18, AC-SY, AC-SEC-02, AC-DP, AC-ADM-01 |
 | M3 | OIDC und Admin-TOTP | Google-Login (PKCE explizit, eigener Principal, Pending-Zustand), Verknüpfungsregeln inkl. E-Mail-Autorität, "Noch ein Schritt", Profil-Verknüpfung, zweiter Faktor für Admins (7.2) | AC-OIDC, AC-AUTH-23 |
 | M4 | Erfassen und Bestätigen | Einträge, Familienübersicht, Partnerhinweis, Admin-Bestätigung | AC-ENTRY, AC-CONF, AC-FAM, AC-SEC-10 |
