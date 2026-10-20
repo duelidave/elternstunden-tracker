@@ -120,6 +120,11 @@ testing {
     }
 }
 
+// Integration tests see the same libraries as the application code
+configurations.named("integrationTestImplementation") {
+    extendsFrom(configurations.implementation.get())
+}
+
 // The integration tests use the same DB init script as docker compose (OPS-14)
 tasks.named<Test>("integrationTest") {
     systemProperty("elternstunden.dbInitScript", rootProject.file("ops/db/init/01-create-app-role.sh").absolutePath)
@@ -157,9 +162,10 @@ spotless {
 // Coverage (NFR-04): service layer at least 80 % lines. Packages appear from M1 on.
 // ---------------------------------------------------------------------------
 val integrationTest = tasks.named<Test>("integrationTest")
+val coverageData = fileTree(layout.buildDirectory.dir("jacoco")) { include("test.exec", "integrationTest.exec") }
 
 tasks.jacocoTestReport {
-    executionData(tasks.test, integrationTest)
+    executionData.setFrom(coverageData)
     dependsOn(tasks.test, integrationTest)
     classDirectories.setFrom(sourceSets.main.get().output.asFileTree.matching { exclude("de/elternstunden/api/**") })
     reports {
@@ -169,7 +175,7 @@ tasks.jacocoTestReport {
 }
 
 tasks.jacocoTestCoverageVerification {
-    executionData(tasks.test, integrationTest)
+    executionData.setFrom(coverageData)
     dependsOn(tasks.test, integrationTest)
     classDirectories.setFrom(sourceSets.main.get().output.asFileTree.matching { exclude("de/elternstunden/api/**") })
     violationRules {

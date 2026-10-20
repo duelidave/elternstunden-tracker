@@ -2,6 +2,7 @@ package de.elternstunden.common.error;
 
 import de.elternstunden.api.model.ValidationErrorDto;
 import de.elternstunden.common.web.TraceIdFilter;
+import java.net.URI;
 import java.util.List;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
@@ -14,6 +15,8 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class ProblemDetailsFactory {
+
+    private static final URI ABOUT_BLANK = URI.create("about:blank");
 
     static final String CODE = "code";
     static final String TRACE_ID = "traceId";
@@ -29,6 +32,8 @@ public class ProblemDetailsFactory {
 
     public ProblemDetail create(HttpStatusCode status, ErrorCode code, String detail) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
+        // Spring omits the default type; the contract requires it explicitly
+        problem.setType(ABOUT_BLANK);
         problem.setProperty(CODE, code.name());
         problem.setProperty(TRACE_ID, TraceIdFilter.currentTraceId());
         return problem;
