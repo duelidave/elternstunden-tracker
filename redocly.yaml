@@ -1,0 +1,24 @@
+# Lint rules for the API contract (Lastenheft D-25)
+apis:
+  elternstunden:
+    root: api/openapi.yaml
+
+extends:
+  - recommended
+
+rules:
+  # Internal application, no license statement in the contract
+  info-license: off
+  # Shared responses are prepared for upcoming endpoints (M1 and later)
+  no-unused-components: off
+
+  rule/operation-x-roles:
+    subject:
+      type: Operation
+      property: x-roles
+    assertions:
+      defined: true
+      nonEmpty: true
+      enum: [A, U, F, AD, M, OP, MP]
+    message: Jede Operation braucht x-roles mit Kürzeln aus Lastenheft 8.2 (A, U, F, AD, M, OP, MP).
+    severity: error

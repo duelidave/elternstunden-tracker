@@ -1,0 +1,155 @@
+openapi: 3.0.3
+info:
+  title: Elternstunden API
+  version: 0.1.0
+  description: |
+    API-Vertrag der Elternstunden-Zeiterfassung und Quelle der Wahrheit für Backend und Frontend
+    (Lastenheft D-25). Jede API-Änderung beginnt hier, danach wird auf beiden Seiten neu generiert.
+
+    Konventionen: Lastenheft Abschnitt 8.1. Fehler sind immer `application/problem+json` (RFC 9457).
+    `x-roles` nennt die erlaubten Rollen mit den Kürzeln aus Abschnitt 8.2:
+    A (anonym), U (angemeldet), F (Familienmitglied mit Familie), AD (Admin oder Master),
+    M (Master), OP (OIDC-Pending-Session), MP (MFA-Pending-Session).
+servers:
+  - url: /api/v1
+tags:
+  - name: system
+    description: Betrieb und Erreichbarkeit.
+security:
+  - session: []
+paths:
+  /status:
+    get:
+      tags: [system]
+      operationId: getStatus
+      summary: Öffentliche Prüfseite
+      description: Einfache Statusabfrage ohne Details, z. B. für einen externen Uptime-Check (OPS-07).
+      x-roles: [A]
+      security: []
+      responses:
+        '200':
+          description: Der Dienst ist erreichbar.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Status'
+              example:
+                status: UP
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: __Host-SESSION
+      description: >-
+        Serverseitige Session (D-20). Zustandsändernde Requests tragen zusätzlich den CSRF-Token
+        im Header `X-XSRF-TOKEN` (Cookie `XSRF-TOKEN`).
+  schemas:
+    Status:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [UP]
+    Problem:
+      type: object
+      description: Fehlerformat nach RFC 9457 mit den Erweiterungen aus Lastenheft 8.1.
+      required: [type, title, status, code, traceId]
+      properties:
+        type:
+          type: string
+          description: Immer `about:blank`, die Unterscheidung läuft über `code`.
+          example: about:blank
+        title:
+          type: string
+          description: HTTP-Statustext.
+          example: Bad Request
+        status:
+          type: integer
+          format: int32
+          minimum: 100
+          maximum: 599
+          example: 400
+        detail:
+          type: string
+          description: Kurzer technischer Text ohne personenbezogene Daten.
+        code:
+          type: string
+          description: Stabiler, maschinenlesbarer Fehlercode. Die UI zeigt Texte anhand dieses Codes.
+          pattern: '^[A-Z][A-Z0-9_]*$'
+          example: VALIDATION_FAILED
+        traceId:
+          type: string
+          description: Korrelations-ID, identisch mit dem Header `X-Trace-Id`.
+        errors:
+          type: array
+          description: Nur bei Validierungsfehlern. Enthält nie den abgelehnten Wert.
+          items:
+            $ref: '#/components/schemas/ValidationError'
+    ValidationError:
+      type: object
+      required: [field, code, message]
+      properties:
+        field:
+          type: string
+          example: description
+        code:
+          type: string
+          example: Size
+        message:
+          type: string
+          example: size must be between 3 and 500
+  responses:
+    BadRequest:
+      description: Ungültige Anfrage oder Validierungsfehler.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: Nicht angemeldet.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: Keine Berechtigung oder CSRF-Token fehlt.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Nicht gefunden (auch bei fremden IDs, kein Existenz-Orakel).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: Konflikt mit dem aktuellen Zustand.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    TooManyRequests:
+      description: Rate-Limit überschritten.
+      headers:
+        Retry-After:
+          description: Sekunden bis zum nächsten erlaubten Versuch.
+          schema:
+            type: integer
+            format: int32
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    InternalError:
+      description: Unerwarteter Fehler, ohne technische Details.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
