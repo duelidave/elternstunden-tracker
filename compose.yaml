@@ -1,0 +1,72 @@
+# Local development stack (OPS-01). Start: cp .env.example .env && docker compose up --build
+# All ports are bound to 127.0.0.1 only. Production compose follows in M7 (ops/).
+name: elternstunden-dev
+
+services:
+  db:
+    image: postgres:18.6-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # Used once by the init script to create the app role (OPS-14)
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?set DB_APP_PASSWORD in .env}
+      TZ: Europe/Berlin
+    volumes:
+      # postgres:18 keeps PGDATA below /var/lib/postgresql/18/docker
+      - pgdata:/var/lib/postgresql
+      - ./ops/db/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # OPEN-07: mail catcher for development; the production SMTP service is still open
+  mailpit:
+    image: axllent/mailpit:v1.31.6
+    ports:
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
+
+  # OPEN-15: local OIDC provider instead of Google (navikt/mock-oauth2-server)
+  oidc:
+    image: ghcr.io/navikt/mock-oauth2-server:6.0.6
+    ports:
+      - "127.0.0.1:${OIDC_PORT:-8090}:8080"
+
+  app:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      TZ: Europe/Berlin
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: elternstunden_app
+      DB_PASSWORD: ${DB_APP_PASSWORD}
+      FLYWAY_USER: ${POSTGRES_USER}
+      FLYWAY_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:${APP_PORT:-8088}:8080"
+      - "127.0.0.1:${APP_MANAGEMENT_PORT:-8089}:8081"
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+      oidc:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/actuator/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  pgdata:

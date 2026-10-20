@@ -72,6 +72,11 @@ tasks.compileJava {
     dependsOn(tasks.openApiGenerate)
 }
 
+// Only the executable Spring Boot jar is built
+tasks.jar {
+    enabled = false
+}
+
 // ---------------------------------------------------------------------------
 // Dependencies
 // ---------------------------------------------------------------------------
