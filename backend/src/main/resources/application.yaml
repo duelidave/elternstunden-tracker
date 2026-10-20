@@ -1,0 +1,59 @@
+# Production-safe defaults. Everything environment-specific comes from environment variables
+# (prod: Docker secrets via configtree, M7). No secrets in this file.
+spring:
+  application:
+    name: elternstunden
+  datasource:
+    # App role with DML rights only (OPS-14)
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:elternstunden}
+    username: ${DB_USER:elternstunden_app}
+    password: ${DB_PASSWORD}
+  flyway:
+    # Owner role runs the migrations (OPS-14)
+    user: ${FLYWAY_USER:elternstunden}
+    password: ${FLYWAY_PASSWORD}
+    placeholders:
+      appRole: ${DB_USER:elternstunden_app}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  jackson:
+    time-zone: UTC
+    deserialization:
+      # Unknown fields are rejected (mass assignment protection, Lastenheft 8.1)
+      fail-on-unknown-properties: true
+
+server:
+  port: 8080
+  shutdown: graceful
+  error:
+    whitelabel:
+      enabled: false
+
+# Actuator only on the internal management port (OPS-07)
+management:
+  server:
+    port: 8081
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+---
+# JSON logs with traceId everywhere except local development (NFR-06)
+spring:
+  config:
+    activate:
+      on-profile: "!dev"
+logging:
+  structured:
+    format:
+      console: ecs
