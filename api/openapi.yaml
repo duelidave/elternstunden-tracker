@@ -78,6 +78,10 @@ components:
         detail:
           type: string
           description: Kurzer technischer Text ohne personenbezogene Daten.
+        instance:
+          type: string
+          description: Pfad des Requests, auf den sich der Fehler bezieht.
+          example: /api/v1/status
         code:
           type: string
           description: Stabiler, maschinenlesbarer Fehlercode. Die UI zeigt Texte anhand dieses Codes.
