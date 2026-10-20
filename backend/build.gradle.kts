@@ -21,6 +21,12 @@ java {
     }
 }
 
+// SEC-14: security fixes ahead of the next Spring Boot patch release (found by the Trivy SBOM scan).
+// Remove each override once the Spring Boot BOM ships the same or a newer version.
+extra["tomcat.version"] = "11.0.25"
+extra["jackson-bom.version"] = "3.1.7"
+extra["jackson-2-bom.version"] = "2.21.7"
+
 // ---------------------------------------------------------------------------
 // API-first (D-25): interfaces and DTOs are generated from the shared contract
 // ---------------------------------------------------------------------------
