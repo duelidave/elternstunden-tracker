@@ -1,0 +1,23 @@
+# Local environment (copy from .env.example, never commit)
+.env
+secrets/
+
+# Gradle / Java
+.gradle/
+build/
+out/
+*.class
+hs_err_pid*
+
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/src/api/generated/
+
+# IDEs and OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+*.log
