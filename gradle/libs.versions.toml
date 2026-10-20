@@ -1,0 +1,22 @@
+[versions]
+spring-boot = "4.1.1"
+spring-dependency-management = "1.1.7"
+openapi-generator = "7.26.0"
+errorprone-plugin = "5.1.1"
+errorprone = "2.50.0"
+spotless = "8.10.4"
+palantir-java-format = "2.102.0"
+cyclonedx = "3.5.1"
+swagger-parser = "2.1.48"
+
+[libraries]
+errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }
+swagger-parser = { module = "io.swagger.parser.v3:swagger-parser", version.ref = "swagger-parser" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+openapi-generator = { id = "org.openapi.generator", version.ref = "openapi-generator" }
+errorprone = { id = "net.ltgt.errorprone", version.ref = "errorprone-plugin" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+cyclonedx = { id = "org.cyclonedx.bom", version.ref = "cyclonedx" }
