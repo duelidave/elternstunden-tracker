@@ -1,0 +1,11 @@
+# Secret scan (SEC-14): the default rules plus a narrow allowlist for known, non-secret values.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Example values for the local docker compose stack only"
+paths = ['''(^|/)\.env\.example$''']
+
+[[allowlists]]
+description = "RFC 6238 test key 12345678901234567890 in base32, used by the TOTP tests"
+regexes = ['''GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ''']
