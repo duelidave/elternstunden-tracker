@@ -15,6 +15,12 @@ servers:
 tags:
   - name: system
     description: Betrieb und Erreichbarkeit.
+  - name: auth
+    description: Registrierung, E-Mail-Link, Master-Login und Abmelden (FS-REG 7.1.4, FS-AUTH 7.2).
+  - name: me
+    description: Das eigene Konto.
+  - name: dev
+    description: Nur in der lokalen Entwicklung (Profil dev, FS-DEV 7.12). Fehlt in Produktion.
 security:
   - session: []
 paths:
@@ -39,6 +45,210 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalError'
+  /auth/captcha:
+    get:
+      tags: [auth]
+      operationId: getCaptchaChallenge
+      summary: Captcha-Aufgabe holen
+      description: Signierte ALTCHA-Aufgabe (Proof of Work) für Registrierung und Link-Anfrage (SEC-04, 9.1).
+      x-roles: [A]
+      security: []
+      responses:
+        '200':
+          description: Neue Aufgabe, 5 Minuten gültig.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptchaChallenge'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/register:
+    post:
+      tags: [auth]
+      operationId: registerAccount
+      summary: Registrieren (Weg A)
+      description: >-
+        Antwortet für jede gültige Anfrage identisch mit 202, egal ob es die Adresse schon gibt (kein Orakel,
+        7.1.4). Die eigentliche Verarbeitung und der Mailversand laufen asynchron.
+      x-roles: [A]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationRequest'
+      responses:
+        '202':
+          description: Angenommen. Wenn alles passt, kommt eine E-Mail mit Link.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/magic-link:
+    post:
+      tags: [auth]
+      operationId: requestMagicLink
+      summary: E-Mail-Link anfordern
+      description: Antwortet für jede gültige Anfrage identisch mit 202 (kein Orakel, 7.2).
+      x-roles: [A]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MagicLinkRequest'
+      responses:
+        '202':
+          description: Angenommen. Wenn es ein Konto gibt, kommt eine E-Mail mit Link.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/magic-link/redeem:
+    post:
+      tags: [auth]
+      operationId: redeemMagicLink
+      summary: E-Mail-Link einlösen
+      description: >-
+        Meldet an und legt eine neue Session an (7.2). Ein GET löst nie ein. Wurde der Link auf einem anderen
+        Gerät angefordert, kommt zuerst 409 mit der maskierten Adresse, der Token bleibt gültig.
+      x-roles: [A]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MagicLinkRedemption'
+      responses:
+        '200':
+          description: Angemeldet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Link von einem anderen Gerät, Bestätigung nötig (OTHER_DEVICE_CONFIRMATION_REQUIRED).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/OtherDeviceProblem'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/master/login:
+    post:
+      tags: [auth]
+      operationId: loginMaster
+      summary: Master-Login
+      description: Nur für den per Konfiguration verwalteten Master-Admin, mit Passwort und TOTP (D-22, 7.2).
+      x-roles: [A]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MasterLoginRequest'
+      responses:
+        '200':
+          description: Angemeldet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: Abmelden
+      description: Beendet die Session serverseitig.
+      x-roles: [U]
+      responses:
+        '204':
+          description: Abgemeldet.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /me:
+    get:
+      tags: [me]
+      operationId: getMe
+      summary: Eigenes Konto
+      x-roles: [U]
+      responses:
+        '200':
+          description: Das angemeldete Konto.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /dev/login-as:
+    post:
+      tags: [dev]
+      operationId: devLoginAs
+      summary: Als Demo-Konto anmelden (nur lokal)
+      description: >-
+        Rollenwechsel für manuelle Tests (D-26, FS-DEV 7.12). Gibt es nur im Profil dev, sonst 404.
+        Meldet über denselben Weg an wie der E-Mail-Link, ohne Mail und ohne TOTP.
+      x-roles: [A]
+      x-dev-only: true
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DevLoginRequest'
+      responses:
+        '200':
+          description: Angemeldet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
 components:
   securitySchemes:
     session:
@@ -56,6 +266,132 @@ components:
         status:
           type: string
           enum: [UP]
+    CaptchaChallenge:
+      type: object
+      description: ALTCHA-Aufgabe im Format des Widgets (Protokoll v2, PBKDF2/SHA-256).
+      required: [parameters, signature]
+      properties:
+        parameters:
+          type: object
+          additionalProperties: true
+        signature:
+          type: string
+    RegistrationRequest:
+      type: object
+      required: [displayName, email, child, privacyAccepted]
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 80
+          example: Anna Beispiel
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        child:
+          $ref: '#/components/schemas/ChildClaim'
+        privacyAccepted:
+          type: boolean
+          description: Muss true sein (DP-03).
+        captcha:
+          $ref: '#/components/schemas/CaptchaSolution'
+    ChildClaim:
+      type: object
+      description: Angaben zum Kind für die Zuordnung zur Familie (7.1.2).
+      required: [firstName, lastName, birthDate]
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        birthDate:
+          type: string
+          format: date
+          description: Nicht in der Zukunft, höchstens 25 Jahre zurück.
+    CaptchaSolution:
+      type: string
+      description: >-
+        Base64-Nachweis des ALTCHA-Widgets. Fachlich Pflicht: Fehlt er oder ist er ungültig, abgelaufen oder
+        schon benutzt, antwortet der Server mit 400 CAPTCHA_INVALID (AC-REG-06).
+      minLength: 1
+      maxLength: 4000
+    MagicLinkRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        captcha:
+          $ref: '#/components/schemas/CaptchaSolution'
+    MagicLinkRedemption:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          description: Token aus dem URL-Fragment des Links (256 Bit, base64url).
+          minLength: 43
+          maxLength: 128
+          pattern: '^[A-Za-z0-9_-]+$'
+        confirmOtherDevice:
+          type: boolean
+          default: false
+          description: Bestätigt die Anmeldung auf einem anderen Gerät als dem, das den Link angefordert hat.
+    MasterLoginRequest:
+      type: object
+      required: [email, password, totp]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+          format: password
+        totp:
+          type: string
+          pattern: '^[0-9]{6}$'
+    DevLoginRequest:
+      type: object
+      required: [account]
+      properties:
+        account:
+          type: string
+          enum: [FAMILY, PARTNER, UNASSIGNED, ADMIN, MASTER]
+    Me:
+      type: object
+      required: [id, displayName, email, role, assignedToFamily]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [FAMILY_MEMBER, ADMIN, MASTER_ADMIN]
+        assignedToFamily:
+          type: boolean
+    OtherDeviceProblem:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          required: [maskedEmail]
+          properties:
+            maskedEmail:
+              type: string
+              example: m***@gmail.com
     Problem:
       type: object
       description: Fehlerformat nach RFC 9457 mit den Erweiterungen aus Lastenheft 8.1.
