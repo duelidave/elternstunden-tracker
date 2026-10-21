@@ -1,5 +1,10 @@
+import { lazy, Suspense } from 'react'
 import { Link, Outlet } from 'react-router'
 import { texts } from './i18n/de'
+
+// FS-DEV (D-26): only in the Vite dev server. In the production build this is `false`, so the bundler drops the
+// import and the toolbar chunk entirely (AC-DEV-03, checked by scripts/check-no-dev-toolbar.mjs).
+const DevToolbar = import.meta.env.DEV ? lazy(() => import('./dev/DevToolbar')) : undefined
 
 export function Layout() {
   return (
@@ -25,6 +30,11 @@ export function Layout() {
           </Link>
         </nav>
       </footer>
+      {DevToolbar !== undefined && (
+        <Suspense fallback={null}>
+          <DevToolbar />
+        </Suspense>
+      )}
     </div>
   )
 }
