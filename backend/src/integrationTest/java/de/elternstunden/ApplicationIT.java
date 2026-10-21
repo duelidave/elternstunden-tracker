@@ -10,16 +10,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.web.server.LocalManagementPort;
-import org.springframework.boot.test.web.server.LocalServerPort;
 
 /** The running application: status page, health probes on the management port, deny by default (OPS-07, SEC-01). */
 class ApplicationIT extends IntegrationTest {
 
     private final HttpClient http =
             HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build();
-
-    @LocalServerPort
-    private int port;
 
     @LocalManagementPort
     private int managementPort;

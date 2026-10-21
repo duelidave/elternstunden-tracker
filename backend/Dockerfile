@@ -15,7 +15,7 @@ RUN --mount=type=cache,target=/root/.gradle ./gradlew --no-daemon :backend:bootJ
 FROM eclipse-temurin:25-jre-alpine
 RUN addgroup -S app && adduser -S -G app -H app
 WORKDIR /app
-COPY --from=build /workspace/backend/build/libs/*.jar /app/app.jar
+COPY --from=build /workspace/backend/build/libs/app.jar /app/app.jar
 USER app
 # 8080: API, 8081: management (health), internal only
 EXPOSE 8080 8081

@@ -41,9 +41,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         this.problems = problems;
     }
 
+    @ExceptionHandler(RateLimitedException.class)
+    ResponseEntity<ProblemDetail> handleRateLimited(RateLimitedException ex) {
+        ProblemDetail problem = problems.create(ex.code(), ex.getMessage());
+        return ResponseEntity.status(problem.getStatus())
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(ex.retryAfterSeconds()))
+                .body(problem);
+    }
+
     @ExceptionHandler(ApiException.class)
     ResponseEntity<ProblemDetail> handleApiException(ApiException ex) {
-        return respond(problems.create(ex.code(), ex.getMessage()));
+        ProblemDetail problem = problems.create(ex.code(), ex.getMessage());
+        ex.properties().forEach(problem::setProperty);
+        return respond(problem);
     }
 
     @ExceptionHandler(AuthenticationException.class)

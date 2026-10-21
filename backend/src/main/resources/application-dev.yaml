@@ -1,14 +1,18 @@
-# Local development. Reads ../.env (copied from .env.example) when started via ./gradlew :backend:bootRun;
-# inside docker compose the same values arrive as environment variables.
+# Local development. With docker compose the values arrive as environment variables; with
+# ./gradlew :backend:bootRun the build reads ../.env (see backend/build.gradle.kts).
 spring:
-  config:
-    import: optional:file:../.env[.properties]
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:${POSTGRES_DB:elternstunden}}
     password: ${DB_PASSWORD:${DB_APP_PASSWORD}}
   flyway:
     user: ${FLYWAY_USER:${POSTGRES_USER:elternstunden}}
     password: ${FLYWAY_PASSWORD:${POSTGRES_PASSWORD}}
+    # Demo accounts for the role switcher (D-26), never in production
+    locations: classpath:db/migration,classpath:db/dev
+
+app:
+  # Links in mails point to the Vite dev server
+  base-url: ${APP_BASE_URL:http://localhost:5173}
 
 logging:
   level:

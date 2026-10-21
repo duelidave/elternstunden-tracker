@@ -1,11 +1,8 @@
 package de.elternstunden.contract;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
-import de.elternstunden.common.error.ProblemDetailsFactory;
-import de.elternstunden.common.security.ApiSecurityConfig;
-import de.elternstunden.common.security.ProblemSecurityHandler;
+import de.elternstunden.support.IntegrationTest;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
@@ -14,25 +11,22 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 /**
- * API-first guard (D-25, SEC-01): the registered handlers under {@code /api} match the operations of the contract
- * one to one, and every operation declares its roles in {@code x-roles}.
+ * API-first guard (D-25, SEC-01, AC-SEC-01): the registered handlers under {@code /api} match the operations of the
+ * contract one to one, and every operation declares its roles in {@code x-roles}. Operations marked
+ * {@code x-dev-only} must have no handler outside the dev profile (AC-DEV-01).
  */
-@WebMvcTest
-@Import({ApiSecurityConfig.class, ProblemSecurityHandler.class, ProblemDetailsFactory.class})
-class ContractCoverageTest {
+class ContractCoverageIT extends IntegrationTest {
 
     private static final Set<String> ROLES = Set.of("A", "U", "F", "AD", "M", "OP", "MP");
 
@@ -42,12 +36,15 @@ class ContractCoverageTest {
     @Qualifier("requestMappingHandlerMapping")
     private RequestMappingHandlerMapping handlerMapping;
 
-    @Autowired
-    private MockMvc mvc;
-
     record Endpoint(String method, String path) {}
 
-    record ContractOperation(Endpoint endpoint, Operation operation) {}
+    record ContractOperation(Endpoint endpoint, Operation operation) {
+
+        boolean devOnly() {
+            return operation.getExtensions() != null
+                    && Boolean.TRUE.equals(operation.getExtensions().get("x-dev-only"));
+        }
+    }
 
     @BeforeAll
     static void readContract() {
@@ -57,8 +54,10 @@ class ContractCoverageTest {
 
     @Test
     void everyContractOperationHasAHandlerAndNoHandlerIsOutsideTheContract() {
-        Set<Endpoint> inContract = new HashSet<>();
-        contractOperations().forEach(op -> inContract.add(op.endpoint()));
+        Set<Endpoint> inContract = contractOperations()
+                .filter(op -> !op.devOnly())
+                .map(ContractOperation::endpoint)
+                .collect(Collectors.toSet());
 
         Set<Endpoint> implemented = new HashSet<>();
         handlerMapping.getHandlerMethods().keySet().forEach(info -> implemented.addAll(apiEndpoints(info)));
@@ -67,30 +66,53 @@ class ContractCoverageTest {
     }
 
     @Test
+    void devOnlyOperationsHaveNoHandlerOutsideTheDevProfile() {
+        Set<Endpoint> devOnly = contractOperations()
+                .filter(ContractOperation::devOnly)
+                .map(ContractOperation::endpoint)
+                .collect(Collectors.toSet());
+        Set<Endpoint> implemented = new HashSet<>();
+        handlerMapping.getHandlerMethods().keySet().forEach(info -> implemented.addAll(apiEndpoints(info)));
+
+        assertThat(devOnly).isNotEmpty();
+        assertThat(implemented).doesNotContainAnyElementsOf(devOnly);
+    }
+
+    @Test
     void everyOperationDeclaresKnownRoles() {
         contractOperations().forEach(op -> {
-            Object roles = op.operation().getExtensions() == null
-                    ? null
-                    : op.operation().getExtensions().get("x-roles");
-            assertThat(roles).as("x-roles of %s", op.endpoint()).isInstanceOf(List.class);
-            assertThat((List<?>) roles).as("x-roles of %s", op.endpoint()).isNotEmpty();
-            assertThat(ROLES).as("x-roles of %s", op.endpoint()).containsAll(roleNames((List<?>) roles));
+            List<String> roles = roleNames(op.operation());
+            assertThat(roles).as("x-roles of %s", op.endpoint()).isNotEmpty();
+            assertThat(ROLES).as("x-roles of %s", op.endpoint()).containsAll(roles);
         });
     }
 
     @Test
-    void anonymousGetOperationsAreReachableWithoutLogin() throws Exception {
+    void anonymousGetOperationsAreReachableWithoutLogin() {
         List<ContractOperation> anonymous = contractOperations()
                 .filter(op -> op.endpoint().method().equals("GET"))
                 .filter(op -> !op.endpoint().path().contains("{"))
-                .filter(op -> roleNames(roles(op.operation())).contains("A"))
+                .filter(op -> roleNames(op.operation()).contains("A"))
                 .toList();
         for (ContractOperation op : anonymous) {
-            int status = mvc.perform(get(op.endpoint().path()))
-                    .andReturn()
-                    .getResponse()
-                    .getStatus();
+            int status = browser().get(op.endpoint().path()).status();
             assertThat(status).as("anonymous %s", op.endpoint()).isNotIn(401, 403);
+        }
+    }
+
+    @Test
+    void operationsForSignedInUsersRejectAnonymousCalls() {
+        List<ContractOperation> signedIn = contractOperations()
+                .filter(op -> !roleNames(op.operation()).contains("A"))
+                .filter(op -> !op.endpoint().path().contains("{"))
+                .toList();
+        assertThat(signedIn).isNotEmpty();
+        for (ContractOperation op : signedIn) {
+            var client = browser();
+            int status = op.endpoint().method().equals("GET")
+                    ? client.get(op.endpoint().path()).status()
+                    : client.post(op.endpoint().path(), "{}").status();
+            assertThat(status).as("anonymous %s", op.endpoint()).isEqualTo(401);
         }
     }
 
@@ -107,7 +129,7 @@ class ContractCoverageTest {
     private static Set<Endpoint> apiEndpoints(RequestMappingInfo info) {
         Set<String> methods = info.getMethodsCondition().getMethods().stream()
                 .map(RequestMethod::name)
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(Collectors.toSet());
         Set<Endpoint> endpoints = new HashSet<>();
         for (String pattern : info.getPatternValues()) {
             if (pattern.startsWith("/api/")) {
@@ -119,13 +141,12 @@ class ContractCoverageTest {
         return endpoints;
     }
 
-    private static List<?> roles(Operation operation) {
-        return operation.getExtensions() != null && operation.getExtensions().get("x-roles") instanceof List<?> list
-                ? list
+    private static List<String> roleNames(Operation operation) {
+        Object roles = operation.getExtensions() == null
+                ? null
+                : operation.getExtensions().get("x-roles");
+        return roles instanceof List<?> list
+                ? list.stream().map(String::valueOf).toList()
                 : List.of();
-    }
-
-    private static List<String> roleNames(List<?> roles) {
-        return roles.stream().map(String::valueOf).toList();
     }
 }

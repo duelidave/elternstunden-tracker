@@ -1,0 +1,12 @@
+# Test profile: fixed test keys, no background scheduling (tests drive worker and cleanup themselves),
+# and a low, fixed captcha difficulty. ALTCHA stays switched on (Lastenheft 4.2).
+app:
+  base-url: http://localhost:5173
+  security:
+    encryption-key: test-encryption-key-not-secret-0123456789
+  auth:
+    worker-delay: 1h
+    cleanup-cron: "-"
+    captcha:
+      hmac-key: test-altcha-hmac-key-not-secret-0123456789
+      cost: 1

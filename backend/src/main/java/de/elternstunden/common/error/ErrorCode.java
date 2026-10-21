@@ -9,6 +9,10 @@ import org.springframework.http.HttpStatusCode;
  */
 public enum ErrorCode {
     VALIDATION_FAILED(HttpStatus.BAD_REQUEST, "Request validation failed."),
+    CAPTCHA_INVALID(HttpStatus.BAD_REQUEST, "Captcha missing, invalid, expired or already used."),
+    LINK_INVALID(HttpStatus.BAD_REQUEST, "The link is expired or was already used."),
+    LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "Login failed."),
+    OTHER_DEVICE_CONFIRMATION_REQUIRED(HttpStatus.CONFLICT, "Link was requested on another device."),
     MALFORMED_REQUEST(HttpStatus.BAD_REQUEST, "Request could not be read."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Authentication required."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "Access denied."),

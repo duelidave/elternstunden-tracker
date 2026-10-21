@@ -8,10 +8,16 @@ spotless = "8.10.4"
 palantir-java-format = "2.102.0"
 cyclonedx = "3.5.1"
 swagger-parser = "2.1.48"
+altcha = "2.1.1"
+org-json = "20260814"
+bouncycastle = "1.86"
 
 [libraries]
 errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }
 swagger-parser = { module = "io.swagger.parser.v3:swagger-parser", version.ref = "swagger-parser" }
+altcha = { module = "org.altcha:altcha", version.ref = "altcha" }
+org-json = { module = "org.json:json", version.ref = "org-json" }
+bouncycastle = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

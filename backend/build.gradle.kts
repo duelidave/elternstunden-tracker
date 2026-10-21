@@ -78,9 +78,9 @@ tasks.compileJava {
     dependsOn(tasks.openApiGenerate)
 }
 
-// Only the executable Spring Boot jar is built
-tasks.jar {
-    enabled = false
+// Fixed name for the executable jar (Dockerfile); the plain jar stays for the integration test suite
+tasks.bootJar {
+    archiveFileName = "app.jar"
 }
 
 // ---------------------------------------------------------------------------
@@ -93,7 +93,15 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
+    implementation("org.springframework.boot:spring-boot-starter-session-jdbc")
+    implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("org.flywaydb:flyway-database-postgresql")
+    implementation("com.github.ben-manes.caffeine:caffeine")
+    // ALTCHA captcha (D-07), needs org.json at runtime
+    implementation(libs.altcha)
+    runtimeOnly(libs.org.json)
+    // Argon2id for the master password (D-21)
+    implementation(libs.bouncycastle)
     runtimeOnly("org.postgresql:postgresql")
 
     errorprone(libs.errorprone.core)
@@ -110,7 +118,6 @@ testing {
                 implementation("org.springframework.boot:spring-boot-starter-test")
                 implementation("org.springframework.boot:spring-boot-starter-webmvc-test")
                 implementation("org.springframework.boot:spring-boot-starter-security-test")
-                implementation(libs.swagger.parser)
             }
         }
         register<JvmTestSuite>("integrationTest") {
@@ -122,6 +129,7 @@ testing {
                 implementation("org.springframework.boot:spring-boot-testcontainers")
                 implementation("org.testcontainers:testcontainers-junit-jupiter")
                 implementation("org.testcontainers:testcontainers-postgresql")
+                implementation(libs.swagger.parser)
                 runtimeOnly("org.postgresql:postgresql")
             }
             targets.all {
@@ -129,6 +137,26 @@ testing {
             }
         }
     }
+}
+
+// Integration tests share the test resources (application-test.yaml)
+sourceSets.named("integrationTest") {
+    resources.srcDir("src/test/resources")
+}
+
+// Local run without Docker: ./gradlew :backend:bootRun reads ../.env and starts with the dev profile
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    val envFile = rootProject.file(".env")
+    if (envFile.exists()) {
+        envFile.readLines()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !it.startsWith("#") && it.contains("=") }
+            .forEach { line ->
+                val (key, value) = line.split("=", limit = 2)
+                environment(key.trim(), value.trim().removeSurrounding("'").removeSurrounding("\""))
+            }
+    }
+    environment("SPRING_PROFILES_ACTIVE", System.getenv("SPRING_PROFILES_ACTIVE") ?: "dev")
 }
 
 // Integration tests see the same libraries as the application code
@@ -139,6 +167,8 @@ configurations.named("integrationTestImplementation") {
 // The integration tests use the same DB init script as docker compose (OPS-14)
 tasks.named<Test>("integrationTest") {
     systemProperty("elternstunden.dbInitScript", rootProject.file("ops/db/init/01-create-app-role.sh").absolutePath)
+    // AC-AUTH-17 sends a forged Host header
+    systemProperty("jdk.httpclient.allowRestrictedHeaders", "host")
 }
 
 tasks.withType<Test>().configureEach {

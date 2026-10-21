@@ -9,8 +9,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import de.elternstunden.auth.repo.AppUserRepository;
+import de.elternstunden.common.config.AppConfig;
 import de.elternstunden.common.security.ApiSecurityConfig;
 import de.elternstunden.common.security.ProblemSecurityHandler;
+import de.elternstunden.common.security.SecurityBeans;
+import de.elternstunden.common.security.SessionLogin;
+import de.elternstunden.common.time.TimeConfig;
 import de.elternstunden.common.web.TraceIdFilter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -29,6 +34,8 @@ import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
@@ -38,8 +45,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 /** The unified error format (Lastenheft 8.1) for the typical error classes. */
-@WebMvcTest
+@WebMvcTest(controllers = ErrorHandlingTest.ProbeController.class)
+@ActiveProfiles("test")
 @Import({
+    AppConfig.class,
+    TimeConfig.class,
+    SecurityBeans.class,
+    SessionLogin.class,
     ApiSecurityConfig.class,
     ProblemSecurityHandler.class,
     ProblemDetailsFactory.class,
@@ -53,6 +65,9 @@ class ErrorHandlingTest {
 
     @Autowired
     private MockMvc mvc;
+
+    @MockitoBean
+    private AppUserRepository users;
 
     @Test
     void apiExceptionKeepsItsCodeAndDetail() throws Exception {

@@ -25,6 +25,16 @@ spring:
     deserialization:
       # Unknown fields are rejected (mass assignment protection, Lastenheft 8.1)
       fail-on-unknown-properties: true
+  session:
+    jdbc:
+      # Flyway owns the session tables (V3)
+      initialize-schema: never
+  mail:
+    # OPEN-07: SMTP service still open; local development uses Mailpit
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASSWORD:}
 
 server:
   port: 8080
@@ -32,6 +42,15 @@ server:
   error:
     whitelabel:
       enabled: false
+  servlet:
+    session:
+      # SEC-09: __Host- prefix, HttpOnly, Secure, SameSite=Lax, no Domain
+      cookie:
+        name: __Host-SESSION
+        http-only: true
+        secure: true
+        same-site: lax
+        path: /
 
 # Actuator only on the internal management port (OPS-07)
 management:
@@ -46,6 +65,56 @@ management:
       probes:
         enabled: true
       show-details: never
+  health:
+    # Mail outages are monitored via metrics (OPS-13), they must not mark the app as down
+    mail:
+      enabled: false
+
+app:
+  # The only source for links in mails (SEC-17), never taken from request headers
+  base-url: ${APP_BASE_URL}
+  mail:
+    from: ${MAIL_FROM:Elternstunden <no-reply@localhost>}
+  security:
+    encryption-key: ${APP_ENCRYPTION_KEY}
+    # OPEN-09: TOTP for admins optional until decided
+    admin-totp-required: false
+  auth:
+    token-ttl: 15m
+    pending-account-ttl: 24h
+    binding-cookie-max-age: 30d
+    mail-max-attempts: 3
+    mail-retry-delay: 1m
+    worker-batch-size: 20
+    worker-delay: 2s
+    cleanup-cron: "0 30 3 * * *"
+    captcha:
+      hmac-key: ${ALTCHA_HMAC_KEY}
+      cost: 5000
+      expires: 5m
+  # Lastenheft 9.1, all configurable
+  rate-limits:
+    register-per-ip-hour: { max: 30, window: 1h }
+    register-per-ip-day: { max: 100, window: 24h }
+    register-global: { max: 200, window: 1h }
+    magic-link-per-ip: { max: 20, window: 1h }
+    magic-link-global: { max: 200, window: 1h }
+    mail-per-target: { max: 5, window: 1h }
+    no-account-mail-per-target: { max: 1, window: 24h }
+    redeem-per-ip: { max: 30, window: 15m }
+    master-login-per-ip: { max: 5, window: 15m }
+    master-failure-alarm: { max: 10, window: 1h }
+  # D-20
+  sessions:
+    family-member: { idle: 30d, absolute: 90d }
+    admin: { idle: 30m, absolute: 8h }
+    master-admin: { idle: 15m, absolute: 4h }
+  # D-22, 7.9: from the configuration only
+  master:
+    email: ${MASTER_ADMIN_EMAIL:}
+    password-hash: ${MASTER_ADMIN_PASSWORD_HASH:}
+    totp-secret: ${MASTER_ADMIN_TOTP_SECRET:}
+    display-name: ${MASTER_ADMIN_DISPLAY_NAME:Master-Admin}
 
 ---
 # JSON logs with traceId everywhere except local development (NFR-06)

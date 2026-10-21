@@ -11,7 +11,6 @@ import java.sql.Statement;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.NestedExceptionUtils;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -29,11 +28,8 @@ class FlywayMigrationIT extends IntegrationTest {
     private static final String EXCLUSION_VIOLATION = "23P01";
     private static final String INSUFFICIENT_PRIVILEGE = "42501";
 
-    @Autowired
-    private JdbcTemplate jdbc;
-
     @Test
-    void bothMigrationsAreApplied() throws SQLException {
+    void allMigrationsAreApplied() throws SQLException {
         try (Connection owner = ownerConnection();
                 Statement statement = owner.createStatement();
                 ResultSet rows = statement.executeQuery(
@@ -42,7 +38,7 @@ class FlywayMigrationIT extends IntegrationTest {
             while (rows.next()) {
                 versions.add(rows.getString(1));
             }
-            assertThat(versions).containsExactly("1", "2");
+            assertThat(versions).containsExactly("1", "2", "3");
         }
     }
 
@@ -64,7 +60,9 @@ class FlywayMigrationIT extends IntegrationTest {
                         "auth_request",
                         "time_entry",
                         "audit_log",
-                        "api_client");
+                        "api_client",
+                        "spring_session",
+                        "spring_session_attributes");
     }
 
     @Test
@@ -96,9 +94,11 @@ class FlywayMigrationIT extends IntegrationTest {
 
     @Test
     void thereIsAtMostOneMaster() {
-        insertMaster("master1@example.test");
+        // The config-managed master exists already (MasterAccountSync), so any second one is rejected
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM app_user WHERE managed_by_config", Long.class))
+                .isEqualTo(1L);
 
-        assertSqlState(() -> insertMaster("master2@example.test"), UNIQUE_VIOLATION);
+        assertSqlState(() -> insertMaster("second-master@example.test"), UNIQUE_VIOLATION);
     }
 
     @Test
