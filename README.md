@@ -32,6 +32,18 @@ cd frontend && npm ci && npm run dev
 
 Alle Ports hängen nur an `127.0.0.1` und lassen sich in `.env` ändern.
 
+## Lokal ausprobieren
+
+Die App öffnest du immer über den Dev-Server (http://localhost:5173), auch die Links aus den Mails zeigen dorthin.
+Am besten mit Chrome oder Firefox: Beide akzeptieren das `Secure`-Session-Cookie auch auf `http://localhost`.
+
+- **Registrieren:** `/register` ausfüllen, die Mail kommt in Mailpit (http://localhost:8025) an. Link öffnen, "Jetzt anmelden".
+- **Anmelden:** `/login`, E-Mail eingeben, Link aus Mailpit öffnen.
+- **Rollen wechseln (D-26):** Die Dev-Leiste unten meldet ohne Mail direkt als Familie, Partner, Unzugeordnet, Admin oder Master an.
+  Sie gibt es nur mit `npm run dev`, nie im Produktions-Build.
+- **Master-Login:** `/login/master` mit `master@dev.local` und dem Passwort `local-dev-master`. Den Code liefert eine
+  Authenticator-App mit dem Secret `MASTER_ADMIN_TOTP_SECRET` aus `.env`, oder `oathtool --totp -b <secret>`.
+
 ## Bauen und testen
 
 ```bash
@@ -49,7 +61,7 @@ npm run lint && npm run typecheck && npm test && npm run build
 ```
 api/        OpenAPI-Vertrag (Quelle der Wahrheit für beide Seiten)
 backend/    Spring Boot 4.1, Java 25, Gradle
-frontend/   React, TypeScript, Vite, TanStack Query, orval
+frontend/   React, TypeScript, Vite, React Router, TanStack Query, orval, Tailwind CSS
 ops/        Betrieb (DB-Init-Skript; Prod-Compose, Caddy, Backup folgen in M7)
 docs/       Lastenheft und Spezifikation
 ```

@@ -36,5 +36,7 @@ Guide for AI coding agents and contributors (NFR-08).
 - **Errors:** throw `ApiException(ErrorCode…)`; every error is `application/problem+json` with `code` and `traceId` (8.1). Never put personal data into `detail`.
 - **Security:** deny by default (`ApiSecurityConfig`); every new endpoint gets an explicit rule matching its `x-roles`.
 - **Database:** Flyway only (`backend/src/main/resources/db/migration`), migrations backwards compatible. Flyway runs as owner, the app as `elternstunden_app` (OPS-14); append-only tables revoke `UPDATE`/`DELETE`.
+- **Dev-only code (D-26):** backend only with `@Profile("dev")`, frontend only behind `import.meta.env.DEV`. `npm run build` fails if dev toolbar code ends up in the bundle (AC-DEV-03).
+- **Frontend:** texts only in `src/i18n/de.ts`, colours and sizes only as tokens in `src/styles/tokens.css` (UI-01). Forms validate with the generated zod schemas (UI-08).
 - **Secrets:** never in the repository. Local example values only in `.env.example`.
 - **Git:** small commits, Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`, `build:`, `ci:`, `chore:`).
