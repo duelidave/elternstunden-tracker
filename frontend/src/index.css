@@ -1,59 +1,153 @@
+@import 'tailwindcss';
 @import './styles/tokens.css';
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+@layer base {
+  html {
+    color: var(--color-text);
+    background: var(--color-surface);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+      env(safe-area-inset-left);
+  }
+
+  h1 {
+    font-size: var(--text-title);
+    font-weight: 700;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
+  p {
+    margin-block: --spacing(3);
+  }
+
+  a {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-text);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
 }
 
-html {
-  font-family: var(--font-family);
-  font-size: var(--font-size-base);
-  color: var(--color-text);
-  background: var(--color-surface);
-  -webkit-text-size-adjust: 100%;
-}
+/* Shared building blocks of the screens; tap targets at least 44×44 px (UI-03) */
+@layer components {
+  .card {
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    padding: --spacing(4);
+  }
 
-body {
-  margin: 0;
-  min-height: 100dvh;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
-    env(safe-area-inset-left);
-}
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: --spacing(1);
+    margin-block: --spacing(4);
+  }
 
-.shell {
-  max-width: 40rem;
-  margin: 0 auto;
-  padding: var(--space-4) var(--space-3);
-}
+  .field label {
+    font-weight: 600;
+  }
 
-.shell__header {
-  border-bottom: 4px solid var(--color-accent);
-  padding-bottom: var(--space-2);
-  margin-bottom: var(--space-4);
-}
+  .field input {
+    min-height: var(--spacing-tap);
+    padding: --spacing(2) --spacing(3);
+    border: 1px solid var(--color-muted);
+    border-radius: var(--radius-card);
+    background: var(--color-surface);
+    font-size: 1rem;
+  }
 
-.shell__title {
-  margin: 0;
-  font-size: var(--font-size-title);
-}
+  .field input[aria-invalid='true'] {
+    border-color: var(--color-danger);
+  }
 
-.shell__subtitle {
-  margin: var(--space-1) 0 0;
-  color: var(--color-muted);
-}
+  .field__error {
+    margin: 0;
+    color: var(--color-danger);
+  }
 
-.status {
-  display: inline-block;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius);
-  background: var(--color-accent-surface);
-  border: 1px solid var(--color-line);
-}
+  fieldset {
+    margin-block: --spacing(4);
+  }
 
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation: none !important;
-    transition: none !important;
+  legend {
+    font-weight: 700;
+  }
+
+  .checkbox {
+    display: flex;
+    align-items: center;
+    gap: --spacing(3);
+    min-height: var(--spacing-tap);
+    margin-block: --spacing(4);
+  }
+
+  .checkbox input {
+    width: 1.5rem;
+    height: 1.5rem;
+    flex: none;
+    accent-color: var(--color-text);
+  }
+
+  .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--spacing-tap);
+    min-width: var(--spacing-tap);
+    padding: --spacing(2) --spacing(5);
+    border: 2px solid var(--color-accent);
+    border-radius: var(--radius-card);
+    background: var(--color-accent);
+    color: var(--color-text);
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .button--secondary {
+    border-color: var(--color-line);
+    background: var(--color-surface);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: --spacing(3);
+    margin-top: --spacing(4);
+  }
+
+  .alert {
+    padding: --spacing(3);
+    border: 1px solid var(--color-danger);
+    border-radius: var(--radius-card);
+    background: var(--color-danger-surface);
+  }
+
+  altcha-widget {
+    display: block;
+    margin-block: --spacing(4);
   }
 }

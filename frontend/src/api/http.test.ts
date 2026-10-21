@@ -62,6 +62,7 @@ describe('apiFetch', () => {
       traceId: 'trace-1',
       errors: [{ field: 'description', code: 'Size' }],
     })
+    expect((error as ApiProblem).properties).toMatchObject({ title: 'Bad Request' })
   })
 
   it('still fails cleanly when the error body is not JSON', async () => {

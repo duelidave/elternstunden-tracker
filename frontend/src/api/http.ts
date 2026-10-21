@@ -16,14 +16,17 @@ export class ApiProblem extends Error {
   readonly code: string
   readonly traceId: string | undefined
   readonly errors: readonly ValidationError[]
+  /** The whole problem body, including extension fields such as maskedEmail. */
+  readonly properties: Readonly<Record<string, unknown>>
 
-  constructor(status: number, problem: Partial<Problem> | undefined) {
+  constructor(status: number, problem: (Partial<Problem> & Record<string, unknown>) | undefined) {
     super(problem?.detail ?? `HTTP ${String(status)}`)
     this.name = 'ApiProblem'
     this.status = status
     this.code = problem?.code ?? 'UNKNOWN'
     this.traceId = problem?.traceId
     this.errors = problem?.errors ?? []
+    this.properties = problem ?? {}
   }
 }
 
@@ -59,7 +62,7 @@ export async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<
   const body = parseBody(response.status === 204 ? '' : await response.text())
 
   if (!response.ok) {
-    throw new ApiProblem(response.status, body as Partial<Problem> | undefined)
+    throw new ApiProblem(response.status, body as (Partial<Problem> & Record<string, unknown>) | undefined)
   }
   return body as T
 }
