@@ -54,6 +54,12 @@ Am besten mit Chrome oder Firefox: Beide akzeptieren das `Secure`-Session-Cookie
 - **Admin-Bereich:** Über die Dev-Leiste als Admin anmelden, dann "Zum Admin-Bereich". Die Übersicht zeigt
   "Uli Unzugeordnet" mit dem Vorschlag "Mila Muster" zum Zuordnen. Dort gibt es auch Kinder, Familien, Nutzer und
   Schuljahre, inklusive CSV-Import.
+- **Stunden eintragen:** Als Familie anmelden. Die Startseite zeigt den Fortschritt von "Familie Demo" (zwei bestätigte
+  Einträge, einer wartet). "Stunden eintragen" öffnet das Formular: Dauer-Chip, Text, "Eintragen". "Andere Dauer"
+  wechselt zu Uhrzeit und 15-Minuten-Schritten. Offene Einträge lassen sich ändern und löschen.
+- **Bestätigen:** Als Admin unter "Zu bestätigen" einzeln, alle einer Familie oder eine Auswahl bestätigen. Die Zahl
+  offener Einträge steht in der Navigation und auf der Übersicht. Im Familiendetail können Admins Einträge korrigieren
+  und für die Familie eintragen.
 
 ## Bauen und testen
 
