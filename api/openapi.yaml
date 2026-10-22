@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Elternstunden API
-  version: 0.5.0
+  version: 0.6.0
   description: |
     API-Vertrag der Elternstunden-Zeiterfassung und Quelle der Wahrheit für Backend und Frontend
     (Lastenheft D-25). Jede API-Änderung beginnt hier, danach wird auf beiden Seiten neu generiert.
@@ -27,6 +27,8 @@ tags:
     description: Admin-Startseite mit Widgets (FS-ADMOV 7.6).
   - name: overview
     description: Admin-Übersicht der Familien mit Stunden und Hinweisleiste (FS-ADMOV 7.6, D-11).
+  - name: reports
+    description: Abrechnung als PDF (FS-PDF 7.8, D-12).
   - name: school-years
     description: Schuljahre mit Stichtagen und Soll (5.5, FS-ADM 7.7).
   - name: families
@@ -865,6 +867,53 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/reports/billing:
+    get:
+      tags: [reports]
+      operationId: getBillingReport
+      summary: Abrechnung als PDF
+      description: >-
+        Gesamtübersicht aller soll-pflichtigen Familien (ALL) oder Einzelabrechnung einer Familie (FAMILY, familyId
+        Pflicht). Ohne schoolYearId das aktuelle Schuljahr, ohne kind die passende Art: FINAL, wenn das Schuljahr
+        beendet oder abgeschlossen ist, sonst INTERIM. FINAL in einem laufenden Schuljahr: 409
+        SCHOOL_YEAR_NOT_FINISHED. Ohne Geburtsdaten und E-Mail-Adressen, jede Erzeugung wird protokolliert.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/SchoolYearFilter'
+        - name: scope
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/ReportScope'
+        - name: familyId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: kind
+          in: query
+          schema:
+            $ref: '#/components/schemas/ReportKind'
+      responses:
+        '200':
+          description: Das PDF als Anhang (Dateiname im Header Content-Disposition).
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalError'
   /admin/school-years:
@@ -2184,6 +2233,14 @@ components:
         assignedAt:
           type: string
           format: date-time
+    ReportScope:
+      type: string
+      description: ALL = Gesamtübersicht, FAMILY = Einzelabrechnung einer Familie.
+      enum: [ALL, FAMILY]
+    ReportKind:
+      type: string
+      description: INTERIM = Zwischenstand, FINAL = Abschluss des Schuljahres.
+      enum: [INTERIM, FINAL]
     OverviewPage:
       type: object
       required: [schoolYear, requiredMinutes, familyCount, missingCount, content, page, size, totalElements,
