@@ -43,7 +43,7 @@ describe('PendingPage', () => {
     fill(texts.register.childLastName, 'Müller')
     fireEvent.click(screen.getByRole('button', { name: texts.pending.submit }))
 
-    expect(await screen.findByText(texts.home.family)).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: texts.home.greeting('Mia Muster') })).toBeInTheDocument()
     expect(calls).toContainEqual({
       method: 'PUT',
       url: '/api/v1/me/claim',

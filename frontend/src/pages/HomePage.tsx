@@ -1,22 +1,14 @@
 import { Link, Navigate, useNavigate } from 'react-router'
 import { errorText } from '../api/errors'
 import { useLogout } from '../api/generated/endpoints/auth/auth'
-import type { Me } from '../api/generated/model'
 import { useRefreshSession, useSession } from '../api/session'
 import { texts } from '../i18n/de'
+import { FamilyHome } from './FamilyHome'
 
-function welcomeText(me: Me): string {
-  switch (me.role) {
-    case 'MASTER_ADMIN':
-      return texts.home.master
-    case 'ADMIN':
-      return texts.home.admin
-    case 'FAMILY_MEMBER':
-      return texts.home.family
-  }
-}
-
-/** Start page after login. The family overview follows with M4; unassigned members wait on /pending (7.1.7). */
+/**
+ * Start page after login: the family overview for everyone assigned to a family (7.3), otherwise the way to the admin
+ * area. Unassigned family members wait on /pending (7.1.7).
+ */
 export function HomePage() {
   const session = useSession()
   const logout = useLogout()
@@ -40,6 +32,20 @@ export function HomePage() {
     return <Navigate to="/pending" replace />
   }
   const isAdmin = session.me.role !== 'FAMILY_MEMBER'
+  if (session.me.assignedToFamily) {
+    return (
+      <>
+        {isAdmin && (
+          <p className="mt-0">
+            <Link className="button button--secondary w-full" to="/admin">
+              {texts.home.toAdmin}
+            </Link>
+          </p>
+        )}
+        <FamilyHome me={session.me} />
+      </>
+    )
+  }
 
   const signOut = async () => {
     try {
@@ -54,14 +60,12 @@ export function HomePage() {
   return (
     <section className="card">
       <h2>{texts.home.greeting(session.me.displayName)}</h2>
-      <p>{welcomeText(session.me)}</p>
-      {isAdmin && (
-        <p>
-          <Link className="button w-full" to="/admin">
-            {texts.home.toAdmin}
-          </Link>
-        </p>
-      )}
+      <p>{session.me.role === 'MASTER_ADMIN' ? texts.home.master : texts.home.admin}</p>
+      <p>
+        <Link className="button w-full" to="/admin">
+          {texts.home.toAdmin}
+        </Link>
+      </p>
       <p>
         <Link className="button button--secondary w-full" to="/profile">
           {texts.home.toProfile}

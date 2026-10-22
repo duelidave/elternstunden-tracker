@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Link, Outlet, useMatch } from 'react-router'
 import { useSession } from './api/session'
 import { HortMark } from './components/Icons'
+import { OfflineBanner } from './components/OfflineBanner'
 import { texts } from './i18n/de'
 
 // FS-DEV (D-26): only in the Vite dev server. In the production build this is `false`, so the bundler drops the
@@ -14,6 +15,7 @@ export function Layout() {
   const signedIn = useSession().me !== undefined
   return (
     <div className="flex min-h-dvh flex-col">
+      <OfflineBanner />
       <header className={`mx-auto w-full ${width} px-4 pt-5`}>
         <div className="flex items-center gap-3">
           <HortMark />

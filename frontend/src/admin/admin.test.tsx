@@ -54,6 +54,7 @@ const unassignedUser: AdminUserDetail = {
   ],
 }
 const dashboard: AdminDashboard = {
+  openEntryCount: 3,
   unassignedUsers: [unassignedUser],
   recentAutoAssignments: [
     {
@@ -83,7 +84,7 @@ describe('admin area', () => {
 
     const router = renderRoute('/admin')
 
-    expect(await screen.findByText(texts.home.family)).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: texts.home.greeting('Mia Muster') })).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/')
   })
 

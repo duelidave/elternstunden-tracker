@@ -47,7 +47,7 @@ describe('OidcClaimPage', () => {
     fill(texts.register.childBirthDate, '04.05.2019')
     fireEvent.click(screen.getByRole('button', { name: texts.oidcClaim.submit }))
 
-    expect(await screen.findByText(texts.home.family)).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: texts.home.greeting('Mia Muster') })).toBeInTheDocument()
     expect(calls).toContainEqual({
       method: 'POST',
       url: '/api/v1/auth/oidc/complete',

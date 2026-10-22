@@ -5,7 +5,13 @@ import { texts } from '../i18n/de'
 import { familyMember, signedOut, stubApi } from '../test/api'
 import { renderRoute } from '../test/render'
 
-const admin: Me = { ...familyMember, displayName: 'Demo Admin', email: 'admin@dev.local', role: 'ADMIN' }
+const admin: Me = {
+  ...familyMember,
+  displayName: 'Demo Admin',
+  email: 'admin@dev.local',
+  role: 'ADMIN',
+  assignedToFamily: false,
+}
 
 describe('DevToolbar', () => {
   it('switches to a demo account and shows it', async () => {

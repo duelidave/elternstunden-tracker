@@ -1,17 +1,21 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useParams } from 'react-router'
 import type { z } from 'zod'
 import { errorText } from '../api/errors'
+import { useCreateEntryForFamily, useListEntries } from '../api/generated/endpoints/entries/entries'
 import { useGetFamily, useListFamilies, useUpdateFamily } from '../api/generated/endpoints/families/families'
 import type { FamilyDetail, FamilySummary } from '../api/generated/model'
 import { UpdateFamilyBody } from '../api/generated/zod/families/families.zod'
 import { type Column, DataTable } from '../components/DataTable'
+import { EntryForm, type EntryValues } from '../components/EntryForm'
 import { Pager } from '../components/Pager'
 import { SearchField } from '../components/SearchField'
 import { TextField } from '../components/TextField'
 import { texts } from '../i18n/de'
 import { formatDate } from '../time'
+import { AdminEntryItem } from './EntriesPage'
 import { useInvalidateAll } from './invalidate'
 import { useListParams } from './params'
 
@@ -84,7 +88,88 @@ export function FamilyPage() {
       </p>
     )
   }
-  return <Family family={family.data} />
+  return (
+    <>
+      <Family family={family.data} />
+      <FamilyEntries familyId={family.data.id} />
+    </>
+  )
+}
+
+/** Entries of one family for corrections, and entering hours for it (INV-02: admins may enter for every family). */
+function FamilyEntries({ familyId }: { familyId: string }) {
+  const entries = useListEntries({ familyId, size: 200 })
+  const create = useCreateEntryForFamily()
+  const invalidate = useInvalidateAll()
+  const [adding, setAdding] = useState(false)
+  const [message, setMessage] = useState<string | undefined>()
+
+  const add = async (values: EntryValues) => {
+    try {
+      await create.mutateAsync({ familyId, data: values })
+      setMessage(texts.admin.entries.added)
+      setAdding(false)
+    } catch {
+      // shown below
+    }
+    await invalidate()
+  }
+
+  // Newest first, like the family sees them
+  const list = [...(entries.data?.content ?? [])].sort((a, b) =>
+    a.workDate === b.workDate ? b.createdAt.localeCompare(a.createdAt) : b.workDate.localeCompare(a.workDate),
+  )
+  return (
+    <section className="card">
+      <div className="card__header">
+        <h2>{texts.admin.entries.familyEntries}</h2>
+        {!adding && (
+          <button
+            type="button"
+            className="button"
+            onClick={() => {
+              setAdding(true)
+            }}
+          >
+            {texts.admin.entries.add}
+          </button>
+        )}
+      </div>
+      <p aria-live="polite" className="m-0">
+        {message !== undefined && <span className="notice mt-3 block">{message}</span>}
+      </p>
+      {adding && (
+        <div className="panel mt-3">
+          {create.isError && (
+            <p className="alert" role="alert">
+              {errorText(create.error)}
+            </p>
+          )}
+          <EntryForm minDate="2000-01-01" submitLabel={texts.entry.submit} onSubmit={add} />
+          <button
+            type="button"
+            className="button button--secondary mt-3 w-full"
+            onClick={() => {
+              setAdding(false)
+            }}
+          >
+            {texts.admin.cancel}
+          </button>
+        </div>
+      )}
+      {entries.isError && (
+        <p className="alert" role="alert">
+          {errorText(entries.error)}
+        </p>
+      )}
+      {entries.data && list.length === 0 && <p className="text-muted">{texts.admin.entries.noEntries}</p>}
+      <ul className="stack mt-4">
+        {list.map((entry) => (
+          <AdminEntryItem key={entry.id} entry={entry} onMessage={setMessage} />
+        ))}
+      </ul>
+    </section>
+  )
 }
 
 type FamilyForm = z.input<typeof UpdateFamilyBody>

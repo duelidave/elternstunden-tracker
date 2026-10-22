@@ -7,7 +7,7 @@ import { texts } from '../i18n/de'
 import { formatDate, formatDateTime } from '../time'
 import { useInvalidateAll } from './invalidate'
 
-/** Admin start page (7.6): unassigned users with candidates, new automatic assignments. */
+/** Admin start page (7.6): entries to confirm, unassigned users with candidates, new automatic assignments. */
 export function DashboardPage() {
   const dashboard = useGetAdminDashboard()
   if (dashboard.isPending) {
@@ -20,9 +20,20 @@ export function DashboardPage() {
       </p>
     )
   }
-  const { unassignedUsers, recentAutoAssignments } = dashboard.data
+  const { openEntryCount, unassignedUsers, recentAutoAssignments } = dashboard.data
   return (
     <>
+      <section className="card">
+        <h2>
+          {texts.admin.entries.title} <span className="count">{openEntryCount}</span>
+        </h2>
+        <p>{openEntryCount === 0 ? texts.admin.entries.widgetEmpty : texts.admin.entries.widgetCount(openEntryCount)}</p>
+        {openEntryCount > 0 && (
+          <Link className="button" to="/admin/entries">
+            {texts.admin.entries.toList}
+          </Link>
+        )}
+      </section>
       <section className="card">
         <h2>
           {texts.admin.dashboard.unassignedTitle} <span className="count">{unassignedUsers.length}</span>

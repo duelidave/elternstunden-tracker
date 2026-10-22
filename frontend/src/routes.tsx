@@ -10,7 +10,18 @@ export const routes: RouteObject[] = [
   {
     element: <Layout />,
     children: [
-      { index: true, element: <HomePage /> },
+      {
+        element: <HomePage />,
+        children: [
+          { index: true },
+          { path: 'entries/new', lazy: async () => ({ Component: (await import('./pages/EntrySheet')).EntrySheet }) },
+          {
+            path: 'entries/:entryId',
+            lazy: async () => ({ Component: (await import('./pages/EntrySheet')).EntrySheet }),
+          },
+        ],
+      },
+      { path: 'family', lazy: async () => ({ Component: (await import('./pages/FamilyPage')).FamilyPage }) },
       { path: 'login', lazy: async () => ({ Component: (await import('./pages/LoginPage')).LoginPage }) },
       { path: 'login/link', lazy: async () => ({ Component: (await import('./pages/LinkPage')).LinkPage }) },
       {
@@ -30,6 +41,7 @@ export const routes: RouteObject[] = [
         lazy: async () => ({ Component: (await admin()).AdminLayout }),
         children: [
           { index: true, lazy: async () => ({ Component: (await admin()).DashboardPage }) },
+          { path: 'entries', lazy: async () => ({ Component: (await admin()).EntriesPage }) },
           { path: 'children', lazy: async () => ({ Component: (await admin()).ChildrenPage }) },
           { path: 'children/new', lazy: async () => ({ Component: (await admin()).ChildFormPage }) },
           { path: 'children/import', lazy: async () => ({ Component: (await admin()).ImportPage }) },

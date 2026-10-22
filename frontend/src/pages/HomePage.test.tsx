@@ -29,10 +29,9 @@ describe('HomePage', () => {
   })
 
   it.each([
-    [familyMember, texts.home.family],
-    [{ ...familyMember, role: 'ADMIN' }, texts.home.admin],
-    [{ ...familyMember, role: 'MASTER_ADMIN' }, texts.home.master],
-  ])('greets by role and assignment (%#)', async (me, text) => {
+    [{ ...familyMember, role: 'ADMIN', assignedToFamily: false }, texts.home.admin],
+    [{ ...familyMember, role: 'MASTER_ADMIN', assignedToFamily: false }, texts.home.master],
+  ])('greets admins without family (%#)', async (me, text) => {
     stubApi(({ url }) => (url === '/api/v1/me' ? { status: 200, body: me } : undefined))
 
     renderRoute('/')
@@ -45,7 +44,7 @@ describe('HomePage', () => {
     let signedIn = true
     const calls = stubApi(({ method, url }) => {
       if (url === '/api/v1/me') {
-        return signedIn ? { status: 200, body: familyMember } : signedOut
+        return signedIn ? { status: 200, body: { ...familyMember, role: 'ADMIN', assignedToFamily: false } } : signedOut
       }
       if (method === 'POST' && url === '/api/v1/auth/logout') {
         signedIn = false

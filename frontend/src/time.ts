@@ -59,3 +59,13 @@ export function toGermanDate(iso: string): string | undefined {
   const match = ISO_DATE.exec(iso)
   return match === null ? undefined : `${match[3] ?? ''}.${match[2] ?? ''}.${match[1] ?? ''}`
 }
+
+/** Minutes for display, never decimal hours (7.3 rule 4): 45 min, 1 h, 2 h 15 min. */
+export function formatDuration(minutes: number): string {
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  if (hours === 0) {
+    return `${String(rest)} min`
+  }
+  return rest === 0 ? `${String(hours)} h` : `${String(hours)} h ${String(rest)} min`
+}
