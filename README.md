@@ -45,6 +45,12 @@ Am besten mit Chrome oder Firefox: Beide akzeptieren das `Secure`-Session-Cookie
   Authenticator-App mit dem Secret `MASTER_ADMIN_TOTP_SECRET` aus `.env`, oder `oathtool --totp -b <secret>`.
 - **Automatische Zuordnung:** Registriere dich mit dem Kind "Anna Müller", geboren am 03.05.2017. Nach dem Klick auf den
   Link (im selben Browser) bist du der "Familie Müller" zugeordnet. Mit einem Tippfehler landest du auf dem Wartescreen.
+- **Mit Google anmelden:** Lokal steht ein OIDC-Mock (http://localhost:8090) für Google. Auf seiner Anmeldeseite
+  gibst du als „user/subject" einfach eine Adresse ein, etwa `anna@gmail.com`. Neue Adressen landen auf „Noch ein
+  Schritt", bekannte melden sich direkt an. Nur `@gmail.com`-Adressen werden mit einem bestehenden Konto verknüpft
+  (7.1.5); andere verknüpfst du im Profil.
+- **Zweiter Faktor für Admins:** Im Profil „Einrichten", QR-Code mit einer Authenticator-App scannen. Danach fragt die
+  Anmeldung per E-Mail-Link oder Google nach dem Code. Die Dev-Leiste überspringt ihn (D-26).
 - **Admin-Bereich:** Über die Dev-Leiste als Admin anmelden, dann "Zum Admin-Bereich". Die Übersicht zeigt
   "Uli Unzugeordnet" mit dem Vorschlag "Mila Muster" zum Zuordnen. Dort gibt es auch Kinder, Familien, Nutzer und
   Schuljahre, inklusive CSV-Import.
