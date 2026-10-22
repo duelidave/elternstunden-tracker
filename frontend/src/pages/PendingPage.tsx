@@ -36,7 +36,6 @@ function Pending({ claim, correctionsLeft }: { claim: ChildClaim | undefined; co
   const [saved, setSaved] = useState(false)
   const update = useUpdateMyClaim()
   const refreshSession = useRefreshSession()
-  const canEdit = claim === undefined || correctionsLeft > 0
   const form = useForm<ClaimForm>({
     resolver: zodResolver(schema),
     defaultValues: claim ?? { firstName: '', lastName: '', birthDate: '' },
@@ -53,57 +52,70 @@ function Pending({ claim, correctionsLeft }: { claim: ChildClaim | undefined; co
     }
   })
 
+  const claimForm = (
+    <form onSubmit={(event) => void submit(event)} noValidate>
+      <TextField
+        label={texts.register.childFirstName}
+        autoComplete="off"
+        error={errors.firstName ? texts.fields.required : undefined}
+        {...form.register('firstName')}
+      />
+      <TextField
+        label={texts.register.childLastName}
+        autoComplete="off"
+        error={errors.lastName ? texts.fields.required : undefined}
+        {...form.register('lastName')}
+      />
+      <TextField
+        label={texts.register.childBirthDate}
+        type="date"
+        max={todayInBerlin()}
+        error={errors.birthDate ? texts.fields.birthDate : undefined}
+        {...form.register('birthDate')}
+      />
+      {update.isError && (
+        <p className="alert" role="alert">
+          {errorText(update.error)}
+        </p>
+      )}
+      <button type="submit" className="button w-full" disabled={update.isPending}>
+        {texts.pending.submit}
+      </button>
+    </form>
+  )
+
+  // Without child data there is nothing to wait for yet: only the form (13.1, 7.1.7)
+  if (claim === undefined) {
+    return (
+      <section className="card">
+        <h2>{texts.pending.enterTitle}</h2>
+        <p>{texts.pending.enterIntro}</p>
+        {claimForm}
+      </section>
+    )
+  }
+
   return (
     <section className="card">
       <h2>{texts.pending.title}</h2>
       <p>{texts.pending.intro}</p>
-      {claim !== undefined && (
-        <div className="panel">
-          <h3>{texts.pending.yourData}</h3>
-          <p className="m-0">
-            {texts.pending.child(`${claim.firstName} ${claim.lastName}`, formatDate(claim.birthDate))}
-          </p>
-        </div>
-      )}
+      <div className="panel">
+        <h3>{texts.pending.yourData}</h3>
+        <p className="m-0">
+          {texts.pending.child(`${claim.firstName} ${claim.lastName}`, formatDate(claim.birthDate))}
+        </p>
+      </div>
       {saved && (
         <p className="notice" role="status">
           {texts.pending.saved}
         </p>
       )}
-      {canEdit ? (
-        <form onSubmit={(event) => void submit(event)} noValidate>
-          <h3>{claim === undefined ? texts.pending.enterTitle : texts.pending.correctTitle}</h3>
-          <p className="text-muted">
-            {claim === undefined ? texts.pending.enterIntro : texts.pending.correctionsLeft(correctionsLeft)}
-          </p>
-          <TextField
-            label={texts.register.childFirstName}
-            autoComplete="off"
-            error={errors.firstName ? texts.fields.required : undefined}
-            {...form.register('firstName')}
-          />
-          <TextField
-            label={texts.register.childLastName}
-            autoComplete="off"
-            error={errors.lastName ? texts.fields.required : undefined}
-            {...form.register('lastName')}
-          />
-          <TextField
-            label={texts.register.childBirthDate}
-            type="date"
-            max={todayInBerlin()}
-            error={errors.birthDate ? texts.fields.birthDate : undefined}
-            {...form.register('birthDate')}
-          />
-          {update.isError && (
-            <p className="alert" role="alert">
-              {errorText(update.error)}
-            </p>
-          )}
-          <button type="submit" className="button w-full" disabled={update.isPending}>
-            {texts.pending.submit}
-          </button>
-        </form>
+      {correctionsLeft > 0 ? (
+        <>
+          <h3>{texts.pending.correctTitle}</h3>
+          <p className="text-muted">{texts.pending.correctionsLeft(correctionsLeft)}</p>
+          {claimForm}
+        </>
       ) : (
         <p>{texts.pending.noCorrections}</p>
       )}

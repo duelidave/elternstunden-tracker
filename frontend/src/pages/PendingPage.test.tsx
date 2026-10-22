@@ -60,6 +60,9 @@ describe('PendingPage', () => {
     renderRoute('/pending')
 
     expect(await screen.findByRole('heading', { name: texts.pending.enterTitle })).toBeInTheDocument()
+    expect(screen.getByText(texts.pending.enterIntro)).toBeInTheDocument()
+    expect(screen.queryByText(texts.pending.title)).not.toBeInTheDocument()
+    expect(screen.queryByText(texts.pending.intro)).not.toBeInTheDocument()
     expect(screen.queryByText(texts.pending.yourData)).not.toBeInTheDocument()
   })
 

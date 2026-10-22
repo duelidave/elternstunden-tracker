@@ -24,7 +24,7 @@ describe('HomePage', () => {
 
     const router = renderRoute('/')
 
-    expect(await screen.findByRole('heading', { name: texts.pending.title })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: texts.pending.enterTitle })).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/pending')
   })
 
