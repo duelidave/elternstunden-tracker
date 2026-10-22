@@ -37,6 +37,18 @@ describe('apiFetch', () => {
     expect(sentHeaders(fetchMock).has('X-XSRF-TOKEN')).toBe(false)
   })
 
+  it('sends a text/csv body as plain text, not JSON-encoded', async () => {
+    const fetchMock = stubFetch(new Response('{}', { status: 200 }))
+
+    await apiFetch('/api/v1/admin/children/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/csv' },
+      body: JSON.stringify('first_name;last_name\nAnna;Müller\n'),
+    })
+
+    expect((fetchMock.mock.calls[0]?.[1] as RequestInit).body).toBe('first_name;last_name\nAnna;Müller\n')
+  })
+
   it('turns problem responses into an ApiProblem', async () => {
     stubFetch(
       new Response(

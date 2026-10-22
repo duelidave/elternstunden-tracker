@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Link, Outlet } from 'react-router'
+import { Link, Outlet, useMatch } from 'react-router'
 import { LogoMark } from './components/Icons'
 import { texts } from './i18n/de'
 
@@ -8,8 +8,10 @@ import { texts } from './i18n/de'
 const DevToolbar = import.meta.env.DEV ? lazy(() => import('./dev/DevToolbar')) : undefined
 
 export function Layout() {
+  // Admin lists need room for tables (UI-03); everything else stays a narrow single column
+  const wide = useMatch('/admin/*') !== null
   return (
-    <div className="mx-auto flex min-h-dvh max-w-xl flex-col">
+    <div className={`mx-auto flex min-h-dvh flex-col ${wide ? 'max-w-5xl' : 'max-w-xl'}`}>
       <header className="mx-4 flex items-center gap-3 pt-5 pb-1">
         <LogoMark />
         <div className="min-w-0">

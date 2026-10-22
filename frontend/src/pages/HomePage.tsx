@@ -1,4 +1,4 @@
-import { Navigate, useNavigate } from 'react-router'
+import { Link, Navigate, useNavigate } from 'react-router'
 import { errorText } from '../api/errors'
 import { useLogout } from '../api/generated/endpoints/auth/auth'
 import type { Me } from '../api/generated/model'
@@ -12,11 +12,11 @@ function welcomeText(me: Me): string {
     case 'ADMIN':
       return texts.home.admin
     case 'FAMILY_MEMBER':
-      return me.assignedToFamily ? texts.home.family : texts.home.pending
+      return texts.home.family
   }
 }
 
-/** Start page after login. The real screens per role follow from M2 on (family overview, admin area). */
+/** Start page after login. The family overview follows with M4; unassigned members wait on /pending (7.1.7). */
 export function HomePage() {
   const session = useSession()
   const logout = useLogout()
@@ -36,6 +36,10 @@ export function HomePage() {
   if (session.me === undefined) {
     return <Navigate to="/login" replace />
   }
+  if (session.me.role === 'FAMILY_MEMBER' && !session.me.assignedToFamily) {
+    return <Navigate to="/pending" replace />
+  }
+  const isAdmin = session.me.role !== 'FAMILY_MEMBER'
 
   const signOut = async () => {
     try {
@@ -51,6 +55,13 @@ export function HomePage() {
     <section className="card">
       <h2>{texts.home.greeting(session.me.displayName)}</h2>
       <p>{welcomeText(session.me)}</p>
+      {isAdmin && (
+        <p>
+          <Link className="button w-full" to="/admin">
+            {texts.home.toAdmin}
+          </Link>
+        </p>
+      )}
       <button
         type="button"
         className="button button--secondary"

@@ -33,7 +33,7 @@ export function stubApi(handle: (call: ApiCall) => Reply | undefined): ApiCall[]
     const call = {
       method: init.method ?? 'GET',
       url,
-      body: typeof init.body === 'string' ? (JSON.parse(init.body) as unknown) : undefined,
+      body: typeof init.body === 'string' ? parse(init.body) : undefined,
     }
     calls.push(call)
     const reply = handle(call) ?? problem(404, 'NOT_FOUND')
@@ -46,4 +46,13 @@ export function stubApi(handle: (call: ApiCall) => Reply | undefined): ApiCall[]
   })
   vi.stubGlobal('fetch', fetchMock)
   return calls
+}
+
+/** JSON bodies are compared as objects, other text (e.g. CSV) as it is. */
+function parse(body: string): unknown {
+  try {
+    return JSON.parse(body) as unknown
+  } catch {
+    return body
+  }
 }

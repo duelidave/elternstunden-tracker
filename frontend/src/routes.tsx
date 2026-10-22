@@ -3,7 +3,9 @@ import { Layout } from './Layout'
 import { HomePage } from './pages/HomePage'
 import { LegalPage } from './pages/LegalPage'
 
-// Screens of 13.1 that exist so far. The login screens (captcha, forms) load on demand (13.2, NFR-02).
+const admin = () => import('./admin')
+
+// Screens of 13.1 that exist so far. Login screens and the admin area load on demand (13.2, NFR-02).
 export const routes: RouteObject[] = [
   {
     element: <Layout />,
@@ -16,6 +18,23 @@ export const routes: RouteObject[] = [
         lazy: async () => ({ Component: (await import('./pages/MasterLoginPage')).MasterLoginPage }),
       },
       { path: 'register', lazy: async () => ({ Component: (await import('./pages/RegisterPage')).RegisterPage }) },
+      { path: 'pending', lazy: async () => ({ Component: (await import('./pages/PendingPage')).PendingPage }) },
+      {
+        path: 'admin',
+        lazy: async () => ({ Component: (await admin()).AdminLayout }),
+        children: [
+          { index: true, lazy: async () => ({ Component: (await admin()).DashboardPage }) },
+          { path: 'children', lazy: async () => ({ Component: (await admin()).ChildrenPage }) },
+          { path: 'children/new', lazy: async () => ({ Component: (await admin()).ChildFormPage }) },
+          { path: 'children/import', lazy: async () => ({ Component: (await admin()).ImportPage }) },
+          { path: 'children/:childId', lazy: async () => ({ Component: (await admin()).ChildFormPage }) },
+          { path: 'families', lazy: async () => ({ Component: (await admin()).FamiliesPage }) },
+          { path: 'families/:familyId', lazy: async () => ({ Component: (await admin()).FamilyPage }) },
+          { path: 'users', lazy: async () => ({ Component: (await admin()).UsersPage }) },
+          { path: 'users/:userId', lazy: async () => ({ Component: (await admin()).UserPage }) },
+          { path: 'school-years', lazy: async () => ({ Component: (await admin()).SchoolYearsPage }) },
+        ],
+      },
       { path: 'legal/privacy', element: <LegalPage kind="privacy" /> },
       { path: 'legal/imprint', element: <LegalPage kind="imprint" /> },
       { path: '*', element: <Navigate to="/" replace /> },

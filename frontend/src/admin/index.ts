@@ -1,0 +1,9 @@
+// The admin area is one lazily loaded chunk (13.2: admin area separate)
+export { AdminLayout } from './AdminLayout'
+export { ChildFormPage } from './ChildFormPage'
+export { ChildrenPage } from './ChildrenPage'
+export { DashboardPage } from './DashboardPage'
+export { FamiliesPage, FamilyPage } from './FamiliesPage'
+export { ImportPage } from './ImportPage'
+export { SchoolYearsPage } from './SchoolYearsPage'
+export { UserPage, UsersPage } from './UsersPage'

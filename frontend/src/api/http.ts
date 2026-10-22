@@ -58,11 +58,17 @@ export async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<
     }
   }
 
-  const response = await fetch(url, { ...init, method, headers, credentials: 'same-origin' })
-  const body = parseBody(response.status === 204 ? '' : await response.text())
+  // orval JSON-encodes every request body; a text body such as the CSV import is sent as the plain text
+  const body =
+    headers.get('Content-Type') === 'text/csv' && typeof init.body === 'string'
+      ? (JSON.parse(init.body) as string)
+      : init.body
+
+  const response = await fetch(url, { ...init, method, headers, body, credentials: 'same-origin' })
+  const result = parseBody(response.status === 204 ? '' : await response.text())
 
   if (!response.ok) {
-    throw new ApiProblem(response.status, body as (Partial<Problem> & Record<string, unknown>) | undefined)
+    throw new ApiProblem(response.status, result as (Partial<Problem> & Record<string, unknown>) | undefined)
   }
-  return body as T
+  return result as T
 }

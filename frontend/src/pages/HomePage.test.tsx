@@ -17,9 +17,19 @@ describe('HomePage', () => {
     expect(router.state.location.pathname).toBe('/login')
   })
 
+  it('sends family members without family to the waiting screen', async () => {
+    stubApi(({ url }) =>
+      url === '/api/v1/me' ? { status: 200, body: { ...familyMember, assignedToFamily: false } } : undefined,
+    )
+
+    const router = renderRoute('/')
+
+    expect(await screen.findByRole('heading', { name: texts.pending.title })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/pending')
+  })
+
   it.each([
     [familyMember, texts.home.family],
-    [{ ...familyMember, assignedToFamily: false }, texts.home.pending],
     [{ ...familyMember, role: 'ADMIN' }, texts.home.admin],
     [{ ...familyMember, role: 'MASTER_ADMIN' }, texts.home.master],
   ])('greets by role and assignment (%#)', async (me, text) => {
