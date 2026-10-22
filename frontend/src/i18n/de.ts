@@ -434,6 +434,7 @@ export const texts = {
     TOTP_ALREADY_ENABLED: 'Der zweite Faktor ist schon eingerichtet.',
     FORBIDDEN: 'Dafür hast du keine Berechtigung.',
     FAMILY_ASSIGNMENT_PENDING: 'Du bist noch keiner Familie zugeordnet.',
+    FAMILY_FULL: 'Die Familie hat schon zwei Nutzer. Entferne zuerst einen davon.',
     NO_CURRENT_SCHOOL_YEAR: 'Es gibt noch kein Schuljahr.',
     DATE_IN_FUTURE: 'Das Datum darf nicht in der Zukunft liegen.',
     NO_SCHOOL_YEAR: 'Zu diesem Datum gibt es kein Schuljahr.',

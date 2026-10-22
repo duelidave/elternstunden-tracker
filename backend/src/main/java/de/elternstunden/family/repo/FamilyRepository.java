@@ -137,6 +137,22 @@ public class FamilyRepository {
         return counts;
     }
 
+    /** Serializes assignments to one family until the transaction ends (INV-13). */
+    public void lock(UUID id) {
+        jdbc.sql("SELECT id FROM family WHERE id = :id FOR UPDATE")
+                .param("id", id)
+                .query(UUID.class)
+                .optional();
+    }
+
+    /** All assigned accounts, whatever their role and status (D-28). */
+    public int memberCount(UUID familyId) {
+        return jdbc.sql("SELECT count(*) FROM app_user WHERE family_id = :familyId")
+                .param("familyId", familyId)
+                .query(Integer.class)
+                .single();
+    }
+
     /** Partner hint (7.3 rule 6): exactly one active member. */
     public int activeMemberCount(UUID familyId) {
         return jdbc.sql("SELECT count(*) FROM app_user WHERE family_id = :familyId AND status = 'ACTIVE'")

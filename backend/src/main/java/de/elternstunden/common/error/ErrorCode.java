@@ -39,6 +39,7 @@ public enum ErrorCode {
     TOTP_SETUP_MISSING(HttpStatus.CONFLICT, "No TOTP setup to confirm."),
     TOTP_ALREADY_ENABLED(HttpStatus.CONFLICT, "TOTP is already enabled."),
     FAMILY_ASSIGNMENT_PENDING(HttpStatus.FORBIDDEN, "The account is not assigned to a family yet."),
+    FAMILY_FULL(HttpStatus.CONFLICT, "The family has the maximum number of users."),
     NO_CURRENT_SCHOOL_YEAR(HttpStatus.NOT_FOUND, "There is no school year yet."),
     DATE_IN_FUTURE(HttpStatus.BAD_REQUEST, "The date must not be in the future."),
     NO_SCHOOL_YEAR(HttpStatus.BAD_REQUEST, "The date is in no school year."),

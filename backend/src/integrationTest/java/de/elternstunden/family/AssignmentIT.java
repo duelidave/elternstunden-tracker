@@ -113,6 +113,74 @@ class AssignmentIT extends IntegrationTest {
         assertThat(mails.sentTo(second)).noneMatch(mail -> mail.subject().startsWith("Neues Mitglied"));
     }
 
+    /** AC-REG-17: a family has at most two users (D-28); a third match stays unassigned for the admins. */
+    @Test
+    void aFullFamilyTakesNoThirdUser() {
+        UUID family = insertFamilyWithChild("Tilda", "Voll", "2016-06-16");
+        String first = uniqueEmail();
+        String second = uniqueEmail();
+        registeredMember(first, "Tilda", "Voll", "2016-06-16");
+        registeredMember(second, "Tilda", "Voll", "2016-06-16");
+        mails.clear();
+
+        String third = uniqueEmail();
+        ApiClient member = registeredMember(third, "Tilda", "Voll", "2016-06-16");
+
+        assertThat(familyOf(third)).isNull();
+        assertThat(member.get("/api/v1/me").json().get("assignedToFamily").asBoolean())
+                .isFalse();
+        assertThat(mails.sentTo(first)).noneMatch(mail -> mail.subject().startsWith("Neues Mitglied"));
+        assertThat(jdbc.queryForObject(
+                        "SELECT details ->> 'reason' FROM audit_log WHERE action = 'AUTO_ASSIGNMENT_SKIPPED'"
+                                + " AND entity_id = ?",
+                        String.class,
+                        userId(third).toString()))
+                .isEqualTo("FAMILY_FULL");
+
+        ApiClient admin = signedInAs("ADMIN");
+        ApiClient.Response full =
+                admin.put("/api/v1/admin/users/" + userId(third) + "/family", Map.of("familyId", family));
+        assertThat(full.status()).isEqualTo(409);
+        assertThat(full.json().get("code").asString()).isEqualTo("FAMILY_FULL");
+
+        assertThat(admin.delete("/api/v1/admin/users/" + userId(second) + "/family")
+                        .status())
+                .isEqualTo(204);
+        assertThat(admin.put("/api/v1/admin/users/" + userId(third) + "/family", Map.of("familyId", family))
+                        .status())
+                .isEqualTo(200);
+        assertThat(familyOf(third)).isEqualTo(family);
+    }
+
+    /** AC-REG-17: parallel assignments cannot pass the limit (INV-13). */
+    @Test
+    void parallelAssignmentsKeepTheLimit() throws Exception {
+        UUID family = insertFamilyWithChild("Paul", "Parallel", "2016-07-17");
+        registeredMember(uniqueEmail(), "Paul", "Parallel", "2016-07-17");
+        UUID one = insertUser(uniqueEmail(), "FAMILY_MEMBER", "ACTIVE");
+        UUID two = insertUser(uniqueEmail(), "FAMILY_MEMBER", "ACTIVE");
+        ApiClient firstAdmin = signedInAs("ADMIN");
+        ApiClient secondAdmin = signedInAs("ADMIN");
+
+        List<Callable<Integer>> tasks = List.of(
+                () -> firstAdmin
+                        .put("/api/v1/admin/users/" + one + "/family", Map.of("familyId", family))
+                        .status(),
+                () -> secondAdmin
+                        .put("/api/v1/admin/users/" + two + "/family", Map.of("familyId", family))
+                        .status());
+        List<Integer> statuses = new ArrayList<>();
+        try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
+            for (Future<Integer> status : pool.invokeAll(tasks)) {
+                statuses.add(status.get());
+            }
+        }
+
+        assertThat(statuses).containsExactlyInAnyOrder(200, 409);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM app_user WHERE family_id = ?", Integer.class, family))
+                .isEqualTo(2);
+    }
+
     /** AC-REG-04: a typo leaves the user unassigned; the admin sees a candidate and assigns. */
     @Test
     void aTypoIsCorrectedByAnAdmin() {

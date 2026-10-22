@@ -3,6 +3,8 @@ package de.elternstunden.family.service;
 import de.elternstunden.audit.AuditLog;
 import de.elternstunden.auth.domain.UserStatus;
 import de.elternstunden.auth.repo.AppUserRepository;
+import de.elternstunden.common.error.ApiException;
+import de.elternstunden.common.error.ErrorCode;
 import de.elternstunden.common.mail.AsyncMailer;
 import de.elternstunden.family.domain.Child;
 import de.elternstunden.family.domain.Claim;
@@ -19,11 +21,14 @@ import org.springframework.stereotype.Service;
 
 /**
  * Assigning accounts to families, automatically after a match (7.1.4 step 7) or by an admin (F5, 7.1.7). Every
- * assignment resolves the open claim and is audited; an automatic one notifies the existing members (7.1.6).
- * Callers provide the transaction.
+ * assignment resolves the open claim and is audited; an automatic one notifies the existing members (7.1.6). A family
+ * has at most two users (D-28, INV-13). Callers provide the transaction and lock the account first.
  */
 @Service
 public class AssignmentService {
+
+    /** D-28: e.g. both parents. */
+    static final int MAX_USERS = 2;
 
     private final AppUserRepository users;
     private final ChildRepository children;
@@ -50,13 +55,30 @@ public class AssignmentService {
         this.mailer = mailer;
     }
 
-    /** Applies a MATCHED claim; empty if the matched child no longer exists. */
+    /**
+     * Applies a MATCHED claim; empty if the matched child no longer exists or the family is full. A full family leaves
+     * the user unassigned with the open claim, so an admin sorts it out (7.1.6).
+     */
     public Optional<UUID> applyMatch(UUID userId, String displayName, Claim claim, Instant now) {
         Optional<Child> child = Optional.ofNullable(claim.matchedChildId()).flatMap(children::findById);
         if (child.isEmpty()) {
             return Optional.empty();
         }
         UUID familyId = child.get().familyId();
+        if (full(familyId)) {
+            audit.system(
+                    "AUTO_ASSIGNMENT_SKIPPED",
+                    "app_user",
+                    userId,
+                    Map.of(
+                            "reason",
+                            "FAMILY_FULL",
+                            "familyId",
+                            familyId.toString(),
+                            "claimId",
+                            claim.id().toString()));
+            return Optional.empty();
+        }
         List<Member> existing = activeMembers(familyId, userId);
         users.setFamily(userId, familyId, now);
         claims.resolveOpen(userId, now);
@@ -76,7 +98,11 @@ public class AssignmentService {
         return Optional.of(familyId);
     }
 
+    /** The account must not be in this family yet. */
     public void assignByAdmin(UUID actor, UUID userId, UUID familyId, Instant now) {
+        if (full(familyId)) {
+            throw new ApiException(ErrorCode.FAMILY_FULL);
+        }
         users.setFamily(userId, familyId, now);
         claims.resolveOpen(userId, now);
         audit.write(
@@ -97,6 +123,12 @@ public class AssignmentService {
                 "app_user",
                 userId,
                 Map.of("familyId", previousFamilyId.toString()));
+    }
+
+    /** Locks the family, so parallel assignments cannot pass the limit together (INV-13). */
+    private boolean full(UUID familyId) {
+        families.lock(familyId);
+        return families.memberCount(familyId) >= MAX_USERS;
     }
 
     private List<Member> activeMembers(UUID familyId, UUID exceptUserId) {

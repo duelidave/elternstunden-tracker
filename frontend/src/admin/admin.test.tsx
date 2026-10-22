@@ -2,7 +2,7 @@ import { fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AdminChild, AdminDashboard, AdminUserDetail, SchoolYear } from '../api/generated/model'
 import { texts } from '../i18n/de'
-import { familyMember, stubApi } from '../test/api'
+import { familyMember, problem, stubApi } from '../test/api'
 import { renderRoute } from '../test/render'
 
 const admin = { ...familyMember, role: 'ADMIN' as const, assignedToFamily: false }
@@ -118,6 +118,24 @@ describe('admin area', () => {
         body: { familyId: 'family-1' },
       })
     })
+  })
+
+  it('explains a full family (D-28)', async () => {
+    stubApi(({ method, url }) => {
+      if (url === '/api/v1/me') {
+        return { status: 200, body: admin }
+      }
+      if (url === '/api/v1/admin/dashboard') {
+        return { status: 200, body: dashboard }
+      }
+      return method === 'PUT' ? problem(409, 'FAMILY_FULL') : undefined
+    })
+
+    renderRoute('/admin')
+    const view = await main()
+    fireEvent.click(await view.findByRole('button', { name: texts.admin.dashboard.assignTo('Müller') }))
+
+    expect(await view.findByRole('alert')).toHaveTextContent(texts.errors.FAMILY_FULL)
   })
 
   it('lists children and enrolls them in the current school year', async () => {
