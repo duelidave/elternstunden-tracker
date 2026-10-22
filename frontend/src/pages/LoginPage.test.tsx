@@ -1,7 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { texts } from '../i18n/de'
-import { todayInBerlin } from '../time'
+import { todayInBerlin, toGermanDate } from '../time'
 import { CAPTCHA_PAYLOAD, FakeCaptcha } from '../test/captcha'
 import { problem, signedOut, stubApi } from '../test/api'
 import { renderRoute } from '../test/render'
@@ -77,7 +77,7 @@ describe('RegisterPage', () => {
     })
 
     renderRoute('/register')
-    await fillForm('2019-05-04')
+    await fillForm('04.05.2019')
     fireEvent.click(screen.getByRole('checkbox'))
     fireEvent.click(screen.getByRole('button', { name: texts.register.submit }))
 
@@ -100,7 +100,7 @@ describe('RegisterPage', () => {
     const tomorrow = new Date(Date.now() + 36 * 60 * 60 * 1000)
 
     renderRoute('/register')
-    await fillForm(todayInBerlin(tomorrow))
+    await fillForm(toGermanDate(todayInBerlin(tomorrow)) ?? '')
     fireEvent.click(screen.getByRole('button', { name: texts.register.submit }))
 
     expect(await screen.findByText(texts.fields.privacy)).toBeInTheDocument()

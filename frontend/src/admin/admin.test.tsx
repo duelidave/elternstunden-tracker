@@ -201,8 +201,8 @@ describe('admin area', () => {
     const view = await main()
     const form = within((await view.findByRole('heading', { name: texts.admin.schoolYears.create })).closest('section') as HTMLElement)
     fireEvent.change(form.getByLabelText(texts.admin.schoolYears.label), { target: { value: '2027/28' } })
-    fireEvent.change(form.getByLabelText(texts.admin.schoolYears.startsOn), { target: { value: '2027-09-01' } })
-    fireEvent.change(form.getByLabelText(texts.admin.schoolYears.endsOn), { target: { value: '2028-08-31' } })
+    fireEvent.change(form.getByLabelText(texts.admin.schoolYears.startsOn), { target: { value: '01.09.2027' } })
+    fireEvent.change(form.getByLabelText(texts.admin.schoolYears.endsOn), { target: { value: '31.08.2028' } })
     fireEvent.change(form.getByLabelText(texts.admin.schoolYears.required), { target: { value: '7.5' } })
     fireEvent.click(form.getByRole('button', { name: texts.admin.save }))
 

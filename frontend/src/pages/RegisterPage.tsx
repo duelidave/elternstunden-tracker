@@ -1,12 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useCallback, useRef, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { Link } from 'react-router'
 import { z } from 'zod'
 import { errorText } from '../api/errors'
 import { useRegisterAccount } from '../api/generated/endpoints/auth/auth'
 import { RegisterAccountBody } from '../api/generated/zod/auth/auth.zod'
 import { Captcha, type CaptchaHandle } from '../components/Captcha'
+import { DateField } from '../components/DateField'
 import { MailIcon } from '../components/Icons'
 import { TextField } from '../components/TextField'
 import { texts } from '../i18n/de'
@@ -90,12 +91,18 @@ export function RegisterPage() {
             error={errors.child?.lastName ? texts.fields.required : undefined}
             {...form.register('child.lastName')}
           />
-          <TextField
-            label={texts.register.childBirthDate}
-            type="date"
-            max={todayInBerlin()}
-            error={errors.child?.birthDate ? texts.fields.birthDate : undefined}
-            {...form.register('child.birthDate')}
+          <Controller
+            control={form.control}
+            name="child.birthDate"
+            defaultValue=""
+            render={({ field }) => (
+              <DateField
+                label={texts.register.childBirthDate}
+                max={todayInBerlin()}
+                error={errors.child?.birthDate ? texts.fields.birthDate : undefined}
+                {...field}
+              />
+            )}
           />
         </fieldset>
         <div className="checkbox">

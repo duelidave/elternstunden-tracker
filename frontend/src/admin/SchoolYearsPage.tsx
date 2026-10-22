@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { errorText } from '../api/errors'
 import {
@@ -13,9 +13,10 @@ import {
 } from '../api/generated/endpoints/school-years/school-years'
 import type { SchoolYear } from '../api/generated/model'
 import { CreateSchoolYearBody } from '../api/generated/zod/school-years/school-years.zod'
+import { DateField } from '../components/DateField'
 import { TextField } from '../components/TextField'
 import { texts } from '../i18n/de'
-import { formatDate, minutesToHours } from '../time'
+import { formatDate, fromGermanDate, minutesToHours } from '../time'
 import { useInvalidateAll } from './invalidate'
 
 // The required time is entered in hours (15-minute grid) and sent as minutes (8.1)
@@ -198,17 +199,27 @@ function YearForm({ year, onDone }: { year?: SchoolYear; onDone?: () => void }) 
         error={errors.label ? texts.fields.required : undefined}
         {...form.register('label')}
       />
-      <TextField
-        label={texts.admin.schoolYears.startsOn}
-        type="date"
-        error={errors.startsOn ? texts.fields.required : undefined}
-        {...form.register('startsOn')}
+      <Controller
+        control={form.control}
+        name="startsOn"
+        render={({ field }) => (
+          <DateField
+            label={texts.admin.schoolYears.startsOn}
+            error={errors.startsOn ? texts.fields.date : undefined}
+            {...field}
+          />
+        )}
       />
-      <TextField
-        label={texts.admin.schoolYears.endsOn}
-        type="date"
-        error={errors.endsOn ? texts.fields.dateRange : undefined}
-        {...form.register('endsOn')}
+      <Controller
+        control={form.control}
+        name="endsOn"
+        render={({ field }) => (
+          <DateField
+            label={texts.admin.schoolYears.endsOn}
+            error={errors.endsOn ? endsOnError(field.value) : undefined}
+            {...field}
+          />
+        )}
       />
       <TextField
         label={texts.admin.schoolYears.required}
@@ -236,4 +247,11 @@ function YearForm({ year, onDone }: { year?: SchoolYear; onDone?: () => void }) 
       </div>
     </form>
   )
+}
+
+/** An end date that is a real date can only be wrong because it is not after the start. */
+function endsOnError(value: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) || fromGermanDate(value) !== undefined
+    ? texts.fields.dateRange
+    : texts.fields.date
 }

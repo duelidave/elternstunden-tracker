@@ -25,6 +25,7 @@ describe('PendingPage', () => {
     expect(await screen.findByText(texts.pending.child('Anna Mueler', '03.05.2017'))).toBeInTheDocument()
     expect(screen.getByText(texts.pending.correctionsLeft(2))).toBeInTheDocument()
     expect(screen.getByLabelText(texts.register.childLastName)).toHaveValue('Mueler')
+    expect(screen.getByLabelText(texts.register.childBirthDate)).toHaveValue('03.05.2017')
   })
 
   it('sends a correction and goes to the start page once assigned', async () => {

@@ -21,6 +21,7 @@
     "@tanstack/react-query": "5.104.5",
     "altcha": "3.3.0",
     "react": "19.3.1",
+    "react-day-picker": "10.0.2",
     "react-dom": "19.3.1",
     "react-hook-form": "7.89.0",
     "react-router": "8.4.0",

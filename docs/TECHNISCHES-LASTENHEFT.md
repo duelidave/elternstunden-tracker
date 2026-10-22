@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 0.4.2 (Entwurf) |
+| Version | 0.4.3 (Entwurf) |
 | Stand | 2026-10-22 |
 | Einrichtung | Hort an der Montessorischule (Elterninitiative, Verein) |
 | Zielgruppe | Entwickler:innen und KI-Coding-Agents |
@@ -19,6 +19,7 @@
 | 0.4 | 2026-10-21 | API-first (D-25): gemeinsamer OpenAPI-Vertrag `api/openapi.yaml` als Quelle der Wahrheit, Backend-Interfaces und DTOs per openapi-generator, Frontend-Client und Zod-Schemas per orval, springdoc entfällt. Vertrag in OpenAPI 3.0.3 (ersetzt die 3.1-Vorgabe aus 0.3). Betroffen: 0.4, 2, 4.2 bis 4.4, 8.1, SEC-01, 12.5, 13.2. |
 | 0.4.1 | 2026-10-21 | Rollenwechsel für manuelle Tests in der lokalen Entwicklung (D-26, FS-DEV 7.12, AC-DEV), Umsetzung in M1. |
 | 0.4.2 | 2026-10-22 | Endpunktübersicht (8.2) um die Endpunkte für schon spezifizierte Funktionen ergänzt: Nutzer anonymisieren (DP-05) und Einschreibung aus Vorjahr übernehmen (7.7). |
+| 0.4.3 | 2026-10-22 | Datumseingabe immer im deutschen Format mit deutschem Kalender statt nativer Datumsfelder (D-27, UI-12). |
 
 ---
 
@@ -120,6 +121,7 @@ Laut Website des Horts: 65 Vollzeitplätze, etwa 70 Kinder in drei Gruppen. Erwa
 | D-24 | **Nutzer haben kein Passwort.** Registrierung und Anmeldung laufen ausschließlich per E-Mail-Link (Magic Link) oder OIDC (D-08). Einzige Ausnahme ist der Master-Admin: Er meldet sich lokal mit Passwort plus TOTP aus der Server-Konfiguration an (Notzugang, unabhängig von Mail und Identitätsanbieter, D-22). **Begründung:** Eltern melden sich selten an und vergessen Passwörter. Ohne Passwörter entfallen Passwort-Reset, Konto-Sperre nach Fehlversuchen, Passwort-Policy und das Risiko wiederverwendeter oder geleakter Passwörter. Der Zugang zum Postfach war über den Passwort-Reset ohnehin schon der Wiederherstellungsweg. **Folgen:** Das Mailkonto ist der Kontozugang (OPEN-09). Die Mailzustellung wird betriebskritisch (OPS-13). | `[DECIDED]` | Auftraggeber, 2026-10-20 |
 | D-25 | **API-first.** Ein gemeinsamer OpenAPI-Vertrag `api/openapi.yaml` ist die Quelle der Wahrheit für die API. Backend und Frontend erzeugen ihren Code daraus: Spring die API-Interfaces und DTOs (die Controller sind handgeschrieben und implementieren die Interfaces), das Frontend den typisierten Client (TanStack-Query-Hooks) und Zod-Schemas. Jede API-Änderung beginnt im Vertrag. Werkzeuge: openapi-generator (Generator `spring`, `interfaceOnly`), orval (`react-query`, `zod`), Redocly CLI zum Linten. | Ansatz `[DECIDED]`, Werkzeuge `[PROPOSED]` | Auftraggeber, 2026-10-21 |
 | D-26 | **Rollenwechsel für manuelle Tests (nur lokal).** In der lokalen Entwicklung kann man ohne Mail und ohne TOTP schnell zwischen Demo-Konten der Rollen Familienmitglied, unzugeordnet, Admin und Master wechseln (FS-DEV 7.12). In Produktion existiert die Funktion nicht. | Wunsch `[DECIDED]`, Ausgestaltung `[PROPOSED]` | Auftraggeber, 2026-10-21 |
+| D-27 | **Datumseingabe immer im deutschen Format.** Datumsfelder zeigen und erwarten `TT.MM.JJJJ` und haben einen deutschen Kalender, unabhängig von der Sprache des Browsers oder Geräts (UI-12). Die API bleibt bei ISO-Daten (8.1). | `[DECIDED]` | Auftraggeber, 2026-10-22 |
 
 ---
 
@@ -1722,7 +1724,7 @@ Wichtig: **Docker umgeht `ufw`** für veröffentlichte Ports. Deshalb veröffent
 | UI-09 | **Barrierefreiheit WCAG 2.2 AA.** Semantisches HTML, beschriftete Felder, sichtbarer Fokus, `aria-live` für Rückmeldungen, `aria-sort` in Tabellenköpfen, Bedienung per Tastatur, Skalierung bis 200 %, `prefers-reduced-motion` beachten. |
 | UI-10 | **PWA.** Manifest (Name, Icons, Theme-Farbe), installierbar. Service Worker cacht nur die App-Hülle, **nie** API-Antworten. Update-Hinweis bei neuer Version. Kein Push. |
 | UI-11 | **Admin-Listen.** Suchfeld oben (Debounce 250 ms, mindestens 2 Zeichen), sortierbare Spaltenköpfe, Filter und Suche in der URL (teilbar, Zurück-Button funktioniert), Sammelaktionen mit Mehrfachauswahl. Hinweisleiste (FS-ADMOV) auf allen Admin-Seiten. |
-| UI-12 | **Datum und Uhrzeit.** Native Eingabefelder (`type="date"`, `type="time"`) für zuverlässige mobile Picker. Anzeige de-DE. Datumsgrenzen (`min`, `max`) aus dem Schuljahr und "nicht in der Zukunft". |
+| UI-12 | **Datum und Uhrzeit.** Datumsfelder als eigenes Eingabefeld im Format `TT.MM.JJJJ` (Punkte werden beim Tippen ergänzt) mit deutschem Kalender zum Aufklappen, unabhängig von der Browsersprache (D-27). Uhrzeiten im 24-Stunden-Format `HH:MM` `[PROPOSED]`. Anzeige de-DE. Datumsgrenzen (`min`, `max`) aus dem Schuljahr und "nicht in der Zukunft". |
 | UI-13 | **Datenschutz und Impressum** aus jedem Screen erreichbar (Fußzeile), auch ohne Login. |
 
 ### 13.1 Screens (UI-05)

@@ -237,6 +237,10 @@ export const texts = {
     totp: 'Bitte gib den 6-stelligen Code ein.',
     captcha: 'Bitte warte, bis die Sicherheitsprüfung fertig ist.',
     dateRange: 'Das Ende muss nach dem Beginn liegen.',
+    datePlaceholder: 'TT.MM.JJJJ',
+    date: 'Bitte gib ein gültiges Datum ein, z. B. 17.03.2025.',
+    openCalendar: (label: string) => `Kalender öffnen: ${label}`,
+    calendar: (label: string) => `Kalender: ${label}`,
     hours: 'Bitte gib Stunden im Viertelstunden-Raster ein, z. B. 10 oder 7,5.',
   },
   errors: {

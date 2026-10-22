@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { Navigate } from 'react-router'
 import { z } from 'zod'
 import { errorText } from '../api/errors'
@@ -8,6 +8,7 @@ import { useUpdateMyClaim } from '../api/generated/endpoints/me/me'
 import type { ChildClaim } from '../api/generated/model'
 import { UpdateMyClaimBody } from '../api/generated/zod/me/me.zod'
 import { useRefreshSession, useSession } from '../api/session'
+import { DateField } from '../components/DateField'
 import { TextField } from '../components/TextField'
 import { texts } from '../i18n/de'
 import { formatDate, todayInBerlin } from '../time'
@@ -66,12 +67,17 @@ function Pending({ claim, correctionsLeft }: { claim: ChildClaim | undefined; co
         error={errors.lastName ? texts.fields.required : undefined}
         {...form.register('lastName')}
       />
-      <TextField
-        label={texts.register.childBirthDate}
-        type="date"
-        max={todayInBerlin()}
-        error={errors.birthDate ? texts.fields.birthDate : undefined}
-        {...form.register('birthDate')}
+      <Controller
+        control={form.control}
+        name="birthDate"
+        render={({ field }) => (
+          <DateField
+            label={texts.register.childBirthDate}
+            max={todayInBerlin()}
+            error={errors.birthDate ? texts.fields.birthDate : undefined}
+            {...field}
+          />
+        )}
       />
       {update.isError && (
         <p className="alert" role="alert">

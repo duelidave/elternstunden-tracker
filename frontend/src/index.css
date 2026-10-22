@@ -500,3 +500,71 @@
     }
   }
 }
+
+/* German date field with calendar (UI-12, D-27) */
+@layer components {
+  .date-field {
+    display: flex;
+    gap: --spacing(2);
+  }
+
+  .date-field input {
+    flex: 1;
+  }
+
+  .date-field__toggle {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: var(--spacing-tap);
+    min-height: var(--spacing-tap);
+    border: 1px solid var(--color-muted);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+    cursor: pointer;
+  }
+
+  .date-dialog {
+    margin: auto;
+    max-width: calc(100vw - 0.5rem);
+    padding: --spacing(3);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-card);
+    color: var(--color-text);
+  }
+
+  .date-dialog::backdrop {
+    background: color-mix(in srgb, var(--color-text) 40%, transparent);
+  }
+
+  /* 7 × 44 px still fits next to a small padding on 320 px screens */
+  @media (max-width: 359px) {
+    .date-dialog {
+      padding: --spacing(1);
+    }
+  }
+
+  .date-dialog .rdp-root {
+    --rdp-accent-color: var(--color-accent-strong);
+    --rdp-accent-background-color: var(--color-accent-surface);
+    --rdp-today-color: var(--color-text);
+    --rdp-selected-border: 2px solid var(--color-accent-strong);
+    --rdp-day-height: var(--spacing-tap);
+    --rdp-day-width: var(--spacing-tap);
+    --rdp-day_button-height: calc(var(--spacing-tap) - 2px);
+    --rdp-day_button-width: calc(var(--spacing-tap) - 2px);
+    font-family: var(--font-sans);
+  }
+
+  .date-dialog .rdp-selected .rdp-day_button {
+    background: var(--color-accent);
+    color: var(--color-text);
+  }
+
+  .date-dialog .rdp-today:not(.rdp-outside) {
+    font-weight: 800;
+  }
+}

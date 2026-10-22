@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm, useWatch } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { Link, useNavigate, useParams } from 'react-router'
 import { z } from 'zod'
 import { errorText } from '../api/errors'
@@ -7,6 +7,7 @@ import { useCreateChild, useGetChild, useUpdateChild } from '../api/generated/en
 import { useListSchoolYears } from '../api/generated/endpoints/school-years/school-years'
 import type { AdminChild } from '../api/generated/model'
 import { CreateChildBody } from '../api/generated/zod/children/children.zod'
+import { DateField } from '../components/DateField'
 import { TextField } from '../components/TextField'
 import { texts } from '../i18n/de'
 import { todayInBerlin } from '../time'
@@ -111,12 +112,17 @@ function ChildForm({ child }: { child?: AdminChild }) {
           error={errors.lastName ? texts.fields.required : undefined}
           {...form.register('lastName')}
         />
-        <TextField
-          label={texts.admin.children.birthDate}
-          type="date"
-          max={todayInBerlin()}
-          error={errors.birthDate ? texts.fields.birthDate : undefined}
-          {...form.register('birthDate')}
+        <Controller
+          control={form.control}
+          name="birthDate"
+          render={({ field }) => (
+            <DateField
+              label={texts.admin.children.birthDate}
+              max={todayInBerlin()}
+              error={errors.birthDate ? texts.fields.birthDate : undefined}
+              {...field}
+            />
+          )}
         />
         <TextField label={texts.admin.children.externalRef} autoComplete="off" {...form.register('externalRef')} />
         <FamilySelect label={texts.admin.children.family} allowNew={child === undefined} {...form.register('familyId')} />
