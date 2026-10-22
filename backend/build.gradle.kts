@@ -103,6 +103,9 @@ dependencies {
     runtimeOnly(libs.org.json)
     // Argon2id for the master password (D-21)
     implementation(libs.bouncycastle)
+    // Billing PDF (FS-PDF): HTML template with auto-escaping, rendered without any external resource
+    implementation("org.thymeleaf:thymeleaf")
+    implementation(libs.openhtmltopdf)
     runtimeOnly("org.postgresql:postgresql")
 
     errorprone(libs.errorprone.core)
