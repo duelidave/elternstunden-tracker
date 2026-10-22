@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 0.4.4 (Entwurf) |
+| Version | 0.4.5 (Entwurf) |
 | Stand | 2026-10-22 |
 | Einrichtung | Hort an der Montessorischule (Elterninitiative, Verein) |
 | Zielgruppe | Entwickler:innen und KI-Coding-Agents |
@@ -21,6 +21,7 @@
 | 0.4.2 | 2026-10-22 | Endpunktübersicht (8.2) um die Endpunkte für schon spezifizierte Funktionen ergänzt: Nutzer anonymisieren (DP-05) und Einschreibung aus Vorjahr übernehmen (7.7). |
 | 0.4.3 | 2026-10-22 | Datumseingabe immer im deutschen Format mit deutschem Kalender statt nativer Datumsfelder (D-27, UI-12). |
 | 0.4.4 | 2026-10-22 | Design an Logo und Website des Horts angelehnt: Palette, Überschriften-Schrift, Logo-Zeichen (UI-01, OPEN-19). |
+| 0.4.5 | 2026-10-22 | Höchstens zwei Nutzer pro Familie (D-28, INV-13, 7.1.6, AC-REG-17). |
 
 ---
 
@@ -123,6 +124,7 @@ Laut Website des Horts: 65 Vollzeitplätze, etwa 70 Kinder in drei Gruppen. Erwa
 | D-25 | **API-first.** Ein gemeinsamer OpenAPI-Vertrag `api/openapi.yaml` ist die Quelle der Wahrheit für die API. Backend und Frontend erzeugen ihren Code daraus: Spring die API-Interfaces und DTOs (die Controller sind handgeschrieben und implementieren die Interfaces), das Frontend den typisierten Client (TanStack-Query-Hooks) und Zod-Schemas. Jede API-Änderung beginnt im Vertrag. Werkzeuge: openapi-generator (Generator `spring`, `interfaceOnly`), orval (`react-query`, `zod`), Redocly CLI zum Linten. | Ansatz `[DECIDED]`, Werkzeuge `[PROPOSED]` | Auftraggeber, 2026-10-21 |
 | D-26 | **Rollenwechsel für manuelle Tests (nur lokal).** In der lokalen Entwicklung kann man ohne Mail und ohne TOTP schnell zwischen Demo-Konten der Rollen Familienmitglied, unzugeordnet, Admin und Master wechseln (FS-DEV 7.12). In Produktion existiert die Funktion nicht. | Wunsch `[DECIDED]`, Ausgestaltung `[PROPOSED]` | Auftraggeber, 2026-10-21 |
 | D-27 | **Datumseingabe immer im deutschen Format.** Datumsfelder zeigen und erwarten `TT.MM.JJJJ` und haben einen deutschen Kalender, unabhängig von der Sprache des Browsers oder Geräts (UI-12). Die API bleibt bei ISO-Daten (8.1). | `[DECIDED]` | Auftraggeber, 2026-10-22 |
+| D-28 | Einer Familie sind **höchstens zwei Nutzer** zugeordnet (z. B. beide Elternteile). Es zählen alle zugeordneten Konten, unabhängig von Rolle und Status. Anonymisierte Konten gehören keiner Familie mehr an (DP-05). | `[DECIDED]` | Auftraggeber, 2026-10-22 |
 
 ---
 
@@ -482,6 +484,7 @@ Rechte: Eine eigene Migration vergibt die Rechte an die App-Rolle (OPS-14): DML 
 | INV-10 | Nutzer ohne Familie (`family_id IS NULL`, Rolle `FAMILY_MEMBER`) sehen und erfassen **keine** Familiendaten. | Service, Test |
 | INV-11 | Jedes Konto (außer `MASTER_ADMIN`) hat **immer** seine E-Mail-Adresse als Anmeldeweg (E-Mail-Link, D-24). OIDC-Identitäten kommen hinzu und dürfen jederzeit entfernt werden. | Service, Test |
 | INV-12 | Ein `MASTER_ADMIN` hat **keine** `user_identity` (kein OIDC-Login) und erhält **keine** E-Mail-Links (kein `user_token`). Er meldet sich nur per Passwort plus TOTP an (D-22). | Service, Test |
+| INV-13 | Einer Familie sind höchstens zwei Nutzer zugeordnet (`app_user.family_id`, D-28). Jede Zuordnung sperrt dafür die Familie (`SELECT … FROM family … FOR UPDATE`), damit parallele Zuordnungen die Grenze nicht überschreiten. | Service, Test |
 
 ### 5.5 Schuljahr-Logik
 
@@ -673,6 +676,8 @@ Der Abgleich ist **exakte Gleichheit** auf `(first_name_norm, last_name_norm, bi
 #### 7.1.6 Benachrichtigung bei Zuordnung
 
 Wird ein Nutzer automatisch einer Familie zugeordnet, die schon aktive Mitglieder hat, erhalten diese eine E-Mail: "{displayName} wurde deiner Familie zugeordnet. Falls das nicht stimmt, wende dich bitte an das Hort-Team." Zusätzlich zeigt die Admin-Übersicht (FS-ADMOV) ein Widget "Neue automatische Zuordnungen" (letzte 14 Tage). Eine Selbstkorrektur durch Familienmitglieder gibt es zunächst nicht (OPEN-12).
+
+**Volle Familie (D-28, INV-13):** Hat die Familie schon zwei Nutzer, ordnet ein Treffer **nicht** zu. Der Nutzer bleibt unzugeordnet, sieht den Wartescreen (7.1.7) und erscheint im Admin-Widget "Unzugeordnete Nutzer". Audit `AUTO_ASSIGNMENT_SKIPPED` (`reason=FAMILY_FULL`), die Bestandsmitglieder erhalten keine Mail. Eine Zuordnung durch Admins in eine volle Familie liefert `409 FAMILY_FULL`; der Admin entfernt vorher ein Mitglied.
 
 #### 7.1.7 Unzugeordnete Nutzer
 
@@ -1149,7 +1154,7 @@ Rollen: **A** = anonym, **U** = angemeldet (jede Rolle), **F** = `FAMILY_MEMBER`
 | `PUT /admin/children/{id}/enrollments/{schoolYearId}`, `DELETE …` | AD | FS-ADM |
 | `POST /admin/children/import` (`?dryRun=true`) | AD | CSV-Import |
 | `GET /admin/users`, `GET /admin/users/{id}` | AD | FS-ADM |
-| `PUT /admin/users/{id}/family`, `DELETE /admin/users/{id}/family` | AD | Zuordnung (F5) |
+| `PUT /admin/users/{id}/family`, `DELETE /admin/users/{id}/family` | AD | Zuordnung (F5), volle Familie: `409 FAMILY_FULL` (D-28) |
 | `PUT /admin/users/{id}/role` | AD | Rolle (`FAMILY_MEMBER` oder `ADMIN`) |
 | `POST /admin/users/{id}/disable`, `…/enable`, `…/terminate-sessions` | AD | FS-ADM, Deaktivieren beendet alle Sessions (7.2) |
 | `POST /admin/users/{id}/anonymize` | AD | DP-05 (a), nicht umkehrbar, beendet alle Sessions |
@@ -1807,6 +1812,7 @@ Notation: Gegeben / Wenn / Dann. Jedes Kriterium MUSS als automatisierter Test e
 | AC-REG-14 | **Parallele E-Mail.** Zwei gleichzeitige Registrierungen derselben E-Mail ergeben zweimal `202`, genau ein Konto und keinen `5xx`. |
 | AC-REG-15 | **Claim nur im selben Browser.** Konto `PENDING_VERIFICATION` mit Claim aus Browser X: Einlösen des Links in Browser Y (nach Rückfrage) oder Aktivierung per OIDC führt zu **keiner** automatischen Zuordnung. Der Claim ist verworfen, der Nutzer landet auf `/pending` und gibt die Kinderdaten neu ein. Eine erneute Registrierung derselben Adresse ersetzt den offenen Claim. |
 | AC-REG-16 | **Benachrichtigung.** Bei automatischer Zuordnung erhalten alle aktiven Bestandsmitglieder die Mail "Neue Zuordnung". Das Admin-Widget zeigt die Zuordnung 14 Tage lang. |
+| AC-REG-17 | **Volle Familie (D-28).** Familie F hat zwei Nutzer. Ein dritter Nutzer mit Treffer bleibt nach dem Einlösen des Links unzugeordnet (Wartescreen, Admin-Widget), die Mitglieder erhalten keine Mail. Die Zuordnung durch einen Admin liefert `409 FAMILY_FULL`, nach dem Entfernen eines Mitglieds gelingt sie. Zwei gleichzeitige Zuordnungen in eine Familie mit einem Mitglied ergeben genau zwei Mitglieder. |
 
 ### 15.2 OIDC (FS-AUTH)
 
