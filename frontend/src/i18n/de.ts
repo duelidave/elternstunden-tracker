@@ -206,6 +206,7 @@ export const texts = {
       families: 'Familien',
       users: 'Nutzer',
       schoolYears: 'Schuljahre',
+      reports: 'Abrechnung',
     },
     search: 'Suchen',
     searchHint: 'Ab 2 Zeichen',
@@ -322,6 +323,19 @@ export const texts = {
         EXTERNAL_REF_CONFLICT: 'Die externe Kennung passt nicht zum vorhandenen Kind.',
         FAMILY_KEY_CONFLICT: 'Die Familie passt nicht zu den vorhandenen Kindern.',
       },
+    },
+    reports: {
+      title: 'Abrechnung',
+      intro: 'Die Abrechnung entsteht als PDF, wenn du sie herunterlädst. Es zählen nur bestätigte Stunden.',
+      scope: 'Umfang',
+      all: 'Alle Familien (Gesamtübersicht)',
+      family: 'Eine Familie (mit allen Einträgen)',
+      chooseFamily: 'Familie',
+      chooseFamilyFirst: 'Wähle zuerst eine Familie.',
+      interim: 'Das Schuljahr läuft noch. Das PDF ist ein Zwischenstand.',
+      final: 'Das Schuljahr ist beendet. Das PDF ist die Abschlussabrechnung.',
+      download: 'PDF herunterladen',
+      familyPdf: 'Abrechnung als PDF',
     },
     overview: {
       hint: (missing: number, total: number, year: string, required: string) =>

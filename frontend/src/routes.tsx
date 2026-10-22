@@ -51,6 +51,7 @@ export const routes: RouteObject[] = [
           { path: 'users', lazy: async () => ({ Component: (await admin()).UsersPage }) },
           { path: 'users/:userId', lazy: async () => ({ Component: (await admin()).UserPage }) },
           { path: 'school-years', lazy: async () => ({ Component: (await admin()).SchoolYearsPage }) },
+          { path: 'reports', lazy: async () => ({ Component: (await admin()).ReportsPage }) },
         ],
       },
       { path: 'legal/privacy', element: <LegalPage kind="privacy" /> },

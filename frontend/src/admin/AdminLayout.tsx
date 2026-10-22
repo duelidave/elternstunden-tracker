@@ -11,6 +11,7 @@ const links = [
   { to: '/admin/families', label: texts.admin.nav.families, end: false },
   { to: '/admin/users', label: texts.admin.nav.users, end: false },
   { to: '/admin/school-years', label: texts.admin.nav.schoolYears, end: false },
+  { to: '/admin/reports', label: texts.admin.nav.reports, end: false },
 ] as const
 
 /** Admin area (13.1): only for ADMIN and MASTER_ADMIN; the server checks every call anyway (SEC-01). */

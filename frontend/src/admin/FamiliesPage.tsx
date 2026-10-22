@@ -8,6 +8,7 @@ import { errorText, hasCode } from '../api/errors'
 import { useCreateEntryForFamily, useListEntries } from '../api/generated/endpoints/entries/entries'
 import { useGetFamily, useUpdateFamily } from '../api/generated/endpoints/families/families'
 import { useGetAdminOverview } from '../api/generated/endpoints/overview/overview'
+import { getGetBillingReportUrl } from '../api/generated/endpoints/reports/reports'
 import { useListSchoolYears } from '../api/generated/endpoints/school-years/school-years'
 import type { FamilyDetail, OverviewRow } from '../api/generated/model'
 import { UpdateFamilyBody } from '../api/generated/zod/families/families.zod'
@@ -374,6 +375,11 @@ function Family({ family }: { family: FamilyDetail }) {
           ))}
         </ul>
       )}
+      <p className="mt-6">
+        <a className="button button--secondary" href={getGetBillingReportUrl({ scope: 'FAMILY', familyId: family.id })} download>
+          {texts.admin.reports.familyPdf}
+        </a>
+      </p>
       <p className="card__footer">
         <Link to="/admin/families">{texts.admin.back}</Link>
       </p>

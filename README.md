@@ -59,6 +59,8 @@ Am besten mit Chrome oder Firefox: Beide akzeptieren das `Secure`-Session-Cookie
   wechselt zu Uhrzeit und 15-Minuten-Schritten. Offene Einträge lassen sich ändern und löschen.
 - **Übersicht:** Auf jeder Admin-Seite steht oben, wie viele Familien im Schuljahr noch Stunden offen haben. Ein Klick
   zeigt die Liste unter "Familien": Suche, Schuljahr, "Nur Familien mit fehlenden Stunden", sortierbare Spalten.
+- **Abrechnung:** Als Admin unter "Abrechnung" das PDF für alle Familien oder eine Familie herunterladen. Im laufenden
+  Schuljahr ist es ein Zwischenstand, danach die Abschlussabrechnung. Im Familiendetail gibt es den PDF-Link direkt.
 - **Bestätigen:** Als Admin unter "Zu bestätigen" einzeln, alle einer Familie oder eine Auswahl bestätigen. Die Zahl
   offener Einträge steht in der Navigation und auf der Übersicht. Im Familiendetail können Admins Einträge korrigieren
   und für die Familie eintragen.
