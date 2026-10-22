@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 0.4.5 (Entwurf) |
+| Version | 0.4.6 (Entwurf) |
 | Stand | 2026-10-22 |
 | Einrichtung | Hort an der Montessorischule (Elterninitiative, Verein) |
 | Zielgruppe | Entwickler:innen und KI-Coding-Agents |
@@ -22,6 +22,7 @@
 | 0.4.3 | 2026-10-22 | Datumseingabe immer im deutschen Format mit deutschem Kalender statt nativer Datumsfelder (D-27, UI-12). |
 | 0.4.4 | 2026-10-22 | Design an Logo und Website des Horts angelehnt: Palette, Überschriften-Schrift, Logo-Zeichen (UI-01, OPEN-19). |
 | 0.4.5 | 2026-10-22 | Höchstens zwei Nutzer pro Familie (D-28, INV-13, 7.1.6, AC-REG-17). |
+| 0.4.6 | 2026-10-22 | OPEN-02 entschieden: Abrechnung je Familie **und** als Gesamtliste (D-12). Endpunkt mit optionalem Parameter `kind` (FS-PDF). |
 
 ---
 
@@ -108,7 +109,7 @@ Laut Website des Horts: 65 Vollzeitplätze, etwa 70 Kinder in drei Gruppen. Erwa
 | D-09 | Stundenerfassung: Einheit 15 Minuten. Schnellauswahl (0,5 h, 1 h, 2 h, 3 h) **oder** exakt per Datums- und Uhrzeit-Picker. Kurzer Freitext zur Tätigkeit ist **Pflicht**. | `[DECIDED]` | Auftraggeber |
 | D-10 | Ein Admin **bestätigt** erfasste Stunden. Nur bestätigte Stunden zählen für das Soll. Die Familie sieht bestätigte und offene Stunden **getrennt**. | `[DECIDED]` | Auftraggeber |
 | D-11 | Admin-Übersicht: dauerhaft sichtbarer Hinweis, welche Familien im Schuljahr noch keine 10 h erreicht haben. Liste sortier- und durchsuchbar. | `[DECIDED]` | Auftraggeber |
-| D-12 | Abrechnung als **PDF**: Zwischenstand des laufenden Schuljahres und abgeschlossene Schuljahre. Umfang (je Familie, Gesamtliste) siehe OPEN-02. | Format `[DECIDED]`, Umfang `[OPEN]` | Auftraggeber |
+| D-12 | Abrechnung als **PDF**: Zwischenstand des laufenden Schuljahres und abgeschlossene Schuljahre, **je Familie und als Gesamtliste** (OPEN-02). | `[DECIDED]` | Auftraggeber, Umfang 2026-10-22 |
 | D-13 | Rollen: Familienmitglied, **Admin** (an bestimmte Nutzer vergeben), **Master-Admin** (Notzugang auch ohne Admins; allein zuständig für Backup und Restore). | `[DECIDED]` | Auftraggeber |
 | D-14 | **Mobile first**, schlichte moderne UI, optisch an die Hort-Website angelehnt. | `[DECIDED]` | Auftraggeber |
 | D-15 | Backend: **Spring Boot** (Java oder Kotlin). Sprache siehe OPEN-08. | Framework `[DECIDED]`, Sprache `[OPEN]` | Auftraggeber |
@@ -989,7 +990,7 @@ Alle Funktionen nur für `ADMIN` und `MASTER_ADMIN`, jede Änderung mit Audit-Ei
 | `INTERIM` (Zwischenstand) | Schuljahr läuft noch | "Zwischenstand, Stand {Datum Uhrzeit}" |
 | `FINAL` (Abschluss) | Schuljahr beendet (`ends_on < heute`) oder `closed_at` gesetzt | "Abschluss Schuljahr {Label}" |
 
-#### Umfang (OPEN-02, bis zur Klärung **beides** anbieten)
+#### Umfang (D-12: beides)
 
 | Scope | Inhalt |
 |---|---|
@@ -998,7 +999,7 @@ Alle Funktionen nur für `ADMIN` und `MASTER_ADMIN`, jede Änderung mit Audit-Ei
 
 #### Endpunkt
 
-`GET /api/v1/admin/reports/billing?schoolYearId=…&scope=ALL|FAMILY&familyId=…` liefert `application/pdf` (Attachment). Dateiname: `elternstunden_{label}_{scope}_{yyyy-MM-dd}.pdf` (Label mit `/` zu `-`).
+`GET /api/v1/admin/reports/billing?schoolYearId=…&scope=ALL|FAMILY&familyId=…&kind=INTERIM|FINAL` liefert `application/pdf` (Attachment). Ohne `schoolYearId` das aktuelle Schuljahr, ohne `kind` die zum Schuljahr passende Art (oben). `familyId` ist bei `FAMILY` Pflicht. Dateiname: `elternstunden_{label}_{scope}_{yyyy-MM-dd}.pdf` (Label mit `/` zu `-`).
 
 #### Regeln
 
@@ -2014,7 +2015,7 @@ Regel für KI-Agents: Bei jedem Punkt gilt der **Interim-Default**, bis der Auft
 | ID | Frage | Interim-Default | Betrifft |
 |---|---|---|---|
 | OPEN-01 | Welche Folgen hat es bei weniger als 10 h (Ausgleich, Frist)? Wird Überschuss ins nächste Jahr übertragen? | Keine automatischen Folgen. Admins sehen den Hinweis (D-11). Überschuss verfällt am Jahresende. | FS-ADMOV, FS-PDF |
-| OPEN-02 | Abrechnungs-PDF: je Familie, als Gesamtliste oder beides? | Beide Varianten (`ALL`, `FAMILY`) implementieren. | FS-PDF |
+| OPEN-02 | ~~Abrechnungs-PDF: je Familie, als Gesamtliste oder beides?~~ Entschieden 2026-10-22: beides (D-12). | – | FS-PDF |
 | OPEN-03 | Woher stammt die Kinderliste und wie wird sie initial befüllt? | Manuelles Anlegen plus CSV-Import (7.7). | FS-ADM |
 | OPEN-04 | Welche Familien sind in einem Schuljahr soll-pflichtig? Wie ist es bei Einstieg im laufenden Jahr (anteilig?) oder bei Befreiung? | Einschreibung pro Kind und Schuljahr (`child_enrollment`), volles Soll von 10 h, keine Befreiungen, kein Anteilig. | 5.3, FS-ADM, 5.6 |
 | OPEN-05 | Restore per Server-Skript (Phase 1) oder zusätzlich per Knopf in der Master-UI? | Nur Skript. UI zeigt Status und löst Backups aus. | Abschnitt 11 |
