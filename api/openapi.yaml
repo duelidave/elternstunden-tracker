@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Elternstunden API
-  version: 0.3.0
+  version: 0.4.0
   description: |
     API-Vertrag der Elternstunden-Zeiterfassung und Quelle der Wahrheit für Backend und Frontend
     (Lastenheft D-25). Jede API-Änderung beginnt hier, danach wird auf beiden Seiten neu generiert.
@@ -19,6 +19,10 @@ tags:
     description: Registrierung, E-Mail-Link, Master-Login und Abmelden (FS-REG 7.1.4, FS-AUTH 7.2).
   - name: me
     description: Das eigene Konto.
+  - name: my-family
+    description: Familienübersicht und Einträge der eigenen Familie (FS-FAM 7.3, FS-ENTRY 7.4).
+  - name: entries
+    description: Bestätigen und Korrigieren von Einträgen durch Admins (FS-CONF 7.5, INV-07).
   - name: dashboard
     description: Admin-Startseite mit Widgets (FS-ADMOV 7.6).
   - name: school-years
@@ -482,6 +486,327 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /me/family/overview:
+    get:
+      tags: [my-family]
+      operationId: getFamilyOverview
+      summary: Familienübersicht
+      description: >-
+        Startseite der Familie (FS-FAM 7.3): Fortschritt im Schuljahr, Kinder (nur Vornamen), Mitglieder (nur Anzeigenamen), Partnerhinweis und Einträge. Ohne schoolYearId das aktuelle Schuljahr (5.5). Ohne Familie: 403 FAMILY_ASSIGNMENT_PENDING. Ohne Schuljahr: 404 NO_CURRENT_SCHOOL_YEAR.
+      x-roles: [F]
+      parameters:
+        - $ref: '#/components/parameters/SchoolYearFilter'
+      responses:
+        '200':
+          description: Die Übersicht.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FamilyOverview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /me/family/entries:
+    get:
+      tags: [my-family]
+      operationId: listFamilyEntries
+      summary: Einträge der Familie
+      description: >-
+        Neueste zuerst (7.3 Regel 3), ohne gelöschte. Ohne schoolYearId das aktuelle Schuljahr.
+      x-roles: [F]
+      parameters:
+        - $ref: '#/components/parameters/SchoolYearFilter'
+      responses:
+        '200':
+          description: Die Einträge.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FamilyEntry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [my-family]
+      operationId: createFamilyEntry
+      summary: Stunden eintragen
+      description: >-
+        Neuer Eintrag mit Status OPEN (FS-ENTRY 7.4). Fehler: Zukunft 400 DATE_IN_FUTURE, kein Schuljahr 400 NO_SCHOOL_YEAR, abgeschlossenes Schuljahr 409 SCHOOL_YEAR_CLOSED, gleicher Eintrag innerhalb von 2 Minuten 409 DUPLICATE_ENTRY.
+      x-roles: [F]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntryCreate'
+      responses:
+        '201':
+          description: Eingetragen.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FamilyEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /me/family/entries/{entryId}:
+    patch:
+      tags: [my-family]
+      operationId: updateFamilyEntry
+      summary: Eigenen Eintrag ändern
+      description: >-
+        Nur offene Einträge der eigenen Familie (INV-05, INV-06). Nur angegebene Felder ändern sich; ein leerer Text bei startTime entfernt die Uhrzeit. Bestätigt: 409 ENTRY_CONFIRMED, veraltete version: 409 CONCURRENT_MODIFICATION, fremde Familie: 404 (SEC-08).
+      x-roles: [F]
+      parameters:
+        - $ref: '#/components/parameters/EntryId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntryUpdate'
+      responses:
+        '200':
+          description: Geändert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FamilyEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [my-family]
+      operationId: deleteFamilyEntry
+      summary: Eigenen Eintrag löschen
+      description: >-
+        Soft-Delete, nur offene Einträge der eigenen Familie. Bestätigt: 409 ENTRY_CONFIRMED, fremde Familie: 404.
+      x-roles: [F]
+      parameters:
+        - $ref: '#/components/parameters/EntryId'
+      responses:
+        '204':
+          description: Gelöscht.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/entries:
+    get:
+      tags: [entries]
+      operationId: listEntries
+      summary: Einträge für Admins
+      description: >-
+        Zum Bestätigen (status=OPEN) und Korrigieren, älteste Erfassung zuerst (7.5). Filter Familie und Zeitraum (Datum der Arbeit).
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/EntryStatusFilter'
+        - $ref: '#/components/parameters/FamilyFilter'
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Eine Seite Einträge.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntryPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/entries/confirm:
+    post:
+      tags: [entries]
+      operationId: confirmEntries
+      summary: Mehrere Einträge bestätigen
+      description: >-
+        Sammelbestätigung (7.5 Punkt 4). Bereits bestätigte und Einträge abgeschlossener Schuljahre bleiben unverändert und zählen als übersprungen.
+      x-roles: [AD]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntryConfirmation'
+      responses:
+        '200':
+          description: Ergebnis.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfirmationResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/entries/{entryId}/confirm:
+    post:
+      tags: [entries]
+      operationId: confirmEntry
+      summary: Eintrag bestätigen
+      description: >-
+        Idempotent (7.5). Abgeschlossenes Schuljahr: 409 SCHOOL_YEAR_CLOSED.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/EntryId'
+      responses:
+        '200':
+          description: Bestätigt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminEntry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/entries/{entryId}:
+    patch:
+      tags: [entries]
+      operationId: updateEntry
+      summary: Eintrag korrigieren
+      description: >-
+        Ändert ein Admin Dauer, Datum, Uhrzeit oder Text eines bestätigten Eintrags, wird er wieder OPEN (INV-07). Veraltete version: 409 CONCURRENT_MODIFICATION.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/EntryId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntryUpdate'
+      responses:
+        '200':
+          description: Geändert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [entries]
+      operationId: deleteEntry
+      summary: Eintrag löschen
+      description: >-
+        Soft-Delete, auch bestätigte Einträge (INV-07). Abgeschlossenes Schuljahr: 409 SCHOOL_YEAR_CLOSED.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/EntryId'
+      responses:
+        '204':
+          description: Gelöscht.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/families/{familyId}/entries:
+    post:
+      tags: [entries]
+      operationId: createEntryForFamily
+      summary: Eintrag für eine Familie anlegen
+      description: >-
+        Admins dürfen für jede Familie erfassen (INV-02). Der Eintrag ist OPEN. Regeln wie FS-ENTRY 7.4.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/FamilyId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntryCreate'
+      responses:
+        '201':
+          description: Angelegt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalError'
   /admin/dashboard:
@@ -1823,8 +2148,12 @@ components:
           format: date-time
     AdminDashboard:
       type: object
-      required: [unassignedUsers, recentAutoAssignments]
+      required: [unassignedUsers, recentAutoAssignments, openEntryCount]
       properties:
+        openEntryCount:
+          type: integer
+          format: int32
+          description: Offene Einträge zum Bestätigen (7.5 Punkt 6, Widget "Zu bestätigen").
         unassignedUsers:
           type: array
           items:
@@ -1925,6 +2254,247 @@ components:
           description: 10 Wiederherstellungscodes, nur dieses eine Mal sichtbar (SEC-05).
           items:
             type: string
+    SchoolYearRef:
+      type: object
+      required: [id, label, startsOn, endsOn, closed]
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        startsOn:
+          type: string
+          format: date
+        endsOn:
+          type: string
+          format: date
+        closed:
+          type: boolean
+    FamilyOverview:
+      type: object
+      description: Datenvertrag aus FS-FAM 7.3. Nur bestätigte Minuten zählen (D-10).
+      required: [schoolYear, schoolYears, obligated, requiredMinutes, confirmedMinutes, openMinutes, remainingMinutes,
+                 fulfilled, canAddEntries, children, members, partnerHint, entries]
+      properties:
+        schoolYear:
+          $ref: '#/components/schemas/SchoolYearRef'
+        schoolYears:
+          type: array
+          description: Schuljahre, die schon begonnen haben; frühere sind schreibgeschützt.
+          items:
+            $ref: '#/components/schemas/SchoolYearRef'
+        obligated:
+          type: boolean
+          description: Mindestens ein Kind der Familie ist in diesem Schuljahr eingeschrieben (OPEN-04).
+        requiredMinutes:
+          type: integer
+          format: int32
+        confirmedMinutes:
+          type: integer
+          format: int32
+        openMinutes:
+          type: integer
+          format: int32
+        remainingMinutes:
+          type: integer
+          format: int32
+        fulfilled:
+          type: boolean
+        canAddEntries:
+          type: boolean
+          description: Nur im laufenden, offenen Schuljahr (5.5 Regel 4, INV-04).
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/FamilyChild'
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/FamilyMemberName'
+        partnerHint:
+          type: boolean
+          description: Genau ein aktives Mitglied (7.3 Regel 6).
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/FamilyEntry'
+    FamilyChild:
+      type: object
+      description: Nur der Vorname (7.3 Regel 7, DP-02).
+      required: [firstName]
+      properties:
+        firstName:
+          type: string
+    FamilyMemberName:
+      type: object
+      description: Nur der Anzeigename (7.3 Regel 7).
+      required: [displayName, isCurrentUser]
+      properties:
+        displayName:
+          type: string
+        isCurrentUser:
+          type: boolean
+    EntryStatus:
+      type: string
+      enum: [OPEN, CONFIRMED]
+    FamilyEntry:
+      type: object
+      required: [id, workDate, durationMinutes, description, status, createdByDisplayName, canEdit, canDelete, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        workDate:
+          type: string
+          format: date
+        startTime:
+          type: string
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+          example: '15:30'
+        durationMinutes:
+          type: integer
+          format: int32
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/EntryStatus'
+        createdByDisplayName:
+          type: string
+        canEdit:
+          type: boolean
+        canDelete:
+          type: boolean
+        version:
+          type: integer
+          format: int32
+    EntryCreate:
+      type: object
+      required: [workDate, durationMinutes, description]
+      properties:
+        workDate:
+          type: string
+          format: date
+          description: Nicht in der Zukunft, in einem offenen Schuljahr.
+        startTime:
+          type: string
+          description: Nur im exakten Modus (D-09), 24-Stunden-Format.
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+        durationMinutes:
+          type: integer
+          format: int32
+          minimum: 15
+          maximum: 720
+          multipleOf: 15
+          description: 15-Minuten-Raster, 15 bis 720 (D-09, OPEN-10).
+        description:
+          type: string
+          minLength: 3
+          maxLength: 500
+          description: '"Was hast du gemacht?", 3 bis 500 Zeichen nach Trim. Bitte keine sensiblen Daten (DP-01).'
+    EntryUpdate:
+      type: object
+      description: >-
+        Merge Patch (8.1). Nur diese Felder sind änderbar, andere (z. B. status, familyId, createdBy) ergeben 400
+        (AC-SEC-10).
+      required: [version]
+      properties:
+        version:
+          type: integer
+          format: int32
+          description: Optimistisches Locking (8.1).
+        workDate:
+          type: string
+          format: date
+        startTime:
+          type: string
+          description: Leerer Text entfernt die Uhrzeit.
+          pattern: '^(([01][0-9]|2[0-3]):[0-5][0-9])?$'
+        durationMinutes:
+          type: integer
+          format: int32
+          minimum: 15
+          maximum: 720
+          multipleOf: 15
+        description:
+          type: string
+          minLength: 3
+          maxLength: 500
+    AdminEntry:
+      type: object
+      required: [id, familyId, familyLabel, schoolYearId, schoolYearClosed, workDate, durationMinutes, description,
+                 status, createdByDisplayName, createdAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        familyId:
+          type: string
+          format: uuid
+        familyLabel:
+          type: string
+        schoolYearId:
+          type: string
+          format: uuid
+        schoolYearClosed:
+          type: boolean
+        workDate:
+          type: string
+          format: date
+        startTime:
+          type: string
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+        durationMinutes:
+          type: integer
+          format: int32
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/EntryStatus'
+        createdByDisplayName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        confirmedAt:
+          type: string
+          format: date-time
+        confirmedByDisplayName:
+          type: string
+        version:
+          type: integer
+          format: int32
+    EntryPage:
+      allOf:
+        - $ref: '#/components/schemas/PageInfo'
+        - type: object
+          required: [content]
+          properties:
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/AdminEntry'
+    EntryConfirmation:
+      type: object
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            type: string
+            format: uuid
+    ConfirmationResult:
+      type: object
+      required: [confirmed, skipped]
+      properties:
+        confirmed:
+          type: integer
+          format: int32
+        skipped:
+          type: integer
+          format: int32
     OtherDeviceProblem:
       allOf:
         - $ref: '#/components/schemas/Problem'
@@ -1987,6 +2557,38 @@ components:
           type: string
           example: size must be between 3 and 500
   parameters:
+    EntryId:
+      name: entryId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    EntryStatusFilter:
+      name: status
+      in: query
+      schema:
+        $ref: '#/components/schemas/EntryStatus'
+    FamilyFilter:
+      name: familyId
+      in: query
+      schema:
+        type: string
+        format: uuid
+    From:
+      name: from
+      in: query
+      description: Frühestes Datum der Arbeit.
+      schema:
+        type: string
+        format: date
+    To:
+      name: to
+      in: query
+      description: Spätestes Datum der Arbeit.
+      schema:
+        type: string
+        format: date
     Provider:
       name: provider
       in: path
