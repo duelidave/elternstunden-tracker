@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Elternstunden API
-  version: 0.2.0
+  version: 0.3.0
   description: |
     API-Vertrag der Elternstunden-Zeiterfassung und Quelle der Wahrheit für Backend und Frontend
     (Lastenheft D-25). Jede API-Änderung beginnt hier, danach wird auf beiden Seiten neu generiert.
@@ -144,11 +144,11 @@ paths:
               $ref: '#/components/schemas/MagicLinkRedemption'
       responses:
         '200':
-          description: Angemeldet.
+          description: Angemeldet oder, bei Admins mit zweitem Faktor, erst halb angemeldet (MFA_PENDING).
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Me'
+                $ref: '#/components/schemas/LoginResult'
         '400':
           $ref: '#/components/responses/BadRequest'
         '403':
@@ -199,8 +199,8 @@ paths:
       tags: [auth]
       operationId: logout
       summary: Abmelden
-      description: Beendet die Session serverseitig.
-      x-roles: [U]
+      description: Beendet die Session serverseitig, auch eine halbe Anmeldung (OIDC_PENDING, MFA_PENDING).
+      x-roles: [U, OP, MP]
       responses:
         '204':
           description: Abgemeldet.
@@ -208,6 +208,85 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/oidc/pending:
+    get:
+      tags: [auth]
+      operationId: getOidcPending
+      summary: Daten für "Noch ein Schritt"
+      description: >-
+        Nur in einer Session im Zustand OIDC_PENDING, also nach dem Anbieter-Login ohne bestehendes Konto (7.1.5 Schritt 4). Der Zustand verfällt nach 15 Minuten.
+      x-roles: [OP]
+      responses:
+        '200':
+          description: Angaben vom Anbieter.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OidcPending'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/oidc/complete:
+    post:
+      tags: [auth]
+      operationId: completeOidcRegistration
+      summary: Registrierung per Anbieter abschließen
+      description: >-
+        Legt Konto (ACTIVE), Identität und Claim an und meldet an; bei Treffer ist die Familie sofort zugeordnet (7.1.5). Idempotent: gibt es die Identität schon, wird nur angemeldet.
+      x-roles: [OP]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OidcCompletion'
+      responses:
+        '200':
+          description: Angemeldet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/mfa/verify:
+    post:
+      tags: [auth]
+      operationId: verifyMfa
+      summary: Zweiten Faktor prüfen
+      description: >-
+        Nur im Zustand MFA_PENDING (7.2). TOTP-Code oder Wiederherstellungscode. Erfolg: volle Session mit neuer Session-ID. Fehler: 400 MFA_INVALID.
+      x-roles: [MP]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaVerification'
+      responses:
+        '200':
+          description: Angemeldet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalError'
   /me:
@@ -225,6 +304,32 @@ paths:
                 $ref: '#/components/schemas/Me'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags: [me]
+      operationId: updateMe
+      summary: Anzeigenamen ändern
+      x-roles: [U]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeUpdate'
+      responses:
+        '200':
+          description: Das geänderte Konto.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalError'
   /me/claim:
@@ -250,6 +355,127 @@ paths:
                 $ref: '#/components/schemas/Me'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /me/identities/{provider}/link:
+    post:
+      tags: [me]
+      operationId: startIdentityLink
+      summary: Anbieter verknüpfen
+      description: >-
+        Liefert die Einstiegs-URL; die SPA navigiert per Top-Level-GET dorthin (SEC-10). Nur mit frischer Anmeldung (höchstens 5 Minuten alt), sonst 403 REAUTH_REQUIRED. Unbekannter Anbieter: 404.
+      x-roles: [U]
+      parameters:
+        - $ref: '#/components/parameters/Provider'
+      responses:
+        '200':
+          description: Einstieg zum Anbieter.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityLinkStart'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /me/identities/{identityId}:
+    delete:
+      tags: [me]
+      operationId: deleteIdentity
+      summary: Verknüpfung entfernen
+      description: >-
+        Nur eigene Identitäten (sonst 404, SEC-08). Immer erlaubt, der E-Mail-Link bleibt als Anmeldeweg (INV-11).
+      x-roles: [U]
+      parameters:
+        - $ref: '#/components/parameters/IdentityId'
+      responses:
+        '204':
+          description: Entfernt.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /me/totp/setup:
+    post:
+      tags: [me]
+      operationId: setupTotp
+      summary: TOTP einrichten
+      description: >-
+        Erzeugt ein neues Secret (Base32) für die Authenticator-App; aktiv wird es erst mit /me/totp/confirm. Nur für Admins, auch im Zustand MFA_PENDING, wenn TOTP Pflicht ist und noch fehlt (7.2).
+      x-roles: [AD, MP]
+      responses:
+        '200':
+          description: Secret und otpauth-URI für den QR-Code.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TotpSetup'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /me/totp/confirm:
+    post:
+      tags: [me]
+      operationId: confirmTotp
+      summary: TOTP bestätigen
+      description: >-
+        Aktiviert das Secret mit einem gültigen Code und liefert einmalig 10 Wiederherstellungscodes (SEC-05). Im Zustand MFA_PENDING folgt die volle Anmeldung. Falscher Code: 400 MFA_INVALID, ohne vorheriges Setup: 409 TOTP_SETUP_MISSING.
+      x-roles: [AD, MP]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaVerification'
+      responses:
+        '200':
+          description: Aktiviert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TotpConfirmation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /me/totp:
+    delete:
+      tags: [me]
+      operationId: disableTotp
+      summary: TOTP deaktivieren
+      description: >-
+        Nur mit frischer Anmeldung (5 Minuten, sonst 403 REAUTH_REQUIRED) und nur, wenn TOTP nicht Pflicht ist (sonst 409 TOTP_REQUIRED).
+      x-roles: [AD]
+      responses:
+        '204':
+          description: Deaktiviert.
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -923,6 +1149,29 @@ paths:
           $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalError'
+  /admin/users/{userId}/totp:
+    delete:
+      tags: [users]
+      operationId: resetUserTotp
+      summary: TOTP eines Admins zurücksetzen
+      description: >-
+        Für ein verlorenes Gerät (7.2). Eigenes Konto: 409 OWN_ACCOUNT (dafür DELETE /me/totp). Master: 409 ACCOUNT_MANAGED_BY_CONFIG.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '204':
+          description: Zurückgesetzt.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /admin/users/{userId}/terminate-sessions:
     post:
       tags: [users]
@@ -1137,6 +1386,17 @@ components:
           type: boolean
         pendingClaim:
           $ref: '#/components/schemas/ChildClaim'
+        identities:
+          type: array
+          description: Verknüpfte Anbieter-Konten (7.2 "Profil").
+          items:
+            $ref: '#/components/schemas/Identity'
+        totpEnabled:
+          type: boolean
+          description: Nur für Admins.
+        totpRequired:
+          type: boolean
+          description: Nur für Admins (app.security.admin-totp-required, OPEN-09).
         claimCorrectionsLeft:
           type: integer
           format: int32
@@ -1458,6 +1718,9 @@ components:
         managedByConfig:
           type: boolean
           description: Der Master-Admin, nur per Konfiguration änderbar (D-22).
+        totpEnabled:
+          type: boolean
+          description: Admin mit eingerichtetem zweitem Faktor.
         lastLoginAt:
           type: string
           format: date-time
@@ -1570,6 +1833,98 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AutoAssignment'
+    LoginResult:
+      type: object
+      description: Ergebnis einer Anmeldung (7.2). Bei MFA_REQUIRED oder MFA_SETUP_REQUIRED fehlt noch der zweite Faktor.
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [LOGGED_IN, MFA_REQUIRED, MFA_SETUP_REQUIRED]
+    OidcPending:
+      type: object
+      required: [provider, email, displayName]
+      properties:
+        provider:
+          type: string
+          example: google
+        email:
+          type: string
+        displayName:
+          type: string
+          description: Aus dem name-Claim vorbelegt, editierbar (7.1.2).
+    OidcCompletion:
+      type: object
+      required: [displayName, child]
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        child:
+          $ref: '#/components/schemas/ChildClaim'
+    MfaVerification:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          description: 6-stelliger TOTP-Code oder ein Wiederherstellungscode.
+          minLength: 6
+          maxLength: 20
+    MeUpdate:
+      type: object
+      required: [displayName]
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 80
+    Identity:
+      type: object
+      required: [id, provider, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        provider:
+          type: string
+          example: google
+        emailAtLink:
+          type: string
+          description: E-Mail beim Anbieter zum Zeitpunkt der Verknüpfung, nur zur Anzeige.
+        createdAt:
+          type: string
+          format: date-time
+        lastLoginAt:
+          type: string
+          format: date-time
+    IdentityLinkStart:
+      type: object
+      required: [redirectUrl]
+      properties:
+        redirectUrl:
+          type: string
+          description: Relative URL des Einstiegs, z. B. /oauth2/authorization/google.
+    TotpSetup:
+      type: object
+      required: [secret, otpauthUri]
+      properties:
+        secret:
+          type: string
+          description: Base32, zum Abtippen.
+        otpauthUri:
+          type: string
+          description: Inhalt des QR-Codes für die Authenticator-App.
+    TotpConfirmation:
+      type: object
+      required: [recoveryCodes]
+      properties:
+        recoveryCodes:
+          type: array
+          description: 10 Wiederherstellungscodes, nur dieses eine Mal sichtbar (SEC-05).
+          items:
+            type: string
     OtherDeviceProblem:
       allOf:
         - $ref: '#/components/schemas/Problem'
@@ -1632,6 +1987,20 @@ components:
           type: string
           example: size must be between 3 and 500
   parameters:
+    Provider:
+      name: provider
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^[a-z0-9-]{1,40}$'
+    IdentityId:
+      name: identityId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     SchoolYearId:
       name: schoolYearId
       in: path
