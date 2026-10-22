@@ -190,6 +190,11 @@ class AssignmentIT extends IntegrationTest {
         assertThat(member.get("/api/v1/me").json().get("claimCorrectionsLeft").asInt())
                 .isEqualTo(3);
 
+        ApiClient.Response same = member.put("/api/v1/me/claim", child("Nora", "Kuhn", "2019-09-09"));
+        assertThat(same.json().get("claimCorrectionsLeft").asInt())
+                .as("the same data again")
+                .isEqualTo(3);
+
         for (int i = 1; i <= 3; i++) {
             ApiClient.Response corrected = member.put("/api/v1/me/claim", child("Nora", "Kuhn" + i, "2019-09-09"));
             assertThat(corrected.status()).isEqualTo(200);
@@ -198,6 +203,10 @@ class AssignmentIT extends IntegrationTest {
         ApiClient.Response exhausted = member.put("/api/v1/me/claim", child("Nora", "Kühn", "2019-09-09"));
         assertThat(exhausted.status()).isEqualTo(409);
         assertThat(exhausted.json().get("code").asString()).isEqualTo("CLAIM_CORRECTION_LIMIT");
+        assertThat(member.put("/api/v1/me/claim", child("Nora", "Kuhn3", "2019-09-09"))
+                        .status())
+                .as("the same data again still matches anew")
+                .isEqualTo(200);
 
         // A discarded claim: the next entry is the first one again and does not count
         jdbc.update("UPDATE registration_claim SET superseded_at = now() WHERE user_id = ?", userId(email));

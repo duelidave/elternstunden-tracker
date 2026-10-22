@@ -140,7 +140,8 @@ public class ClaimService {
 
     /**
      * {@code PUT /me/claim} (7.1.7): unassigned family members enter or correct their child data. The first entry
-     * without an open claim is free, then at most {@code maxCorrections} corrections. A match assigns at once.
+     * without an open claim is free, then at most {@code maxCorrections} corrections; saving the same data again is no
+     * correction. A match assigns at once.
      */
     @Transactional
     public void submitOwn(UUID userId, ChildData child) {
@@ -153,7 +154,12 @@ public class ClaimService {
             throw new ApiException(ErrorCode.ALREADY_ASSIGNED);
         }
         validate(child, BusinessTime.today(clock));
-        if (claims.findOpen(userId).isPresent()) {
+        // Saving the same data again corrects nothing: it only matches again (e.g. after an admin fixed a child)
+        boolean correction = claims.findOpen(userId)
+                .map(open -> !claimKey(new ChildData(open.firstName(), open.lastName(), open.birthDate()))
+                        .equals(claimKey(child)))
+                .orElse(false);
+        if (correction) {
             if (users.claimCorrections(userId) >= settings.maxCorrections()) {
                 throw new ApiException(ErrorCode.CLAIM_CORRECTION_LIMIT);
             }
