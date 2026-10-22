@@ -171,6 +171,14 @@ public class ClaimService {
         }
     }
 
+    /** Discards the open claim, e.g. when a provider activated the account (7.1.5): it may come from someone else. */
+    public void discard(UUID userId, String reason, Instant now) {
+        claims.findOpen(userId).ifPresent(claim -> {
+            claims.supersedeOpen(userId, now);
+            audit.system("CLAIM_DISCARDED", "registration_claim", claim.id(), Map.of("reason", reason));
+        });
+    }
+
     public Optional<Claim> openClaim(UUID userId) {
         return claims.findOpen(userId);
     }

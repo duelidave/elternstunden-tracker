@@ -55,6 +55,26 @@ public final class Totp {
         }
     }
 
+    /** RFC 4648 base32 without padding, as authenticator apps expect it. */
+    public static String encodeBase32(byte[] data) {
+        String alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+        StringBuilder out = new StringBuilder();
+        int buffer = 0;
+        int bits = 0;
+        for (byte value : data) {
+            buffer = (buffer << 8) | (value & 0xFF);
+            bits += 8;
+            while (bits >= 5) {
+                out.append(alphabet.charAt((buffer >> (bits - 5)) & 0x1F));
+                bits -= 5;
+            }
+        }
+        if (bits > 0) {
+            out.append(alphabet.charAt((buffer << (5 - bits)) & 0x1F));
+        }
+        return out.toString();
+    }
+
     /** RFC 4648 base32 (as shown by authenticator apps); spaces, padding and case are ignored. */
     public static byte[] decodeBase32(String value) {
         String clean = value.replace(" ", "").replace("=", "").toUpperCase(Locale.ROOT);

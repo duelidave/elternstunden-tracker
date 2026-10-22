@@ -4,6 +4,7 @@ import de.elternstunden.common.config.AppProperties.Limit;
 import de.elternstunden.common.config.AppProperties.Timeouts;
 import java.net.URI;
 import java.time.Duration;
+import java.util.Map;
 
 /** AppProperties with the defaults of application.yaml, for unit tests. */
 public final class TestProperties {
@@ -33,14 +34,18 @@ public final class TestProperties {
                         limit(1, 24),
                         new Limit(30, Duration.ofMinutes(15)),
                         new Limit(5, Duration.ofMinutes(15)),
-                        limit(10, 1)),
+                        limit(10, 1),
+                        new Limit(30, Duration.ofMinutes(1)),
+                        new Limit(5, Duration.ofMinutes(15))),
                 new AppProperties.Sessions(
                         new Timeouts(Duration.ofDays(30), Duration.ofDays(90)),
                         new Timeouts(Duration.ofMinutes(30), Duration.ofHours(8)),
                         new Timeouts(Duration.ofMinutes(15), Duration.ofHours(4))),
                 master,
                 new AppProperties.Claims(5, Duration.ofHours(24), 3, Duration.ofDays(30)),
-                new AppProperties.SchoolYears(Duration.ofDays(90)));
+                new AppProperties.SchoolYears(Duration.ofDays(90)),
+                new AppProperties.Oidc(Duration.ofMinutes(15), Duration.ofMinutes(5), Map.of()),
+                new AppProperties.Mfa(Duration.ofMinutes(10), 10));
     }
 
     public static AppProperties defaults() {

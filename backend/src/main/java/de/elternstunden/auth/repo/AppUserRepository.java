@@ -76,6 +76,29 @@ public class AppUserRepository {
                 .optional();
     }
 
+    /** An account confirmed by an OIDC provider (7.1.5 step 4); empty if the address exists meanwhile. */
+    public Optional<UUID> insertActive(String email, String displayName, Instant now) {
+        return jdbc.sql("""
+                        INSERT INTO app_user (email, display_name, status, email_verified_at, created_at, updated_at)
+                        VALUES (:email, :displayName, 'ACTIVE', :now, :now, :now)
+                        ON CONFLICT (email) DO NOTHING
+                        RETURNING id
+                        """)
+                .param("email", email)
+                .param("displayName", displayName)
+                .param("now", utc(now))
+                .query(UUID.class)
+                .optional();
+    }
+
+    public void setDisplayName(UUID id, String displayName, Instant now) {
+        jdbc.sql("UPDATE app_user SET display_name = :displayName, updated_at = :now WHERE id = :id")
+                .param("id", id)
+                .param("displayName", displayName)
+                .param("now", utc(now))
+                .update();
+    }
+
     public void activate(UUID id, Instant now) {
         jdbc.sql("""
                         UPDATE app_user SET status = 'ACTIVE', email_verified_at = :now, updated_at = :now

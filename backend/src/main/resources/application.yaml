@@ -106,6 +106,8 @@ app:
     redeem-per-ip: { max: 30, window: 15m }
     master-login-per-ip: { max: 5, window: 15m }
     master-failure-alarm: { max: 10, window: 1h }
+    oidc-callback-per-ip: { max: 30, window: 1m }
+    mfa-per-ip: { max: 5, window: 15m }
   # D-20
   sessions:
     family-member: { idle: 30d, absolute: 90d }
@@ -121,6 +123,21 @@ app:
   school-years:
     lead-time: 90d
     job-cron: "0 15 3 * * *"
+  # 7.2, D-23. OPEN-15: Google only; more providers by configuration
+  oidc:
+    pending-ttl: 15m
+    reauth-window: 5m
+    providers:
+      google:
+        name: Google
+        client-id: ${GOOGLE_CLIENT_ID:}
+        client-secret: ${GOOGLE_CLIENT_SECRET:}
+        issuer: https://accounts.google.com
+        trust-email-for-linking: GMAIL_OR_HD
+  # SEC-05
+  mfa:
+    pending-ttl: 10m
+    recovery-codes: 10
   # D-22, 7.9: from the configuration only
   master:
     email: ${MASTER_ADMIN_EMAIL:}

@@ -16,19 +16,27 @@ import de.elternstunden.api.SchoolYearsApi;
 import de.elternstunden.api.SystemApi;
 import de.elternstunden.api.UsersApi;
 import de.elternstunden.auth.domain.UserRole;
+import de.elternstunden.auth.oidc.NoOpAuthorizedClientRepository;
+import de.elternstunden.auth.oidc.OidcCallbackRateLimitFilter;
+import de.elternstunden.auth.oidc.OidcLoginHandler;
 import de.elternstunden.auth.repo.AppUserRepository;
+import de.elternstunden.common.config.AppProperties;
+import de.elternstunden.common.ratelimit.RateLimiter;
 import de.elternstunden.common.web.ApiPaths;
 import jakarta.servlet.DispatcherType;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.config.ObjectPostProcessor;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.client.web.OAuth2LoginAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.context.NullSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
@@ -60,6 +68,9 @@ public class ApiSecurityConfig {
             CsrfTokenRepository csrfTokenRepository,
             AppUserRepository users,
             SessionLogin sessionLogin,
+            OidcLoginHandler oidcHandler,
+            RateLimiter rateLimiter,
+            AppProperties properties,
             Clock clock)
             throws Exception {
         String api = ApiPaths.BASE;
@@ -81,14 +92,42 @@ public class ApiSecurityConfig {
                         // x-roles: [A], x-dev-only: the handler exists only in the dev profile, otherwise 404
                         .requestMatchers(POST, api + DevApi.PATH_DEV_LOGIN_AS)
                         .permitAll()
-                        // x-roles: [U]
+                        // OIDC entry and callback (outside /api, handled by the oauth2Login filters, 7.2)
+                        .requestMatchers(GET, "/oauth2/authorization/*", "/login/oauth2/code/*")
+                        .permitAll()
+                        // x-roles: [U, OP, MP]
                         .requestMatchers(POST, api + AuthApi.PATH_LOGOUT)
                         .authenticated()
+                        // x-roles: [OP]
+                        .requestMatchers(GET, api + AuthApi.PATH_GET_OIDC_PENDING)
+                        .hasAuthority(Authorities.OIDC_PENDING)
+                        .requestMatchers(POST, api + AuthApi.PATH_COMPLETE_OIDC_REGISTRATION)
+                        .hasAuthority(Authorities.OIDC_PENDING)
+                        // x-roles: [MP]
+                        .requestMatchers(POST, api + AuthApi.PATH_VERIFY_MFA)
+                        .hasAuthority(Authorities.MFA_PENDING)
+                        // x-roles: [U]
                         .requestMatchers(GET, api + MeApi.PATH_GET_ME)
-                        .authenticated()
+                        .hasAuthority(Authorities.USER)
+                        .requestMatchers(PATCH, api + MeApi.PATH_UPDATE_ME)
+                        .hasAuthority(Authorities.USER)
+                        .requestMatchers(POST, api + MeApi.PATH_START_IDENTITY_LINK)
+                        .hasAuthority(Authorities.USER)
+                        .requestMatchers(DELETE, api + MeApi.PATH_DELETE_IDENTITY)
+                        .hasAuthority(Authorities.USER)
                         // x-roles: [U]; only unassigned family members, checked in the service (7.1.7)
                         .requestMatchers(PUT, api + MeApi.PATH_UPDATE_MY_CLAIM)
-                        .authenticated()
+                        .hasAuthority(Authorities.USER)
+                        // x-roles: [AD, MP]; MP only while TOTP is required but missing (7.2)
+                        .requestMatchers(POST, api + MeApi.PATH_SETUP_TOTP)
+                        .hasAnyAuthority(ADMIN, Authorities.MFA_PENDING)
+                        .requestMatchers(POST, api + MeApi.PATH_CONFIRM_TOTP)
+                        .hasAnyAuthority(ADMIN, Authorities.MFA_PENDING)
+                        // x-roles: [AD]
+                        .requestMatchers(DELETE, api + MeApi.PATH_DISABLE_TOTP)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(DELETE, api + UsersApi.PATH_RESET_USER_TOTP)
+                        .hasAuthority(ADMIN)
                         // x-roles: [AD] (MASTER_ADMIN holds the ADMIN authority too)
                         .requestMatchers(GET, api + DashboardApi.PATH_GET_ADMIN_DASHBOARD)
                         .hasAuthority(ADMIN)
@@ -150,8 +189,24 @@ public class ApiSecurityConfig {
                 // Sessions are created only by an explicit login (SessionLogin); anonymous requests never get one
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.NEVER))
                 .addFilterBefore(
-                        new SessionAccountFilter(users, sessionLogin, contextRepository, clock),
+                        new SessionAccountFilter(users, sessionLogin, contextRepository, properties, clock),
                         AuthorizationFilter.class)
+                // OIDC (7.2): PKCE from the client settings, no provider tokens anywhere, our own principal only
+                .oauth2Login(oauth2 -> oauth2.authorizedClientRepository(new NoOpAuthorizedClientRepository())
+                        .successHandler(oidcHandler)
+                        .failureHandler(oidcHandler)
+                        // The provider's authentication must never reach the session (AC-OIDC-08); the handler
+                        // stores our own principal. Set on the finished filter, because the configurer would
+                        // otherwise replace it with the shared repository.
+                        .withObjectPostProcessor(new ObjectPostProcessor<OAuth2LoginAuthenticationFilter>() {
+                            @Override
+                            public <O extends OAuth2LoginAuthenticationFilter> O postProcess(O filter) {
+                                filter.setSecurityContextRepository(new NullSecurityContextRepository());
+                                return filter;
+                            }
+                        }))
+                .addFilterBefore(
+                        new OidcCallbackRateLimitFilter(rateLimiter, properties), OAuth2LoginAuthenticationFilter.class)
                 .headers(headers -> headers.contentSecurityPolicy(csp -> csp.policyDirectives(CONTENT_SECURITY_POLICY))
                         .referrerPolicy(referrer -> referrer.policy(ReferrerPolicy.SAME_ORIGIN))
                         .permissionsPolicyHeader(permissions -> permissions.policy(PERMISSIONS_POLICY)))

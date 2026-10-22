@@ -34,6 +34,7 @@ public final class UserMapper {
         dto.setFamilyId(account.familyId());
         dto.setFamilyLabel(view.familyLabel());
         dto.setLastLoginAt(account.lastLoginAt() == null ? null : utc(account.lastLoginAt()));
+        dto.setTotpEnabled(account.totpEnabled());
         return dto;
     }
 

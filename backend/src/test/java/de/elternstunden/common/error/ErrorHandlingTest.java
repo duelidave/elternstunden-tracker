@@ -9,8 +9,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import de.elternstunden.auth.oidc.OidcClientConfig;
+import de.elternstunden.auth.oidc.OidcLoginHandler;
 import de.elternstunden.auth.repo.AppUserRepository;
 import de.elternstunden.common.config.AppConfig;
+import de.elternstunden.common.ratelimit.RateLimiter;
 import de.elternstunden.common.security.ApiSecurityConfig;
 import de.elternstunden.common.security.ProblemSecurityHandler;
 import de.elternstunden.common.security.SecurityBeans;
@@ -55,6 +58,8 @@ import org.springframework.web.bind.annotation.RestController;
     ApiSecurityConfig.class,
     ProblemSecurityHandler.class,
     ProblemDetailsFactory.class,
+    RateLimiter.class,
+    OidcClientConfig.class,
     ErrorHandlingTest.ProbeController.class,
     ErrorHandlingTest.ProbeSecurity.class
 })
@@ -68,6 +73,9 @@ class ErrorHandlingTest {
 
     @MockitoBean
     private AppUserRepository users;
+
+    @MockitoBean
+    private OidcLoginHandler oidcHandler;
 
     @Test
     void apiExceptionKeepsItsCodeAndDetail() throws Exception {

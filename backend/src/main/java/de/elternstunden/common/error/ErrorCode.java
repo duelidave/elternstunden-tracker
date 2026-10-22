@@ -33,6 +33,11 @@ public enum ErrorCode {
     ACCOUNT_MANAGED_BY_CONFIG(HttpStatus.CONFLICT, "The master account is managed by the configuration."),
     OWN_ACCOUNT(HttpStatus.CONFLICT, "Not allowed on the own account."),
     USER_ANONYMIZED(HttpStatus.CONFLICT, "The account is anonymized."),
+    MFA_INVALID(HttpStatus.BAD_REQUEST, "Second factor invalid."),
+    REAUTH_REQUIRED(HttpStatus.FORBIDDEN, "A fresh login is required."),
+    TOTP_REQUIRED(HttpStatus.CONFLICT, "TOTP is required for admins."),
+    TOTP_SETUP_MISSING(HttpStatus.CONFLICT, "No TOTP setup to confirm."),
+    TOTP_ALREADY_ENABLED(HttpStatus.CONFLICT, "TOTP is already enabled."),
     RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "Too many requests."),
     REQUEST_REJECTED(HttpStatus.BAD_REQUEST, "Request rejected."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error.");

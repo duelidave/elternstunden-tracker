@@ -2,15 +2,24 @@ package de.elternstunden.auth.web;
 
 import de.elternstunden.api.AuthApi;
 import de.elternstunden.api.model.CaptchaChallengeDto;
+import de.elternstunden.api.model.ChildClaimDto;
+import de.elternstunden.api.model.LoginResultDto;
 import de.elternstunden.api.model.MagicLinkRedemptionDto;
 import de.elternstunden.api.model.MagicLinkRequestDto;
 import de.elternstunden.api.model.MasterLoginRequestDto;
 import de.elternstunden.api.model.MeDto;
+import de.elternstunden.api.model.MfaVerificationDto;
+import de.elternstunden.api.model.OidcCompletionDto;
+import de.elternstunden.api.model.OidcPendingDto;
 import de.elternstunden.api.model.RegistrationRequestDto;
 import de.elternstunden.auth.service.AuthRequestService;
 import de.elternstunden.auth.service.AuthService;
 import de.elternstunden.auth.service.CaptchaService;
+import de.elternstunden.auth.service.LoginFlow;
+import de.elternstunden.common.security.CurrentUser;
+import de.elternstunden.common.security.PendingOidc;
 import de.elternstunden.common.web.CurrentRequest;
+import de.elternstunden.family.domain.ChildData;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -51,12 +60,40 @@ public class AuthController implements AuthApi {
     }
 
     @Override
-    public ResponseEntity<MeDto> redeemMagicLink(MagicLinkRedemptionDto redemption) {
-        return ResponseEntity.ok(auth.redeemMagicLink(
+    public ResponseEntity<LoginResultDto> redeemMagicLink(MagicLinkRedemptionDto redemption) {
+        return ResponseEntity.ok(result(auth.redeemMagicLink(
                 redemption.getToken(),
                 Boolean.TRUE.equals(redemption.getConfirmOtherDevice()),
                 CurrentRequest.request(),
-                CurrentRequest.response()));
+                CurrentRequest.response())));
+    }
+
+    @Override
+    public ResponseEntity<LoginResultDto> verifyMfa(MfaVerificationDto verification) {
+        return ResponseEntity.ok(
+                result(auth.verifyMfa(verification.getCode(), CurrentRequest.request(), CurrentRequest.response())));
+    }
+
+    @Override
+    public ResponseEntity<OidcPendingDto> getOidcPending() {
+        PendingOidc pending = CurrentUser.pendingOidc();
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(new OidcPendingDto(pending.provider(), pending.email(), pending.displayName()));
+    }
+
+    @Override
+    public ResponseEntity<LoginResultDto> completeOidcRegistration(OidcCompletionDto completion) {
+        ChildClaimDto child = completion.getChild();
+        return ResponseEntity.ok(result(auth.completeOidc(
+                completion.getDisplayName(),
+                new ChildData(child.getFirstName(), child.getLastName(), child.getBirthDate()),
+                CurrentRequest.request(),
+                CurrentRequest.response())));
+    }
+
+    private static LoginResultDto result(LoginFlow.Status status) {
+        return new LoginResultDto(LoginResultDto.StatusEnum.fromValue(status.name()));
     }
 
     @Override

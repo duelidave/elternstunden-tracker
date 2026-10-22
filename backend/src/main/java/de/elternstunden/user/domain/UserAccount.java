@@ -18,7 +18,8 @@ public record UserAccount(
         boolean emailVerified,
         @Nullable Instant lastLoginAt,
         Instant createdAt,
-        @Nullable Instant anonymizedAt) {
+        @Nullable Instant anonymizedAt,
+        boolean totpEnabled) {
 
     /** An active family member without family (7.1.7). */
     public boolean unassigned() {

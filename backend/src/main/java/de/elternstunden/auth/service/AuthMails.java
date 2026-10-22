@@ -92,6 +92,19 @@ public class AuthMails {
                 List.of());
     }
 
+    public MailMessage oidcMasterAlarm(String to) {
+        return mail(
+                to,
+                "Anmeldeversuch über einen Anbieter",
+                List.of(
+                        "Hallo,",
+                        "für den Master-Zugang gab es einen Anmeldeversuch über einen OIDC-Anbieter."
+                                + " Das darf nicht vorkommen und wurde abgelehnt. Prüfe bitte die Logs auf dem Server."),
+                "Zur Anmeldung",
+                base() + "/login/master",
+                List.of());
+    }
+
     private String base() {
         String value = baseUrl.toString();
         return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;

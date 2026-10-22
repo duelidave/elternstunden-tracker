@@ -20,7 +20,7 @@ import org.springframework.stereotype.Repository;
 public class UserAccountRepository {
 
     private static final String COLUMNS = "id, email, display_name, role, status, family_id, managed_by_config,"
-            + " email_verified_at, last_login_at, created_at, anonymized_at";
+            + " email_verified_at, last_login_at, created_at, anonymized_at, totp_enabled_at";
 
     private final JdbcClient jdbc;
 
@@ -74,11 +74,15 @@ public class UserAccountRepository {
                         UPDATE app_user
                         SET email = 'deleted-' || id || '@invalid', display_name = 'Gelöschter Nutzer',
                             status = 'DISABLED', family_id = NULL, claim_corrections = 0, last_login_at = NULL,
+                            totp_secret_enc = NULL, totp_enabled_at = NULL,
                             anonymized_at = :now, updated_at = :now
                         WHERE id = :id
                         """).param("id", id).param("now", utc(now)).update();
         jdbc.sql("DELETE FROM user_token WHERE user_id = :id").param("id", id).update();
         jdbc.sql("DELETE FROM user_identity WHERE user_id = :id")
+                .param("id", id)
+                .update();
+        jdbc.sql("DELETE FROM user_recovery_code WHERE user_id = :id")
                 .param("id", id)
                 .update();
     }
@@ -105,6 +109,7 @@ public class UserAccountRepository {
                 rs.getObject("email_verified_at", OffsetDateTime.class) != null,
                 instant(rs, "last_login_at"),
                 createdAt == null ? Instant.EPOCH : createdAt,
-                instant(rs, "anonymized_at"));
+                instant(rs, "anonymized_at"),
+                rs.getObject("totp_enabled_at", OffsetDateTime.class) != null);
     }
 }

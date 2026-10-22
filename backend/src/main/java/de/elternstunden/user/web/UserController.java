@@ -9,6 +9,7 @@ import de.elternstunden.api.model.UserPageDto;
 import de.elternstunden.api.model.UserStatusDto;
 import de.elternstunden.auth.domain.UserRole;
 import de.elternstunden.auth.domain.UserStatus;
+import de.elternstunden.auth.service.AdminTotpService;
 import de.elternstunden.common.security.CurrentUser;
 import de.elternstunden.common.web.Paging;
 import de.elternstunden.family.service.FamilyService;
@@ -25,10 +26,12 @@ public class UserController implements UsersApi {
 
     private final UserAdminService users;
     private final FamilyService families;
+    private final AdminTotpService totp;
 
-    public UserController(UserAdminService users, FamilyService families) {
+    public UserController(UserAdminService users, FamilyService families, AdminTotpService totp) {
         this.users = users;
         this.families = families;
+        this.totp = totp;
     }
 
     @Override
@@ -84,6 +87,12 @@ public class UserController implements UsersApi {
     @Override
     public ResponseEntity<Void> terminateUserSessions(UUID userId) {
         users.terminateSessions(actor(), userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    public ResponseEntity<Void> resetUserTotp(UUID userId) {
+        totp.reset(actor(), userId);
         return ResponseEntity.noContent().build();
     }
 

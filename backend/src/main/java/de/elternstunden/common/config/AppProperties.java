@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import java.net.URI;
 import java.time.Duration;
+import java.util.Map;
 import org.jspecify.annotations.Nullable;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
@@ -25,7 +26,9 @@ public record AppProperties(
         @Valid @NotNull Sessions sessions,
         @Valid @NotNull Master master,
         @Valid @NotNull Claims claims,
-        @Valid @NotNull SchoolYears schoolYears) {
+        @Valid @NotNull SchoolYears schoolYears,
+        @Valid @NotNull Oidc oidc,
+        @Valid @NotNull Mfa mfa) {
 
     public record Mail(@NotBlank String from) {}
 
@@ -63,7 +66,9 @@ public record AppProperties(
             @Valid @NotNull Limit noAccountMailPerTarget,
             @Valid @NotNull Limit redeemPerIp,
             @Valid @NotNull Limit masterLoginPerIp,
-            @Valid @NotNull Limit masterFailureAlarm) {}
+            @Valid @NotNull Limit masterFailureAlarm,
+            @Valid @NotNull Limit oidcCallbackPerIp,
+            @Valid @NotNull Limit mfaPerIp) {}
 
     public record Limit(@Positive int max, @NotNull Duration window) {}
 
@@ -94,6 +99,55 @@ public record AppProperties(
      * @param leadTime the job creates the next school year this long before it starts
      */
     public record SchoolYears(@NotNull Duration leadTime) {}
+
+    /**
+     * OIDC login (7.2, D-23). A provider without client id is switched off.
+     *
+     * @param pendingTtl lifetime of the OIDC_PENDING state ("Noch ein Schritt")
+     * @param reauthWindow linking a provider or disabling TOTP needs a login at most this old
+     */
+    public record Oidc(
+            @NotNull Duration pendingTtl, @NotNull Duration reauthWindow, Map<String, @Valid OidcProvider> providers) {
+
+        public Oidc {
+            providers = providers == null ? Map.of() : Map.copyOf(providers);
+        }
+    }
+
+    /**
+     * One OIDC provider. Without explicit endpoints they are discovered from the issuer at start.
+     *
+     * @param trustEmailForLinking whether the provider is authoritative for the e-mail address (7.1.5)
+     */
+    public record OidcProvider(
+            @NotBlank String name,
+            @Nullable String clientId,
+            @Nullable String clientSecret,
+            @NotBlank String issuer,
+            @Nullable URI authorizationUri,
+            @Nullable URI tokenUri,
+            @Nullable URI jwkSetUri,
+            @NotNull EmailTrust trustEmailForLinking) {
+
+        public boolean enabled() {
+            return clientId != null && !clientId.isBlank();
+        }
+    }
+
+    /** 7.1.5: Google only for @gmail.com or with the hd claim; other providers never link by e-mail. */
+    public enum EmailTrust {
+        NEVER,
+        GMAIL_OR_HD
+    }
+
+    /**
+     * Second factor for admins (SEC-05, 7.2).
+     *
+     * @param pendingTtl lifetime of the MFA_PENDING state
+     * @param recoveryCodes number of one-time recovery codes
+     */
+    public record Mfa(
+            @NotNull Duration pendingTtl, @Positive int recoveryCodes) {}
 
     /** The config-managed master admin (D-22, 7.9). Empty email = no master (local development without it). */
     public record Master(
