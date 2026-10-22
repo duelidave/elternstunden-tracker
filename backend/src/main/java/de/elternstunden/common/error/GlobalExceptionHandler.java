@@ -1,6 +1,8 @@
 package de.elternstunden.common.error;
 
 import de.elternstunden.api.model.ValidationErrorDto;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -54,6 +56,25 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = problems.create(ex.code(), ex.getMessage());
         ex.properties().forEach(problem::setProperty);
         return respond(problem);
+    }
+
+    /**
+     * Constraints on query and path parameters: the generated interfaces are {@code @Validated}, so they arrive as
+     * method validation, e.g. a too short search (AC-OV-04) or an unknown sort field (AC-OV-03).
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    ResponseEntity<ProblemDetail> handleConstraintViolation(ConstraintViolationException ex) {
+        List<ValidationErrorDto> errors = ex.getConstraintViolations().stream()
+                .map(violation -> new ValidationErrorDto(
+                        parameterName(violation.getPropertyPath()),
+                        violation
+                                .getConstraintDescriptor()
+                                .getAnnotation()
+                                .annotationType()
+                                .getSimpleName(),
+                        violation.getMessage()))
+                .toList();
+        return respond(problems.validation(errors));
     }
 
     @ExceptionHandler(AuthenticationException.class)
@@ -113,6 +134,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             return handleExceptionInternal(ex, problems.validation(List.of(error)), headers, status, request);
         }
         return handleExceptionInternal(ex, problems.create(ErrorCode.MALFORMED_REQUEST), headers, status, request);
+    }
+
+    private static String parameterName(Path path) {
+        String name = "parameter";
+        for (Path.Node node : path) {
+            if (node.getName() != null) {
+                name = node.getName();
+            }
+        }
+        return name;
     }
 
     /** Replaces Spring's default problem bodies with ours, so every error carries {@code code} and {@code traceId}. */
