@@ -2,7 +2,9 @@ package de.elternstunden.contract;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import de.elternstunden.auth.service.Totp;
 import de.elternstunden.support.ApiClient;
+import de.elternstunden.support.FakeOidcProvider;
 import de.elternstunden.support.IntegrationTest;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
@@ -27,17 +29,26 @@ class RoleMatrixIT extends IntegrationTest {
 
     private static OpenAPI contract;
 
-    /** The roles of 8.2 that exist so far; OP and MP follow with M3. */
+    /** The roles of 8.2. */
     enum Role {
         ANONYMOUS,
         UNASSIGNED,
         FAMILY,
         ADMIN,
-        MASTER;
+        MASTER,
+        OIDC_PENDING,
+        MFA_PENDING;
+
+        /** Half-finished logins count as not signed in: 401 like anonymous (AC-OIDC-10, AC-AUTH-23). */
+        boolean signedIn() {
+            return this == UNASSIGNED || this == FAMILY || this == ADMIN || this == MASTER;
+        }
 
         boolean allowedBy(List<String> roles) {
             return switch (this) {
                 case ANONYMOUS -> roles.contains("A");
+                case OIDC_PENDING -> roles.contains("A") || roles.contains("OP");
+                case MFA_PENDING -> roles.contains("A") || roles.contains("MP");
                 case UNASSIGNED -> roles.contains("A") || roles.contains("U");
                 case FAMILY -> roles.contains("A") || roles.contains("U") || roles.contains("F");
                 case ADMIN -> roles.contains("A") || roles.contains("U") || roles.contains("AD");
@@ -60,15 +71,18 @@ class RoleMatrixIT extends IntegrationTest {
         SoftAssertions softly = new SoftAssertions();
         for (Call call : calls()) {
             for (Role role : Role.values()) {
-                int status = send(sessions.get(role), call);
+                ApiClient.Response response = send(sessions.get(role), call);
+                int status = response.status();
                 if (role.allowedBy(call.roles())) {
-                    softly.assertThat(status)
+                    // an allowed role may still need a fresh login for sensitive changes (7.2)
+                    boolean reauth = status == 403 && response.body().contains("REAUTH_REQUIRED");
+                    softly.assertThat(reauth ? 200 : status)
                             .as("%s %s as %s", call.method(), call.path(), role)
                             .isNotIn(401, 403);
                 } else {
                     softly.assertThat(status)
                             .as("%s %s as %s", call.method(), call.path(), role)
-                            .isEqualTo(role == Role.ANONYMOUS ? 401 : 403);
+                            .isEqualTo(role.signedIn() ? 403 : 401);
                 }
             }
         }
@@ -76,14 +90,16 @@ class RoleMatrixIT extends IntegrationTest {
     }
 
     /**
-     * AC-SEC-02 grows with every milestone: each operation for family members that takes an id needs an IDOR case
-     * (family A accesses family B: 404). The list is empty until M4 brings the entries.
+     * AC-SEC-02 grows with every milestone: each operation for signed-in users that takes a resource id needs an IDOR
+     * case (someone else's resource: 404). Where the case lives is noted next to the operation.
      */
     @Test
     void familyOperationsWithIdsHaveIdorCases() {
-        Set<String> covered = Set.of();
+        Set<String> covered = Set.of(
+                // OidcIT.foreignIdentitiesAreNotFound
+                "DELETE /api/v1/me/identities/{identityId}");
         List<String> needingCases = calls().stream()
-                .filter(call -> call.path().contains("{"))
+                .filter(call -> call.path().matches(".*\\{[a-zA-Z]+Id}.*"))
                 .filter(call -> call.roles().contains("F") || call.roles().contains("U"))
                 .map(call -> call.method() + " " + call.path())
                 .toList();
@@ -104,10 +120,34 @@ class RoleMatrixIT extends IntegrationTest {
         sessions.put(Role.FAMILY, signedIn(family));
         sessions.put(Role.ADMIN, signedInAs("ADMIN"));
         sessions.put(Role.MASTER, signedInMaster());
+        ApiClient oidcPending = browser();
+        oidcLogin(
+                oidcPending,
+                FakeOidcProvider.Login.of("matrix-" + UUID.randomUUID(), "matrix-" + UUID.randomUUID() + "@gmail.com"));
+        sessions.put(Role.OIDC_PENDING, oidcPending);
+        sessions.put(Role.MFA_PENDING, mfaPending());
         return sessions;
     }
 
-    /** All operations except logout (it would end the session) and dev-only ones. */
+    /** An admin with TOTP after the first factor. */
+    private ApiClient mfaPending() {
+        String email = uniqueEmail();
+        insertUser(email, "ADMIN", "ACTIVE");
+        ApiClient admin = signedIn(email);
+        String secret = admin.post("/api/v1/me/totp/setup").json().get("secret").asString();
+        clock.advance(java.time.Duration.ofSeconds(Totp.STEP_SECONDS));
+        admin.post(
+                "/api/v1/me/totp/confirm",
+                Map.of(
+                        "code",
+                        Totp.codeAt(Totp.decodeBase32(secret), clock.instant().getEpochSecond() / Totp.STEP_SECONDS)));
+        ApiClient pending = browser();
+        requestMagicLink(pending, email);
+        redeem(pending, latestToken(email));
+        return pending;
+    }
+
+    /** All operations except logout (it would end the session) and dev-only ones; PUT/POST/PATCH with an empty body. */
     private static List<Call> calls() {
         String base = contract.getServers().getFirst().getUrl();
         List<Call> calls = new ArrayList<>();
@@ -134,14 +174,14 @@ class RoleMatrixIT extends IntegrationTest {
         return calls;
     }
 
-    private static int send(ApiClient client, Call call) {
+    private static ApiClient.Response send(ApiClient client, Call call) {
         String path = call.path().replaceAll("\\{[^}]+}", UUID.randomUUID().toString());
         return switch (call.method()) {
-            case "GET" -> client.get(path).status();
-            case "POST" -> client.post(path, "{}").status();
-            case "PUT" -> client.put(path, "{}").status();
-            case "PATCH" -> client.patch(path, "{}").status();
-            case "DELETE" -> client.delete(path).status();
+            case "GET" -> client.get(path);
+            case "POST" -> client.post(path, "{}");
+            case "PUT" -> client.put(path, "{}");
+            case "PATCH" -> client.patch(path, "{}");
+            case "DELETE" -> client.delete(path);
             default -> throw new IllegalStateException("unexpected method " + call.method());
         };
     }

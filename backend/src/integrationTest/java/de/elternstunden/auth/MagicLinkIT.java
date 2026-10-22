@@ -37,8 +37,8 @@ class MagicLinkIT extends IntegrationTest {
         ApiClient.Response response = redeem(browser, latestToken(email));
 
         assertThat(response.status()).isEqualTo(200);
-        assertThat(response.json().get("email").asString()).isEqualTo(email);
-        assertThat(browser.get("/api/v1/me").status()).isEqualTo(200);
+        assertThat(response.json().get("status").asString()).isEqualTo("LOGGED_IN");
+        assertThat(browser.get("/api/v1/me").json().get("email").asString()).isEqualTo(email);
         assertThat(mails.sentTo(email).getLast().subject()).isEqualTo("Dein Anmeldelink");
     }
 

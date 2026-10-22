@@ -50,6 +50,9 @@ public abstract class IntegrationTest {
 
     private static final String MASTER_HASH = MasterPassword.encoder().encode(MASTER_PASSWORD);
 
+    /** "Google" in the tests (7.2); shared like the database. */
+    protected static final FakeOidcProvider OIDC = new FakeOidcProvider();
+
     static {
         POSTGRES.start();
     }
@@ -65,6 +68,12 @@ public abstract class IntegrationTest {
         registry.add("app.master.email", () -> MASTER_EMAIL);
         registry.add("app.master.password-hash", () -> MASTER_HASH);
         registry.add("app.master.totp-secret", () -> MASTER_TOTP_SECRET);
+        registry.add("app.oidc.providers.google.client-id", () -> FakeOidcProvider.CLIENT_ID);
+        registry.add("app.oidc.providers.google.client-secret", () -> FakeOidcProvider.CLIENT_SECRET);
+        registry.add("app.oidc.providers.google.issuer", OIDC::issuer);
+        registry.add("app.oidc.providers.google.authorization-uri", () -> OIDC.issuer() + "/authorize");
+        registry.add("app.oidc.providers.google.token-uri", () -> OIDC.issuer() + "/token");
+        registry.add("app.oidc.providers.google.jwk-set-uri", () -> OIDC.issuer() + "/jwks");
     }
 
     @LocalServerPort
@@ -292,6 +301,28 @@ public abstract class IntegrationTest {
             }
         }
         return mails.sentTo(email);
+    }
+
+    /**
+     * A full provider login in the browser: entry, provider, callback. Returns the redirect target in the SPA (path
+     * and query), e.g. {@code /}, {@code /register/claim} or {@code /login?error=...}.
+     */
+    protected String oidcLogin(ApiClient browser, FakeOidcProvider.Login login) {
+        OIDC.nextLogin(login);
+        ApiClient.Response start = browser.get("/oauth2/authorization/google");
+        if (start.status() != 302) {
+            throw new AssertionError("no redirect to the provider: " + start.status());
+        }
+        String callback = OIDC.authorize(start.header("Location").orElseThrow());
+        return spaTarget(browser.get(callback));
+    }
+
+    /** The SPA path of a redirect from the backend (base URL removed). */
+    protected static String spaTarget(ApiClient.Response response) {
+        if (response.status() != 302) {
+            throw new AssertionError("expected a redirect, got " + response.status() + ": " + response.body());
+        }
+        return response.header("Location").orElseThrow().replace("http://localhost:5173", "");
     }
 
     /** Direct connection as the owner role, for checks the app role must not be able to do. */
