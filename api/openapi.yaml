@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Elternstunden API
-  version: 0.4.0
+  version: 0.4.1
   description: |
     API-Vertrag der Elternstunden-Zeiterfassung und Quelle der Wahrheit für Backend und Frontend
     (Lastenheft D-25). Jede API-Änderung beginnt hier, danach wird auf beiden Seiten neu generiert.
@@ -1334,7 +1334,8 @@ paths:
       operationId: assignUserToFamily
       summary: Nutzer einer Familie zuordnen
       description: >-
-        Zuordnung durch Admins (F5, 7.1.7). Erledigt den offenen Claim. Master: 409 ACCOUNT_MANAGED_BY_CONFIG.
+        Zuordnung durch Admins (F5, 7.1.7). Erledigt den offenen Claim. Master: 409 ACCOUNT_MANAGED_BY_CONFIG. Die
+        Familie hat schon zwei Nutzer (D-28): 409 FAMILY_FULL.
       x-roles: [AD]
       parameters:
         - $ref: '#/components/parameters/UserId'
