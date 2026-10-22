@@ -2,40 +2,60 @@
  * Design tokens (UI-01): all colours, fonts, radii, shadows and sizes in one place.
  * Tailwind builds its utilities from them (bg-accent, text-muted, min-h-tap, ...); the default palette is
  * cleared so no colour from outside this file can sneak in.
- * OPEN-19: placeholder palette derived from the yellow accent of the Hort website until the real
- * values exist. Yellow is never used as text colour on white (contrast).
- * Checked pairs (WCAG 2.2 AA): text on surface 13.6, on canvas 13.1, on accent 8.3, on accent-pressed 7.4,
- * on accent-surface 12.5; muted on surface 5.1, on canvas 4.9, on accent-surface 4.7;
- * accent-strong (borders only, never text) on surface 4.0, on canvas 3.9, on accent-surface 3.7.
+ * OPEN-19: colours taken from the Hort logo and website (hort-an-der-montessorischule.de, 2026-10-22) until
+ * official design values exist. Logo colours are never used as text colour on white (contrast).
+ * Checked pairs (WCAG 2.2 AA): text on surface 12.6, on canvas 11.8, on accent 5.2, on accent-pressed 6.3,
+ * on the light surfaces at least 11.2; muted on surface 5.7, on canvas 5.4, on the light surfaces at least 5.1;
+ * heading (large text only) on surface 4.6, on canvas 4.3; success on success-surface 4.6; danger on
+ * danger-surface 5.7; accent-strong (borders) on surface 4.9, on canvas 4.6; brand-teal-strong (borders) on
+ * surface 4.2, on canvas 3.9, on brand-teal-surface 3.7; text on brand-teal-soft 10.2, muted 4.6.
  */
 @theme {
   --color-*: initial;
-  --color-accent: #f5c400;
-  /* Deeper accent for borders, button edges and checkmarks, at least 3:1 on every light surface */
-  --color-accent-strong: #a37800;
-  --color-accent-pressed: #e8b900;
-  --color-accent-surface: #fff6d1;
-  --color-text: #2e2e2e;
-  --color-muted: #6e6e6e;
-  --color-line: #d4d4d4;
+
+  /* The orange of the logo: main buttons and highlights */
+  --color-accent: #f28d13;
+  /* Deeper orange for borders, button edges and checkmarks, at least 3:1 on every light surface */
+  --color-accent-strong: #a85f00;
+  --color-accent-pressed: #f7a640;
+  --color-accent-surface: #fef1e0;
+
+  /* The other logo and website colours, for small decorative touches */
+  --color-brand-yellow: #fbbd16;
+  --color-brand-lime: #8aba27;
+  --color-brand-teal: #76adb8;
+  --color-brand-teal-strong: #3a8696;
+  --color-brand-teal-surface: #e8f3f5;
+  /* Footer band with the wave, a little stronger than the surfaces */
+  --color-brand-teal-soft: #d6eaee;
+  --color-brand-green: #29a042;
+  --color-brand-purple: #7573b4;
+
+  --color-text: #333333;
+  /* Headings like on the website; only for large text */
+  --color-heading: #7b6da4;
+  --color-muted: #666666;
+  --color-line: #d5dddd;
   --color-surface: #ffffff;
-  --color-surface-muted: #f6f6f6;
-  /* Page background behind the cards, a very light warm tint */
-  --color-canvas: #fffbf0;
+  --color-surface-muted: #f1f4f4;
+  /* Page background behind the cards, a very light cool grey */
+  --color-canvas: #f5f8f8;
+  --color-success: #2f7d34;
+  --color-success-surface: #e9f5ea;
   --color-danger: #b3261e;
   --color-danger-surface: #fdecea;
 
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  /* Headings: the rounded system font where there is one (Apple), the normal one elsewhere */
-  --font-display: ui-rounded, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --text-title: 1.5rem;
-  --text-heading: 1.25rem;
+  /* Headings in the handwriting of the website, bundled locally (OFL, SEC-10) */
+  --font-display: 'Indie Flower', ui-rounded, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --text-title: 1.875rem;
+  --text-heading: 1.75rem;
   --radius-card: 1rem;
   --radius-control: 0.625rem;
   --radius-pill: 9999px;
   --shadow-card:
-    0 1px 2px color-mix(in srgb, var(--color-accent-strong) 10%, transparent),
-    0 8px 24px -12px color-mix(in srgb, var(--color-accent-strong) 35%, transparent);
+    0 1px 2px color-mix(in srgb, var(--color-brand-teal-strong) 12%, transparent),
+    0 10px 28px -14px color-mix(in srgb, var(--color-brand-teal-strong) 40%, transparent);
   /* Firm bottom edge of the buttons; it disappears when the button is pressed */
   --shadow-button: 0 2px 0 var(--color-accent-strong);
   --spacing-tap: 44px;

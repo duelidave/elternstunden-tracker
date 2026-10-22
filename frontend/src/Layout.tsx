@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { Link, Outlet, useMatch } from 'react-router'
-import { LogoMark } from './components/Icons'
+import { HortMark } from './components/Icons'
 import { texts } from './i18n/de'
 
 // FS-DEV (D-26): only in the Vite dev server. In the production build this is `false`, so the bundler drops the
@@ -9,29 +9,35 @@ const DevToolbar = import.meta.env.DEV ? lazy(() => import('./dev/DevToolbar')) 
 
 export function Layout() {
   // Admin lists need room for tables (UI-03); everything else stays a narrow single column
-  const wide = useMatch('/admin/*') !== null
+  const width = useMatch('/admin/*') === null ? 'max-w-xl' : 'max-w-5xl'
   return (
-    <div className={`mx-auto flex min-h-dvh flex-col ${wide ? 'max-w-5xl' : 'max-w-xl'}`}>
-      <header className="mx-4 flex items-center gap-3 pt-5 pb-1">
-        <LogoMark />
-        <div className="min-w-0">
-          <h1>
-            <Link to="/" className="inline-flex min-h-tap items-center no-underline">
-              {texts.app.title}
-            </Link>
-          </h1>
-          <p className="-mt-1 mb-0 text-sm text-muted">{texts.app.subtitle}</p>
+    <div className="flex min-h-dvh flex-col">
+      <header className={`mx-auto w-full ${width} px-4 pt-5`}>
+        <div className="flex items-center gap-3">
+          <HortMark />
+          <div className="min-w-0">
+            <h1>
+              <Link to="/" className="inline-flex min-h-tap items-center no-underline">
+                {texts.app.title}
+              </Link>
+            </h1>
+            <p className="-mt-1 mb-0 text-sm text-muted">{texts.app.subtitle}</p>
+          </div>
         </div>
+        <div className="brand-stripe mt-3" />
       </header>
-      <main className="flex-1 px-4 pt-4 pb-8">
+      <main className={`mx-auto w-full ${width} flex-1 px-4 pt-5 pb-12`}>
         <Outlet />
       </main>
-      <footer className="mx-4 border-t border-line py-2">
-        <nav aria-label={texts.common.legalNav} className="flex justify-center gap-6 text-sm">
-          <Link className="inline-flex min-h-tap items-center text-muted" to="/legal/privacy">
+      <footer className="site-footer">
+        <svg className="site-footer__wave" viewBox="0 0 1440 80" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0 48C240 8 480 8 720 40s480 40 720 0v40H0z" />
+        </svg>
+        <nav aria-label={texts.common.legalNav} className={`mx-auto flex ${width} justify-center gap-6 px-4 pb-3 text-sm`}>
+          <Link className="inline-flex min-h-tap items-center" to="/legal/privacy">
             {texts.common.privacy}
           </Link>
-          <Link className="inline-flex min-h-tap items-center text-muted" to="/legal/imprint">
+          <Link className="inline-flex min-h-tap items-center" to="/legal/imprint">
             {texts.common.imprint}
           </Link>
         </nav>

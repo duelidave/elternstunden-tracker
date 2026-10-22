@@ -126,6 +126,7 @@ export const texts = {
       title: 'Kinder',
       create: 'Kind anlegen',
       import: 'CSV-Import',
+      name: 'Name',
       firstName: 'Vorname',
       lastName: 'Nachname',
       birthDate: 'Geburtsdatum',

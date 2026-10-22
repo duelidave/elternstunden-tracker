@@ -33,22 +33,22 @@ public final class MailLayout {
 
         StringBuilder html = new StringBuilder();
         html.append("<!doctype html><html lang=\"de\"><body style=\"font-family:system-ui,sans-serif;")
-                .append("color:#2e2e2e;line-height:1.5;max-width:36rem;margin:0 auto;padding:1rem\">");
+                .append("color:#333333;line-height:1.5;max-width:36rem;margin:0 auto;padding:1rem\">");
         intro.forEach(line -> html.append("<p>").append(escape(line)).append("</p>"));
         if (action != null) {
             html.append("<p><a href=\"")
                     .append(escape(action.link()))
-                    .append("\" style=\"display:inline-block;background:#f5c400;color:#2e2e2e;")
+                    .append("\" style=\"display:inline-block;background:#f28d13;color:#333333;")
                     .append("padding:0.75rem 1.25rem;border-radius:0.5rem;text-decoration:none;font-weight:600\">")
                     .append(escape(action.button()))
                     .append("</a></p>")
-                    .append("<p style=\"word-break:break-all;color:#6e6e6e\">")
+                    .append("<p style=\"word-break:break-all;color:#666666\">")
                     .append(escape(action.link()))
                     .append("</p>");
         }
         outro.forEach(line -> html.append("<p>").append(escape(line)).append("</p>"));
         if (action != null) {
-            html.append("<p style=\"color:#6e6e6e\">").append(escape(IGNORE)).append("</p>");
+            html.append("<p style=\"color:#666666\">").append(escape(IGNORE)).append("</p>");
         }
         html.append("<p>").append(escape(SIGNATURE)).append("</p></body></html>");
         return new MailMessage(to, subject, text.toString(), html.toString());

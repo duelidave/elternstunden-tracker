@@ -28,7 +28,7 @@ export function ChildrenPage() {
 
   const columns: Column<AdminChild>[] = [
     {
-      header: texts.admin.children.firstName,
+      header: texts.admin.children.name,
       cell: (child) => (
         <Link to={`/admin/children/${child.id}`}>
           {child.firstName} {child.lastName}
@@ -44,7 +44,7 @@ export function ChildrenPage() {
     },
     {
       header: year === undefined ? texts.admin.children.enrolled : texts.admin.children.enrolledIn(year.label),
-      cell: (child) => (year === undefined ? texts.admin.none : <EnrollmentToggle child={child} year={year} />),
+      cell: (child) => (year === undefined ? texts.admin.none : <EnrollmentToggle child={child} year={year} compact />),
     },
   ]
 
@@ -128,7 +128,8 @@ export function ChildrenPage() {
 }
 
 /** Enrolls or unenrolls with one tap; a closed year answers 409 SCHOOL_YEAR_CLOSED (OPEN-06). */
-export function EnrollmentToggle({ child, year }: { child: AdminChild; year: SchoolYear }) {
+/** Compact: the column header names the year, so the label is for screen readers only. */
+export function EnrollmentToggle({ child, year, compact = false }: { child: AdminChild; year: SchoolYear; compact?: boolean }) {
   const id = useId()
   const enroll = useEnrollChild()
   const unenroll = useUnenrollChild()
@@ -155,7 +156,9 @@ export function EnrollmentToggle({ child, year }: { child: AdminChild; year: Sch
         disabled={year.closed || enroll.isPending || unenroll.isPending}
         onChange={() => void toggle()}
       />
-      <label htmlFor={id}>{texts.admin.children.enrolledIn(year.label)}</label>
+      <label htmlFor={id} className={compact ? 'sr-only' : undefined}>
+        {texts.admin.children.enrolledIn(year.label)}
+      </label>
       {error && (
         <span className="field__error" role="alert">
           {errorText(error)}

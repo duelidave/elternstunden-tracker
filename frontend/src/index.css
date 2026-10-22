@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import '@fontsource/indie-flower/latin-400.css';
 @import './styles/tokens.css';
 
 @layer base {
@@ -12,25 +13,25 @@
     min-height: 100dvh;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
       env(safe-area-inset-left);
-    /* A soft warm glow behind the header */
-    background: radial-gradient(120% 22rem at 50% 0, var(--color-accent-surface), transparent) no-repeat;
+    /* A soft cool glow behind the header */
+    background: radial-gradient(120% 20rem at 50% 0, var(--color-brand-teal-surface), transparent) no-repeat;
   }
 
+  /* Handwritten headings like on the Hort website; the font has one weight only, so no bold */
   h1,
-  h2,
-  legend {
+  h2 {
+    color: var(--color-heading);
     font-family: var(--font-display);
+    font-weight: 400;
+    line-height: 1.15;
   }
 
   h1 {
     font-size: var(--text-title);
-    font-weight: 800;
-    letter-spacing: -0.01em;
   }
 
   h2 {
     font-size: var(--text-heading);
-    font-weight: 700;
   }
 
   p {
@@ -45,7 +46,7 @@
   }
 
   ::selection {
-    background: var(--color-accent);
+    background: var(--color-brand-teal-surface);
     color: var(--color-text);
   }
 
@@ -72,15 +73,33 @@
     box-shadow: var(--shadow-card);
   }
 
-  /* Short accent rule under the screen title */
+  /* Short rule in the logo colours under the screen title */
   .card h2::after {
     content: '';
     display: block;
-    width: 2.5rem;
+    width: 3rem;
     height: 0.25rem;
-    margin-top: --spacing(2);
+    margin-top: --spacing(1);
     border-radius: var(--radius-pill);
-    background: var(--color-accent);
+    background: var(--brand-stripe);
+  }
+
+  /* The colours of the logo side by side, as a thin signature line (header, card titles) */
+  :root {
+    --brand-stripe: linear-gradient(
+      90deg,
+      var(--color-accent) 0 20%,
+      var(--color-brand-yellow) 20% 40%,
+      var(--color-brand-lime) 40% 60%,
+      var(--color-brand-teal) 60% 80%,
+      var(--color-brand-purple) 80% 100%
+    );
+  }
+
+  .brand-stripe {
+    height: 0.3125rem;
+    border-radius: var(--radius-pill);
+    background: var(--brand-stripe);
   }
 
   /* Decorative icon above the title of a confirmation ("sent") */
@@ -136,12 +155,12 @@
     box-shadow: 0 0 0 1px var(--color-danger);
   }
 
-  /* Dark ring for the contrast, warm halo around it for the look */
+  /* Dark ring for the contrast, teal halo around it for the look */
   .field input:focus-visible {
     border-color: var(--color-text);
     outline-width: 2px;
     outline-offset: 0;
-    box-shadow: 0 0 0 5px var(--color-accent);
+    box-shadow: 0 0 0 5px var(--color-brand-teal);
   }
 
   .field__error {
@@ -175,7 +194,7 @@
     width: 1.5rem;
     height: 1.5rem;
     flex: none;
-    accent-color: var(--color-accent-strong);
+    accent-color: var(--color-brand-teal-strong);
   }
 
   .button {
@@ -217,7 +236,7 @@
   }
 
   .button--secondary:active:not(:disabled) {
-    background: var(--color-accent-surface);
+    background: var(--color-brand-teal-surface);
     translate: none;
   }
 
@@ -228,7 +247,7 @@
     }
 
     .button--secondary:hover:not(:disabled) {
-      background: var(--color-accent-surface);
+      background: var(--color-brand-teal-surface);
     }
   }
 
@@ -264,7 +283,7 @@
     --altcha-color-neutral-content: var(--color-muted);
     --altcha-color-primary: var(--color-text);
     --altcha-color-primary-content: var(--color-surface);
-    --altcha-color-success: var(--color-accent-strong);
+    --altcha-color-success: var(--color-success);
     --altcha-color-success-content: var(--color-surface);
     --altcha-color-error: var(--color-danger);
     --altcha-color-error-content: var(--color-surface);
@@ -273,7 +292,7 @@
     --altcha-checkbox-border-radius: calc(var(--radius-control) / 2);
     --altcha-checkbox-outline: 3px solid var(--color-text);
     --altcha-input-border-radius: var(--radius-control);
-    --altcha-spinner-color: var(--color-accent-strong);
+    --altcha-spinner-color: var(--color-brand-teal-strong);
   }
 }
 
@@ -294,12 +313,11 @@
     border-color: var(--color-text);
     outline-width: 2px;
     outline-offset: 0;
-    box-shadow: 0 0 0 5px var(--color-accent);
+    box-shadow: 0 0 0 5px var(--color-brand-teal);
   }
 
   h3 {
     margin-block: --spacing(4) --spacing(2);
-    font-family: var(--font-display);
     font-weight: 700;
   }
 
@@ -317,9 +335,8 @@
 
   .admin-nav {
     display: flex;
+    flex-wrap: wrap;
     gap: --spacing(2);
-    overflow-x: auto;
-    padding-bottom: --spacing(1);
   }
 
   .admin-nav__link {
@@ -336,8 +353,8 @@
   }
 
   .admin-nav__link[aria-current='page'] {
-    border-color: var(--color-accent-strong);
-    background: var(--color-accent);
+    border-color: var(--color-brand-teal-strong);
+    background: var(--color-brand-teal-surface);
   }
 
   .filters {
@@ -360,9 +377,9 @@
 
   .notice {
     padding: --spacing(3) --spacing(4);
-    border-inline-start: 4px solid var(--color-accent-strong);
+    border-inline-start: 4px solid var(--color-success);
     border-radius: var(--radius-control);
-    background: var(--color-accent-surface);
+    background: var(--color-success-surface);
   }
 
   .stack {
@@ -379,7 +396,7 @@
     margin-inline-start: --spacing(2);
     padding: 0 --spacing(2);
     border-radius: var(--radius-pill);
-    background: var(--color-accent-surface);
+    background: var(--color-brand-teal-surface);
     font-size: 0.875rem;
     font-weight: 600;
   }
@@ -394,10 +411,16 @@
     align-items: center;
     justify-content: center;
     min-width: 1.75rem;
+    margin-inline-start: --spacing(1);
     padding: 0 --spacing(2);
     border-radius: var(--radius-pill);
     background: var(--color-accent);
+    color: var(--color-text);
+    font-family: var(--font-sans);
     font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.75rem;
+    vertical-align: middle;
   }
 
   .candidate {
@@ -547,24 +570,44 @@
     }
   }
 
-  .date-dialog .rdp-root {
-    --rdp-accent-color: var(--color-accent-strong);
-    --rdp-accent-background-color: var(--color-accent-surface);
-    --rdp-today-color: var(--color-text);
-    --rdp-selected-border: 2px solid var(--color-accent-strong);
-    --rdp-day-height: var(--spacing-tap);
-    --rdp-day-width: var(--spacing-tap);
-    --rdp-day_button-height: calc(var(--spacing-tap) - 2px);
-    --rdp-day_button-width: calc(var(--spacing-tap) - 2px);
-    font-family: var(--font-sans);
+
+}
+
+/* Footer with the wave edge of the Hort website */
+@layer components {
+  .site-footer {
+    margin-top: --spacing(10);
+    background: var(--color-brand-teal-soft);
   }
 
-  .date-dialog .rdp-selected .rdp-day_button {
-    background: var(--color-accent);
-    color: var(--color-text);
+  .site-footer__wave {
+    display: block;
+    width: 100%;
+    height: 2.5rem;
+    margin-top: -2.5rem;
+    fill: var(--color-brand-teal-soft);
   }
+}
 
-  .date-dialog .rdp-today:not(.rdp-outside) {
-    font-weight: 800;
-  }
+/* Calendar colours. Unlayered on purpose: the stylesheet of react-day-picker is unlayered too and would otherwise
+   win over the component layer. */
+.date-dialog .rdp-root {
+  --rdp-accent-color: var(--color-brand-teal-strong);
+  --rdp-accent-background-color: var(--color-accent-surface);
+  --rdp-today-color: var(--color-text);
+  --rdp-selected-border: 2px solid var(--color-accent-strong);
+  --rdp-day-height: var(--spacing-tap);
+  --rdp-day-width: var(--spacing-tap);
+  --rdp-day_button-height: calc(var(--spacing-tap) - 2px);
+  --rdp-day_button-width: calc(var(--spacing-tap) - 2px);
+  font-family: var(--font-sans);
+}
+
+.date-dialog .rdp-selected .rdp-day_button {
+  background: var(--color-accent);
+  color: var(--color-text);
+}
+
+.date-dialog .rdp-today:not(.rdp-outside) {
+  font-weight: 800;
 }

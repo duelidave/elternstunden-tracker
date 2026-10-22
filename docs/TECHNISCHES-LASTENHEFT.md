@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 0.4.3 (Entwurf) |
+| Version | 0.4.4 (Entwurf) |
 | Stand | 2026-10-22 |
 | Einrichtung | Hort an der Montessorischule (Elterninitiative, Verein) |
 | Zielgruppe | Entwickler:innen und KI-Coding-Agents |
@@ -20,6 +20,7 @@
 | 0.4.1 | 2026-10-21 | Rollenwechsel für manuelle Tests in der lokalen Entwicklung (D-26, FS-DEV 7.12, AC-DEV), Umsetzung in M1. |
 | 0.4.2 | 2026-10-22 | Endpunktübersicht (8.2) um die Endpunkte für schon spezifizierte Funktionen ergänzt: Nutzer anonymisieren (DP-05) und Einschreibung aus Vorjahr übernehmen (7.7). |
 | 0.4.3 | 2026-10-22 | Datumseingabe immer im deutschen Format mit deutschem Kalender statt nativer Datumsfelder (D-27, UI-12). |
+| 0.4.4 | 2026-10-22 | Design an Logo und Website des Horts angelehnt: Palette, Überschriften-Schrift, Logo-Zeichen (UI-01, OPEN-19). |
 
 ---
 
@@ -1713,7 +1714,7 @@ Wichtig: **Docker umgeht `ufw`** für veröffentlichte Ports. Deshalb veröffent
 
 | ID | Anforderung |
 |---|---|
-| UI-01 | **Design-Tokens.** Alle Farben, Abstände, Radien, Schriften als CSS-Variablen an einer Stelle. Die aktuelle Palette ist ein **Platzhalter**, abgeleitet vom gelben Akzent der Hort-Website, bis die echten Werte vorliegen (OPEN-19): Akzent `#F5C400`, Akzentfläche `#FFF6D1`, Text `#2E2E2E`, Grau `#6E6E6E`, Linie `#E2E2E2`. Gelb darf nie als Textfarbe auf Weiß stehen (Kontrast). Kontrast mindestens WCAG AA. Systemschrift oder lokal gebündelte Schrift (keine externen Fonts, SEC-10). |
+| UI-01 | **Design-Tokens.** Alle Farben, Abstände, Radien, Schriften als CSS-Variablen an einer Stelle. Die Palette stammt aus Logo und Website des Horts (Auftraggeber, 2026-10-22, OPEN-19): Orange `#F28D13` (Haupt-Schaltflächen), Gelb `#FBBD16`, Limette `#8ABA27`, Türkis `#76ADB8`, Grün `#29A042`, Lila `#7573B4`, Überschriften `#7B6DA4` wie auf der Website, Text `#333333`. Das Logo-Zeichen ist als SVG nachgezeichnet. Logofarben stehen nie als Textfarbe auf Weiß (Kontrast). Kontrast mindestens WCAG AA. Systemschrift, Überschriften in der Handschrift der Website (Indie Flower, OFL, lokal gebündelt, keine externen Fonts, SEC-10). |
 | UI-02 | **Texte externalisiert.** Alle sichtbaren Texte in einer Ressourcendatei (`de`), keine hartcodierten Strings in Komponenten. Formate über `Intl` (de-DE). Anrede: Du, freundlich, kurz. |
 | UI-03 | **Mobile first.** Basis 360 px Breite, einspaltig. Tippflächen mindestens 44×44 px. Wichtige Aktionen im Daumenbereich (unten). Keine Hover-Abhängigkeit. Safe-Area-Insets beachten. Keine horizontale Scrollleiste ab 320 px. Ab 768 px: Admin-Listen als Tabelle, darunter als Karten. Zielgeräte: aktuelle und vorherige Version von iOS Safari und Android Chrome, dazu aktuelle Desktop-Browser. |
 | UI-04 | **Erfassung in höchstens 4 Interaktionen** für den Standardfall (Öffnen, Dauer-Chip, Text, Absenden). Primäre Schaltfläche "Stunden eintragen" ist auf der Familienübersicht dauerhaft erreichbar. Erfassung als Bottom-Sheet. Datum standardmäßig heute. Nach dem Absenden: Hinweis "Eingetragen. Wartet auf Bestätigung." und aktualisierte Fortschrittsanzeige. |
@@ -2024,7 +2025,7 @@ Regel für KI-Agents: Bei jedem Punkt gilt der **Interim-Default**, bis der Auft
 | OPEN-16 | Datenschutz und Recht: Rechtsgrundlage, Hinweise, Google-Login (Drittlandübermittlung), Löschfristen, AV-Verträge, Audit-Log-Aufbewahrung, Cookie-Hinweis. | Technisch datensparsam, Texte Platzhalter. Keine Löschautomatik für Fachdaten. Ausnahmen aus Sicherheitsgründen: unbestätigte Registrierungen (24 h), Claims (30 Tage, DP-05), Tokens und Auth-Anfragen. | Abschnitt 10 |
 | OPEN-17 | Backup: Welche Cloud (Google Drive oder Microsoft)? Welcher Anbieter hinter dem Borg-Bucket? Aufbewahrung 14/8/12 passend? | restic nach IONOS S3 plus Borg-Bucket. Cloud-Ziel aus. Aufbewahrung 14/8/12. | Abschnitt 11 |
 | OPEN-18 | Dürfen Nutzer mehreren Familien angehören (Patchwork)? Gibt es eine Obergrenze für Mitglieder je Familie? | Genau eine Familie je Nutzer, keine Obergrenze. | 5.3 |
-| OPEN-19 | Echte Design-Werte des Horts (Farben, Schrift, Logo). Dafür wird ein Screenshot oder die Logo-Datei benötigt. | Platzhalter-Palette (UI-01). | UI-01, FS-PDF |
+| OPEN-19 | Offizielle Design-Werte des Horts (Farben, Schrift, Logo als Vektordatei). | Palette, Überschriften-Schrift und Logo-Zeichen von der Website übernommen (UI-01, 2026-10-22). Das Logo-Zeichen ist nachgezeichnet, bis eine Vektordatei vorliegt. | UI-01, FS-PDF |
 | OPEN-20 | Soll die Mail mit dem E-Mail-Link zusätzlich einen 6-stelligen Code enthalten, für den Gerätewechsel (Mail am Handy, Anmeldung am PC)? Ein Code bräuchte eigene, strenge Versuchslimits je Token. | Nein. Nur der Link. | FS-AUTH, SEC-17 |
 | OPEN-21 | Soll der Link an den anfragenden Browser gebunden werden (z. B. Zufallswert im Cookie beim Anfordern, Einlösen nur im selben Browser)? Das schützt auch gegen untergeschobene fremde Links (9.1), scheitert aber, wenn die Mail auf einem anderen Gerät geöffnet wird. | Weiche Bindung: geräteübergreifend erlaubt, aber mit Rückfrage und maskierter Kontoadresse, wenn das `auth_binding`-Cookie nicht passt (7.2). Kinderdaten aus der Registrierung gelten nur im selben Browser (7.1.4). | FS-AUTH, SEC-17 |
 
