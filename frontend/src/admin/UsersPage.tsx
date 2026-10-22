@@ -9,6 +9,7 @@ import {
   useGetUser,
   useListUsers,
   useRemoveUserFromFamily,
+  useResetUserTotp,
   useSetUserRole,
   useTerminateUserSessions,
 } from '../api/generated/endpoints/users/users'
@@ -157,6 +158,12 @@ function UserDetailView({ detail }: { detail: AdminUserDetail }) {
             <Link to={`/admin/families/${user.familyId}`}>{user.familyLabel || texts.admin.families.noLabel}</Link>
           )}
         </dd>
+        {user.totpEnabled === true && (
+          <>
+            <dt>{texts.totp.title}</dt>
+            <dd>{texts.admin.users.totpEnabled}</dd>
+          </>
+        )}
         <dt>{texts.admin.users.lastLogin}</dt>
         <dd>{user.lastLoginAt === undefined ? texts.admin.none : formatDateTime(user.lastLoginAt)}</dd>
       </dl>
@@ -185,7 +192,8 @@ function UserActions({ detail }: { detail: AdminUserDetail }) {
   const enable = useEnableUser()
   const terminate = useTerminateUserSessions()
   const anonymize = useAnonymizeUser()
-  const mutations = [assign, remove, setUserRole, disable, enable, terminate, anonymize]
+  const resetTotp = useResetUserTotp()
+  const mutations = [assign, remove, setUserRole, disable, enable, terminate, anonymize, resetTotp]
   const busy = mutations.some((mutation) => mutation.isPending)
   const error = mutations.find((mutation) => mutation.isError)?.error
 
@@ -295,6 +303,20 @@ function UserActions({ detail }: { detail: AdminUserDetail }) {
         >
           {texts.admin.users.terminateSessions}
         </button>
+        {user.totpEnabled === true && (
+          <button
+            type="button"
+            className="button button--secondary"
+            disabled={busy}
+            onClick={() => {
+              if (window.confirm(texts.admin.users.confirmResetTotp)) {
+                void run(() => resetTotp.mutateAsync({ userId }))
+              }
+            }}
+          >
+            {texts.admin.users.resetTotp}
+          </button>
+        )}
         <button
           type="button"
           className="button button--danger"

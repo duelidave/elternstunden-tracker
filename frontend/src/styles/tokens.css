@@ -42,6 +42,13 @@
   --color-canvas: #f5f8f8;
   --color-success: #2f7d34;
   --color-success-surface: #e9f5ea;
+  /* Sign-in with Google: colours prescribed by Google's branding guidelines (UI-06) */
+  --color-google-border: #747775;
+  --color-google-text: #1f1f1f;
+  --color-google-blue: #4285f4;
+  --color-google-green: #34a853;
+  --color-google-yellow: #fbbc05;
+  --color-google-red: #ea4335;
   --color-danger: #b3261e;
   --color-danger-surface: #fdecea;
 

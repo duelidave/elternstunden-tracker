@@ -611,3 +611,80 @@
 .date-dialog .rdp-today:not(.rdp-outside) {
   font-weight: 800;
 }
+
+/* Sign in with Google (UI-06: look after the provider's branding guidelines) */
+@layer components {
+  .google-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: --spacing(3);
+    min-height: var(--spacing-tap);
+    padding: --spacing(2) --spacing(4);
+    border: 1px solid var(--color-google-border);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+    color: var(--color-google-text);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  @media (hover: hover) {
+    .google-button:hover {
+      background: var(--color-surface-muted);
+    }
+  }
+
+  .or-divider {
+    display: flex;
+    align-items: center;
+    gap: --spacing(3);
+    margin-block: --spacing(5);
+    color: var(--color-muted);
+  }
+
+  .or-divider::before,
+  .or-divider::after {
+    content: '';
+    flex: 1;
+    border-top: 1px solid var(--color-line);
+  }
+
+  .qr-code {
+    display: block;
+    width: min(14rem, 100%);
+    margin-inline: auto;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-control);
+  }
+
+  .secret {
+    word-break: break-all;
+    font-size: 0.9375rem;
+  }
+
+  .recovery-codes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: --spacing(2);
+    margin: 0 0 --spacing(4);
+    padding: 0;
+    list-style: none;
+    font-size: 1.0625rem;
+  }
+}
+
+@layer components {
+  .profile-link {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    min-height: var(--spacing-tap);
+    padding: 0 --spacing(3);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-pill);
+    background: var(--color-surface);
+    font-weight: 600;
+    text-decoration: none;
+  }
+}

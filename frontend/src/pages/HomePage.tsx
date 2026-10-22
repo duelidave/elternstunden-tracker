@@ -62,6 +62,11 @@ export function HomePage() {
           </Link>
         </p>
       )}
+      <p>
+        <Link className="button button--secondary w-full" to="/profile">
+          {texts.home.toProfile}
+        </Link>
+      </p>
       <button
         type="button"
         className="button button--secondary"

@@ -1,11 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useCallback, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { errorText } from '../api/errors'
 import { useRequestMagicLink } from '../api/generated/endpoints/auth/auth'
 import { RequestMagicLinkBody } from '../api/generated/zod/auth/auth.zod'
 import { Captcha, type CaptchaHandle } from '../components/Captcha'
+import { GoogleButton, OrDivider } from '../components/GoogleButton'
 import { MailIcon } from '../components/Icons'
 import { TextField } from '../components/TextField'
 import { texts } from '../i18n/de'
@@ -17,6 +18,8 @@ type LoginForm = { email: string }
 export function LoginPage() {
   const [captcha, setCaptcha] = useState<string | undefined>()
   const [sent, setSent] = useState(false)
+  const [params] = useSearchParams()
+  const providerError = params.get('error')
   const captchaRef = useRef<CaptchaHandle>(null)
   const request = useRequestMagicLink()
   const form = useForm<LoginForm>({ resolver: zodResolver(schema), defaultValues: { email: '' } })
@@ -60,6 +63,15 @@ export function LoginPage() {
   return (
     <section className="card">
       <h2>{texts.login.title}</h2>
+      {providerError !== null && (
+        <p className="alert" role="alert">
+          {providerError in texts.login.errors
+            ? texts.login.errors[providerError as keyof typeof texts.login.errors]
+            : texts.login.errors.OIDC_FAILED}
+        </p>
+      )}
+      <GoogleButton label={texts.google.login} />
+      <OrDivider />
       <p>{texts.login.intro}</p>
       <form onSubmit={(event) => void submit(event)} noValidate>
         <TextField

@@ -4,6 +4,7 @@ import { errorText, hasCode } from '../api/errors'
 import { useRedeemMagicLink } from '../api/generated/endpoints/auth/auth'
 import { useRefreshSession } from '../api/session'
 import { texts } from '../i18n/de'
+import { nextPath } from './loginResult'
 
 /**
  * The token comes from the URL fragment (7.2, SEC-17): it never reaches the server, and a plain page view (e.g. a
@@ -31,9 +32,9 @@ export function LinkPage() {
       return
     }
     try {
-      await redeem.mutateAsync({ data: { token, confirmOtherDevice } })
+      const result = await redeem.mutateAsync({ data: { token, confirmOtherDevice } })
       await refreshSession()
-      await navigate('/', { replace: true })
+      await navigate(nextPath(result), { replace: true })
     } catch {
       // shown below
     }

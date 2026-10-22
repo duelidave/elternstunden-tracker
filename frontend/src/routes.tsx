@@ -20,6 +20,12 @@ export const routes: RouteObject[] = [
       { path: 'register', lazy: async () => ({ Component: (await import('./pages/RegisterPage')).RegisterPage }) },
       { path: 'pending', lazy: async () => ({ Component: (await import('./pages/PendingPage')).PendingPage }) },
       {
+        path: 'register/claim',
+        lazy: async () => ({ Component: (await import('./pages/OidcClaimPage')).OidcClaimPage }),
+      },
+      { path: 'login/mfa', lazy: async () => ({ Component: (await import('./pages/MfaPage')).MfaPage }) },
+      { path: 'profile', lazy: async () => ({ Component: (await import('./pages/ProfilePage')).ProfilePage }) },
+      {
         path: 'admin',
         lazy: async () => ({ Component: (await admin()).AdminLayout }),
         children: [

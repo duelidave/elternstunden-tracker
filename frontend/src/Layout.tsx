@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { Link, Outlet, useMatch } from 'react-router'
+import { useSession } from './api/session'
 import { HortMark } from './components/Icons'
 import { texts } from './i18n/de'
 
@@ -10,12 +11,13 @@ const DevToolbar = import.meta.env.DEV ? lazy(() => import('./dev/DevToolbar')) 
 export function Layout() {
   // Admin lists need room for tables (UI-03); everything else stays a narrow single column
   const width = useMatch('/admin/*') === null ? 'max-w-xl' : 'max-w-5xl'
+  const signedIn = useSession().me !== undefined
   return (
     <div className="flex min-h-dvh flex-col">
       <header className={`mx-auto w-full ${width} px-4 pt-5`}>
         <div className="flex items-center gap-3">
           <HortMark />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1>
               <Link to="/" className="inline-flex min-h-tap items-center no-underline">
                 {texts.app.title}
@@ -23,6 +25,11 @@ export function Layout() {
             </h1>
             <p className="-mt-1 mb-0 text-sm text-muted">{texts.app.subtitle}</p>
           </div>
+          {signedIn && (
+            <Link to="/profile" className="profile-link">
+              {texts.profile.link}
+            </Link>
+          )}
         </div>
         <div className="brand-stripe mt-3" />
       </header>

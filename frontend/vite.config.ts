@@ -11,6 +11,9 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': { target: apiTarget, changeOrigin: false },
+      // OIDC entry and callback of the backend (7.2); in production Caddy routes them (M7)
+      '/oauth2': { target: apiTarget, changeOrigin: false },
+      '/login/oauth2': { target: apiTarget, changeOrigin: false },
     },
   },
   test: {

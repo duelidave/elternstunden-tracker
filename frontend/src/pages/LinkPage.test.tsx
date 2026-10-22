@@ -20,7 +20,7 @@ describe('LinkPage', () => {
       }
       if (method === 'POST' && url === REDEEM) {
         signedIn = true
-        return { status: 200, body: familyMember }
+        return { status: 200, body: { status: 'LOGGED_IN' } }
       }
       return undefined
     })
@@ -47,7 +47,7 @@ describe('LinkPage', () => {
       if (url === REDEEM) {
         signedIn = (body as { confirmOtherDevice: boolean }).confirmOtherDevice
         return signedIn
-          ? { status: 200, body: familyMember }
+          ? { status: 200, body: { status: 'LOGGED_IN' } }
           : problem(409, 'OTHER_DEVICE_CONFIRMATION_REQUIRED', { maskedEmail: 'm***@example.org' })
       }
       if (url === '/api/v1/me') {
@@ -81,6 +81,17 @@ describe('LinkPage', () => {
 
     expect(await screen.findByText(texts.link.cancelled)).toBeInTheDocument()
     expect(calls.filter((call) => call.url === REDEEM)).toHaveLength(1)
+  })
+
+  it('continues with the second factor for admins with TOTP', async () => {
+    stubApi(({ url }) =>
+      url === REDEEM ? { status: 200, body: { status: 'MFA_REQUIRED' } } : url === '/api/v1/me' ? signedOut : undefined,
+    )
+
+    openLink('#token=secret-token')
+    fireEvent.click(await screen.findByRole('button', { name: texts.link.submit }))
+
+    expect(await screen.findByRole('heading', { name: texts.mfa.title })).toBeInTheDocument()
   })
 
   it('explains an expired or used link', async () => {
