@@ -162,6 +162,21 @@ public class ApiClient {
     }
 
     private Response send(HttpRequest.Builder builder) {
+        HttpResponse<String> response = exchange(builder, HttpResponse.BodyHandlers.ofString());
+        return new Response(response.statusCode(), response.headers(), response.body());
+    }
+
+    /** A GET for a file such as a PDF: the body as bytes. */
+    public Download download(String path) {
+        HttpResponse<byte[]> response =
+                exchange(HttpRequest.newBuilder(uri(path)).GET(), HttpResponse.BodyHandlers.ofByteArray());
+        return new Download(response.statusCode(), response.headers(), response.body());
+    }
+
+    @SuppressWarnings("ArrayRecordComponent")
+    public record Download(int status, HttpHeaders headers, byte[] body) {}
+
+    private <T> HttpResponse<T> exchange(HttpRequest.Builder builder, HttpResponse.BodyHandler<T> handler) {
         if (!cookies.isEmpty()) {
             StringBuilder header = new StringBuilder();
             cookies.forEach((name, value) -> header.append(header.isEmpty() ? "" : "; ")
@@ -176,9 +191,9 @@ public class ApiClient {
         }
         extraHeaders.forEach(builder::header);
         try {
-            HttpResponse<String> response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+            HttpResponse<T> response = http.send(builder.build(), handler);
             response.headers().allValues("Set-Cookie").forEach(this::storeCookie);
-            return new Response(response.statusCode(), response.headers(), response.body());
+            return response;
         } catch (IOException ex) {
             throw new AssertionError("request failed", ex);
         } catch (InterruptedException ex) {

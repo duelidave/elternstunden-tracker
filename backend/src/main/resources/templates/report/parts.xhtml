@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Shared parts of the billing PDFs (FS-PDF 7.8 rule 1). Colours are the design tokens of UI-01
+     (frontend/src/styles/tokens.css); fonts come from the classpath only. -->
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+<style th:fragment="style">
+  @page {
+    size: A4 portrait;
+    margin: 30mm 16mm 22mm 16mm;
+    @top-center { content: element(header); }
+    @bottom-center { content: element(footer); }
+  }
+  body { font-family: 'Noto Sans'; font-size: 9.5pt; color: #333333; }
+  #header { position: running(header); }
+  #footer { position: running(footer); font-size: 8pt; color: #666666; }
+  .footer { width: 100%; border-collapse: collapse; }
+  .footer td { padding: 0; }
+  .footer .pages { text-align: right; }
+  .page-number::after { content: counter(page); }
+  .page-count::after { content: counter(pages); }
+  .brand { font-family: 'Indie Flower'; font-size: 20pt; color: #7b6da4; }
+  .brand-sub { color: #666666; }
+  .stripe { width: 100%; border-collapse: collapse; margin-top: 2mm; }
+  .stripe td { height: 1.2mm; padding: 0; }
+  h1 { font-family: 'Indie Flower'; font-weight: 400; font-size: 22pt; color: #7b6da4; margin: 0 0 1mm 0; }
+  h2 { font-size: 11pt; margin: 6mm 0 2mm 0; }
+  .kind { display: inline-block; padding: 1mm 3mm; border: 0.3mm solid #a85f00; background: #fef1e0;
+          font-weight: 700; }
+  table.data { width: 100%; border-collapse: collapse; margin-top: 3mm; }
+  table.data thead { display: table-header-group; }
+  table.data th { text-align: left; font-weight: 700; border-bottom: 0.5mm solid #f28d13; padding: 1.5mm 2mm; }
+  table.data td { border-bottom: 0.2mm solid #d5dddd; padding: 1.5mm 2mm; vertical-align: top; }
+  table.data tr { page-break-inside: avoid; }
+  table.data .number { text-align: right; white-space: nowrap; }
+  table.data tfoot td { font-weight: 700; border-bottom: none; border-top: 0.5mm solid #333333; }
+  .text { word-wrap: break-word; }
+  .ok { color: #2f7d34; font-weight: 700; }
+  .missing { color: #b3261e; font-weight: 700; }
+  .muted { color: #666666; }
+  .facts td { padding: 0.8mm 4mm 0.8mm 0; }
+</style>
+</head>
+<body>
+<div th:fragment="header" id="header">
+  <span class="brand">Elternstunden</span>
+  <span class="brand-sub" th:text="${'Hort an der Montessorischule · Schuljahr ' + schoolYear}">Hort</span>
+  <table class="stripe"><tr>
+    <td style="background: #f28d13"></td><td style="background: #fbbd16"></td><td style="background: #8aba27"></td>
+    <td style="background: #76adb8"></td><td style="background: #7573b4"></td>
+  </tr></table>
+</div>
+<div th:fragment="footer" id="footer">
+  <table class="footer"><tr>
+    <td th:text="${'Erstellt am ' + createdAt + ' Uhr'}">Erstellt</td>
+    <td class="pages">Seite <span class="page-number"></span>/<span class="page-count"></span></td>
+  </tr></table>
+</div>
+<p th:fragment="kind" class="kind"
+   th:text="${isFinal} ? ${'Abschluss Schuljahr ' + schoolYear} : ${'Zwischenstand, Stand ' + createdAt + ' Uhr'}">Art</p>
+</body>
+</html>

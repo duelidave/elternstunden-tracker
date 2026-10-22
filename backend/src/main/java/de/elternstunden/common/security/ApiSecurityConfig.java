@@ -15,6 +15,7 @@ import de.elternstunden.api.FamiliesApi;
 import de.elternstunden.api.MeApi;
 import de.elternstunden.api.MyFamilyApi;
 import de.elternstunden.api.OverviewApi;
+import de.elternstunden.api.ReportsApi;
 import de.elternstunden.api.SchoolYearsApi;
 import de.elternstunden.api.SystemApi;
 import de.elternstunden.api.UsersApi;
@@ -146,6 +147,8 @@ public class ApiSecurityConfig {
                         .requestMatchers(GET, api + DashboardApi.PATH_GET_ADMIN_DASHBOARD)
                         .hasAuthority(ADMIN)
                         .requestMatchers(GET, api + OverviewApi.PATH_GET_ADMIN_OVERVIEW)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(GET, api + ReportsApi.PATH_GET_BILLING_REPORT)
                         .hasAuthority(ADMIN)
                         .requestMatchers(GET, api + SchoolYearsApi.PATH_LIST_SCHOOL_YEARS)
                         .hasAuthority(ADMIN)

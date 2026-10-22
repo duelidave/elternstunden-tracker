@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- FS-PDF 7.8 scope FAMILY: confirmed entries count, open ones are listed separately and do not count. -->
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" lang="de">
+<head>
+  <title th:text="${'Elternstunden ' + family + ' ' + schoolYear}">Elternstunden</title>
+  <style th:replace="~{report/parts :: style}"></style>
+</head>
+<body>
+  <div th:replace="~{report/parts :: header}"></div>
+  <div th:replace="~{report/parts :: footer}"></div>
+  <h1 th:text="${'Abrechnung ' + family}">Abrechnung</h1>
+  <p th:replace="~{report/parts :: kind}"></p>
+  <table class="facts">
+    <tr><td class="muted">Kinder</td><td th:text="${children}">Kinder</td></tr>
+    <tr><td class="muted">Soll</td><td th:text="${required}">10 h</td></tr>
+    <tr><td class="muted">Bestätigt</td><td th:text="${confirmedSum}">0 min</td></tr>
+    <tr><td class="muted">Ergebnis</td>
+      <td th:if="${fulfilled}" class="ok">Erfüllt</td>
+      <td th:unless="${fulfilled}" class="missing" th:text="${'Fehlt noch ' + missing}">Fehlt</td></tr>
+  </table>
+  <p th:unless="${obligated}" class="muted">In diesem Schuljahr ist kein Kind der Familie eingeschrieben.</p>
+
+  <h2>Bestätigte Einträge</h2>
+  <table class="data" th:unless="${confirmed.isEmpty()}">
+    <thead>
+      <tr><th>Datum</th><th>Zeit</th><th class="number">Dauer</th><th>Tätigkeit</th><th>Bestätigt am</th></tr>
+    </thead>
+    <tbody>
+      <tr th:each="line : ${confirmed}">
+        <td th:text="${line.date()}">01.01.2026</td>
+        <td th:text="${line.time()}">–</td>
+        <td class="number" th:text="${line.duration()}">1 h</td>
+        <td class="text" th:text="${line.description()}">Tätigkeit</td>
+        <td th:text="${line.confirmedAt()}">01.01.2026</td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr><td colspan="2">Summe</td><td class="number" th:text="${confirmedSum}">0 min</td><td colspan="2"></td></tr>
+    </tfoot>
+  </table>
+  <p th:if="${confirmed.isEmpty()}" class="muted">Noch keine bestätigten Einträge.</p>
+
+  <th:block th:unless="${open.isEmpty()}">
+    <h2>Noch nicht bestätigt (zählt nicht)</h2>
+    <table class="data">
+      <thead>
+        <tr><th>Datum</th><th>Zeit</th><th class="number">Dauer</th><th>Tätigkeit</th></tr>
+      </thead>
+      <tbody>
+        <tr th:each="line : ${open}">
+          <td th:text="${line.date()}">01.01.2026</td>
+          <td th:text="${line.time()}">–</td>
+          <td class="number" th:text="${line.duration()}">1 h</td>
+          <td class="text" th:text="${line.description()}">Tätigkeit</td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr><td colspan="2">Summe</td><td class="number" th:text="${openSum}">0 min</td><td></td></tr>
+      </tfoot>
+    </table>
+  </th:block>
+</body>
+</html>

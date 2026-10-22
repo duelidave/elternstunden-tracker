@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- FS-PDF 7.8 scope ALL: all families owing hours, only confirmed hours count (D-10). -->
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" lang="de">
+<head>
+  <title th:text="${'Elternstunden ' + schoolYear}">Elternstunden</title>
+  <style th:replace="~{report/parts :: style}"></style>
+</head>
+<body>
+  <div th:replace="~{report/parts :: header}"></div>
+  <div th:replace="~{report/parts :: footer}"></div>
+  <h1>Abrechnung Elternstunden</h1>
+  <p th:replace="~{report/parts :: kind}"></p>
+  <table class="data">
+    <thead>
+      <tr><th>Familie</th><th>Kinder</th><th class="number">Bestätigt</th><th class="number">Soll</th>
+        <th class="number">Fehlt</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      <tr th:each="line : ${families}">
+        <td class="text" th:text="${line.label()}">Familie</td>
+        <td class="text" th:text="${line.children()}">Kinder</td>
+        <td class="number" th:text="${line.confirmed()}">0 min</td>
+        <td class="number" th:text="${line.required()}">10 h</td>
+        <td class="number" th:text="${line.missing()}">10 h</td>
+        <td th:if="${line.fulfilled()}" class="ok">Erfüllt</td>
+        <td th:unless="${line.fulfilled()}" class="missing">Fehlt</td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr><td colspan="6" th:text="${familyCount + ' Familien, davon ' + fulfilledCount + ' erfüllt'}">Summe</td></tr>
+    </tfoot>
+  </table>
+  <p th:if="${families.isEmpty()}" class="muted">In diesem Schuljahr ist kein Kind eingeschrieben.</p>
+  <p class="muted" th:text="${'Soll je Familie: ' + required + '. Es zählen nur bestätigte Stunden.'}">Soll</p>
+</body>
+</html>
