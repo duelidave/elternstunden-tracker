@@ -36,6 +36,7 @@ export default function DevToolbar() {
     }
   }
 
+  // Grey and dashed with neutral buttons, so it never passes for a part of the app
   return (
     <aside
       data-dev-toolbar
@@ -52,7 +53,7 @@ export default function DevToolbar() {
           <button
             key={account}
             type="button"
-            className="button button--secondary"
+            className="button button--secondary border-muted"
             disabled={busy}
             onClick={() => void run(() => loginAs.mutateAsync({ data: { account } }))}
           >
@@ -61,7 +62,7 @@ export default function DevToolbar() {
         ))}
         <button
           type="button"
-          className="button button--secondary"
+          className="button button--secondary border-muted"
           disabled={busy || session.me === undefined}
           onClick={() => void run(() => logout.mutateAsync())}
         >

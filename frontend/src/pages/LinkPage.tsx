@@ -79,7 +79,12 @@ export function LinkPage() {
     <section className="card">
       <h2>{texts.link.title}</h2>
       <p>{texts.link.intro}</p>
-      <button type="button" className="button" disabled={redeem.isPending} onClick={() => void signIn(false)}>
+      <button
+        type="button"
+        className="button w-full"
+        disabled={redeem.isPending}
+        onClick={() => void signIn(false)}
+      >
         {texts.link.submit}
       </button>
     </section>

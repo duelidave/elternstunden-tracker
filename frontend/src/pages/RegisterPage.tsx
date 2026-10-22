@@ -7,6 +7,7 @@ import { errorText } from '../api/errors'
 import { useRegisterAccount } from '../api/generated/endpoints/auth/auth'
 import { RegisterAccountBody } from '../api/generated/zod/auth/auth.zod'
 import { Captcha, type CaptchaHandle } from '../components/Captcha'
+import { MailIcon } from '../components/Icons'
 import { TextField } from '../components/TextField'
 import { texts } from '../i18n/de'
 import { todayInBerlin } from '../time'
@@ -49,6 +50,7 @@ export function RegisterPage() {
   if (sent) {
     return (
       <section className="card" aria-live="polite">
+        <MailIcon />
         <h2>{texts.register.sentTitle}</h2>
         <p>{texts.register.sent}</p>
       </section>
@@ -111,11 +113,11 @@ export function RegisterPage() {
             {errorText(register.error)}
           </p>
         )}
-        <button type="submit" className="button" disabled={captcha === undefined || register.isPending}>
+        <button type="submit" className="button w-full" disabled={captcha === undefined || register.isPending}>
           {texts.register.submit}
         </button>
       </form>
-      <p>
+      <p className="card__footer">
         {texts.register.haveAccount} <Link to="/login">{texts.login.title}</Link>
       </p>
     </section>

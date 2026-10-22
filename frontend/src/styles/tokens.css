@@ -1,24 +1,42 @@
 /*
- * Design tokens (UI-01): all colours, fonts, radii and sizes in one place.
+ * Design tokens (UI-01): all colours, fonts, radii, shadows and sizes in one place.
  * Tailwind builds its utilities from them (bg-accent, text-muted, min-h-tap, ...); the default palette is
  * cleared so no colour from outside this file can sneak in.
  * OPEN-19: placeholder palette derived from the yellow accent of the Hort website until the real
  * values exist. Yellow is never used as text colour on white (contrast).
+ * Checked pairs (WCAG 2.2 AA): text on surface 13.6, on canvas 13.1, on accent 8.3, on accent-pressed 7.4,
+ * on accent-surface 12.5; muted on surface 5.1, on canvas 4.9, on accent-surface 4.7;
+ * accent-strong (borders only, never text) on surface 4.0, on canvas 3.9, on accent-surface 3.7.
  */
 @theme {
   --color-*: initial;
   --color-accent: #f5c400;
+  /* Deeper accent for borders, button edges and checkmarks, at least 3:1 on every light surface */
+  --color-accent-strong: #a37800;
+  --color-accent-pressed: #e8b900;
   --color-accent-surface: #fff6d1;
   --color-text: #2e2e2e;
   --color-muted: #6e6e6e;
   --color-line: #d4d4d4;
   --color-surface: #ffffff;
   --color-surface-muted: #f6f6f6;
+  /* Page background behind the cards, a very light warm tint */
+  --color-canvas: #fffbf0;
   --color-danger: #b3261e;
   --color-danger-surface: #fdecea;
 
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* Headings: the rounded system font where there is one (Apple), the normal one elsewhere */
+  --font-display: ui-rounded, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --text-title: 1.5rem;
-  --radius-card: 0.5rem;
+  --text-heading: 1.25rem;
+  --radius-card: 1rem;
+  --radius-control: 0.625rem;
+  --radius-pill: 9999px;
+  --shadow-card:
+    0 1px 2px color-mix(in srgb, var(--color-accent-strong) 10%, transparent),
+    0 8px 24px -12px color-mix(in srgb, var(--color-accent-strong) 35%, transparent);
+  /* Firm bottom edge of the buttons; it disappears when the button is pressed */
+  --shadow-button: 0 2px 0 var(--color-accent-strong);
   --spacing-tap: 44px;
 }

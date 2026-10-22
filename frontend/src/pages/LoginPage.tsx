@@ -6,6 +6,7 @@ import { errorText } from '../api/errors'
 import { useRequestMagicLink } from '../api/generated/endpoints/auth/auth'
 import { RequestMagicLinkBody } from '../api/generated/zod/auth/auth.zod'
 import { Captcha, type CaptchaHandle } from '../components/Captcha'
+import { MailIcon } from '../components/Icons'
 import { TextField } from '../components/TextField'
 import { texts } from '../i18n/de'
 
@@ -40,6 +41,7 @@ export function LoginPage() {
   if (sent) {
     return (
       <section className="card" aria-live="polite">
+        <MailIcon />
         <h2>{texts.login.sentTitle}</h2>
         <p>{texts.login.sent}</p>
         <button
@@ -74,11 +76,11 @@ export function LoginPage() {
             {errorText(request.error)}
           </p>
         )}
-        <button type="submit" className="button" disabled={captcha === undefined || request.isPending}>
+        <button type="submit" className="button w-full" disabled={captcha === undefined || request.isPending}>
           {texts.login.submit}
         </button>
       </form>
-      <p>
+      <p className="card__footer">
         {texts.login.noAccount} <Link to="/register">{texts.login.toRegister}</Link>
       </p>
     </section>

@@ -4,7 +4,7 @@
 @layer base {
   html {
     color: var(--color-text);
-    background: var(--color-surface);
+    background: var(--color-canvas);
     -webkit-text-size-adjust: 100%;
   }
 
@@ -12,15 +12,24 @@
     min-height: 100dvh;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
       env(safe-area-inset-left);
+    /* A soft warm glow behind the header */
+    background: radial-gradient(120% 22rem at 50% 0, var(--color-accent-surface), transparent) no-repeat;
+  }
+
+  h1,
+  h2,
+  legend {
+    font-family: var(--font-display);
   }
 
   h1 {
     font-size: var(--text-title);
-    font-weight: 700;
+    font-weight: 800;
+    letter-spacing: -0.01em;
   }
 
   h2 {
-    font-size: 1.25rem;
+    font-size: var(--text-heading);
     font-weight: 700;
   }
 
@@ -30,7 +39,14 @@
 
   a {
     text-decoration: underline;
-    text-underline-offset: 2px;
+    text-decoration-color: var(--color-accent-strong);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-text);
   }
 
   :focus-visible {
@@ -51,7 +67,44 @@
   .card {
     border: 1px solid var(--color-line);
     border-radius: var(--radius-card);
-    padding: --spacing(4);
+    padding: --spacing(5);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Short accent rule under the screen title */
+  .card h2::after {
+    content: '';
+    display: block;
+    width: 2.5rem;
+    height: 0.25rem;
+    margin-top: --spacing(2);
+    border-radius: var(--radius-pill);
+    background: var(--color-accent);
+  }
+
+  /* Decorative icon above the title of a confirmation ("sent") */
+  .card__icon {
+    width: 3.5rem;
+    height: 3.5rem;
+    margin-bottom: --spacing(3);
+  }
+
+  /* Quiet last line of a card, e.g. the way to the other form */
+  .card__footer {
+    margin: --spacing(5) 0 0;
+    padding-top: --spacing(4);
+    border-top: 1px solid var(--color-line);
+    color: var(--color-muted);
+    text-align: center;
+  }
+
+  .card__footer a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-tap);
+    color: var(--color-text);
+    font-weight: 600;
   }
 
   .field {
@@ -66,28 +119,47 @@
   }
 
   .field input {
+    min-width: 0;
     min-height: var(--spacing-tap);
     padding: --spacing(2) --spacing(3);
     border: 1px solid var(--color-muted);
-    border-radius: var(--radius-card);
+    border-radius: var(--radius-control);
     background: var(--color-surface);
     font-size: 1rem;
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease;
   }
 
   .field input[aria-invalid='true'] {
     border-color: var(--color-danger);
+    box-shadow: 0 0 0 1px var(--color-danger);
+  }
+
+  /* Dark ring for the contrast, warm halo around it for the look */
+  .field input:focus-visible {
+    border-color: var(--color-text);
+    outline-width: 2px;
+    outline-offset: 0;
+    box-shadow: 0 0 0 5px var(--color-accent);
   }
 
   .field__error {
     margin: 0;
     color: var(--color-danger);
+    font-weight: 600;
   }
 
+  /* The legend sits on a thin line, which reads as a section divider */
+  /* min-width: a fieldset is never narrower than its content by default (the date input), which overflows at 320 px */
   fieldset {
-    margin-block: --spacing(4);
+    min-width: 0;
+    margin-block: --spacing(6) --spacing(4);
+    border-top: 1px solid var(--color-line);
   }
 
   legend {
+    padding-inline-end: --spacing(2);
     font-weight: 700;
   }
 
@@ -103,7 +175,7 @@
     width: 1.5rem;
     height: 1.5rem;
     flex: none;
-    accent-color: var(--color-text);
+    accent-color: var(--color-accent-strong);
   }
 
   .button {
@@ -113,23 +185,51 @@
     min-height: var(--spacing-tap);
     min-width: var(--spacing-tap);
     padding: --spacing(2) --spacing(5);
-    border: 2px solid var(--color-accent);
-    border-radius: var(--radius-card);
+    border: 2px solid var(--color-accent-strong);
+    border-radius: var(--radius-control);
     background: var(--color-accent);
+    box-shadow: var(--shadow-button);
     color: var(--color-text);
     font-weight: 700;
     text-decoration: none;
     cursor: pointer;
+    transition:
+      background-color 120ms ease,
+      box-shadow 120ms ease,
+      translate 120ms ease;
+  }
+
+  .button:active:not(:disabled) {
+    background: var(--color-accent-pressed);
+    box-shadow: none;
+    translate: 0 2px;
   }
 
   .button:disabled {
     cursor: not-allowed;
+    box-shadow: none;
     opacity: 0.5;
   }
 
   .button--secondary {
-    border-color: var(--color-line);
     background: var(--color-surface);
+    box-shadow: none;
+  }
+
+  .button--secondary:active:not(:disabled) {
+    background: var(--color-accent-surface);
+    translate: none;
+  }
+
+  /* Hover only enhances, it is never needed (UI-03) */
+  @media (hover: hover) {
+    .button:hover:not(:disabled) {
+      background: var(--color-accent-pressed);
+    }
+
+    .button--secondary:hover:not(:disabled) {
+      background: var(--color-accent-surface);
+    }
   }
 
   .actions {
@@ -139,15 +239,40 @@
     margin-top: --spacing(4);
   }
 
+  .actions > .button {
+    flex: 1 1 auto;
+  }
+
   .alert {
-    padding: --spacing(3);
+    padding: --spacing(3) --spacing(4);
     border: 1px solid var(--color-danger);
-    border-radius: var(--radius-card);
+    border-inline-start-width: 4px;
+    border-radius: var(--radius-control);
     background: var(--color-danger-surface);
   }
 
+  /* ALTCHA reads its look from these variables (altcha/altcha.css) */
   altcha-widget {
     display: block;
     margin-block: --spacing(4);
+    --altcha-max-width: 100%;
+    --altcha-border-radius: var(--radius-control);
+    --altcha-border-color: var(--color-line);
+    --altcha-color-base: var(--color-canvas);
+    --altcha-color-base-content: var(--color-text);
+    --altcha-color-neutral: var(--color-line);
+    --altcha-color-neutral-content: var(--color-muted);
+    --altcha-color-primary: var(--color-text);
+    --altcha-color-primary-content: var(--color-surface);
+    --altcha-color-success: var(--color-accent-strong);
+    --altcha-color-success-content: var(--color-surface);
+    --altcha-color-error: var(--color-danger);
+    --altcha-color-error-content: var(--color-surface);
+    --altcha-checkbox-size: 24px;
+    --altcha-checkbox-border-color: var(--color-muted);
+    --altcha-checkbox-border-radius: calc(var(--radius-control) / 2);
+    --altcha-checkbox-outline: 3px solid var(--color-text);
+    --altcha-input-border-radius: var(--radius-control);
+    --altcha-spinner-color: var(--color-accent-strong);
   }
 }

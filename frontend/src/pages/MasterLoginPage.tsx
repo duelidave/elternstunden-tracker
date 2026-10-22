@@ -65,7 +65,7 @@ export function MasterLoginPage() {
             {hasCode(login.error, 'LOGIN_FAILED') ? texts.master.failed : errorText(login.error)}
           </p>
         )}
-        <button type="submit" className="button" disabled={login.isPending}>
+        <button type="submit" className="button w-full" disabled={login.isPending}>
           {texts.master.submit}
         </button>
       </form>
