@@ -253,6 +253,27 @@ public abstract class IntegrationTest {
                 de.elternstunden.common.text.NameNormalizer.normalize(lastName));
     }
 
+    /** A school year by label, created on first use (the database is shared by all tests). */
+    protected UUID schoolYear(String label, String startsOn, String endsOn) {
+        return jdbc.queryForList("SELECT id FROM school_year WHERE label = ?", UUID.class, label).stream()
+                .findFirst()
+                .orElseGet(() -> jdbc.queryForObject(
+                        "INSERT INTO school_year (label, starts_on, ends_on) VALUES (?, CAST(? AS date), CAST(? AS date))"
+                                + " RETURNING id",
+                        UUID.class,
+                        label,
+                        startsOn,
+                        endsOn));
+    }
+
+    /** Signs in a new active family member of the given family. */
+    protected ApiClient familyMember(UUID familyId) {
+        String email = uniqueEmail();
+        UUID id = insertUser(email, "FAMILY_MEMBER", "ACTIVE");
+        jdbc.update("UPDATE app_user SET family_id = ? WHERE id = ?", familyId, id);
+        return signedIn(email);
+    }
+
     /** Registration with explicit child data. */
     protected ApiClient.Response register(ApiClient browser, String email, String first, String last, String birth) {
         return browser.post(

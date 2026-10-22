@@ -28,6 +28,7 @@ public class DashboardController implements DashboardApi {
         DashboardService.Dashboard current = dashboard.get();
         Map<UUID, String> labels = families.displayLabels();
         return ResponseEntity.ok(new AdminDashboardDto(
+                current.openEntryCount(),
                 current.unassigned().stream()
                         .map(detail -> UserMapper.detail(detail, labels))
                         .toList(),

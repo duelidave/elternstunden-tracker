@@ -38,6 +38,13 @@ public enum ErrorCode {
     TOTP_REQUIRED(HttpStatus.CONFLICT, "TOTP is required for admins."),
     TOTP_SETUP_MISSING(HttpStatus.CONFLICT, "No TOTP setup to confirm."),
     TOTP_ALREADY_ENABLED(HttpStatus.CONFLICT, "TOTP is already enabled."),
+    FAMILY_ASSIGNMENT_PENDING(HttpStatus.FORBIDDEN, "The account is not assigned to a family yet."),
+    NO_CURRENT_SCHOOL_YEAR(HttpStatus.NOT_FOUND, "There is no school year yet."),
+    DATE_IN_FUTURE(HttpStatus.BAD_REQUEST, "The date must not be in the future."),
+    NO_SCHOOL_YEAR(HttpStatus.BAD_REQUEST, "The date is in no school year."),
+    DUPLICATE_ENTRY(HttpStatus.CONFLICT, "The same entry was just created."),
+    ENTRY_CONFIRMED(HttpStatus.CONFLICT, "Confirmed entries cannot be changed by families."),
+    CONCURRENT_MODIFICATION(HttpStatus.CONFLICT, "The entry was changed meanwhile."),
     RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "Too many requests."),
     REQUEST_REJECTED(HttpStatus.BAD_REQUEST, "Request rejected."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error.");

@@ -68,7 +68,8 @@ public record AppProperties(
             @Valid @NotNull Limit masterLoginPerIp,
             @Valid @NotNull Limit masterFailureAlarm,
             @Valid @NotNull Limit oidcCallbackPerIp,
-            @Valid @NotNull Limit mfaPerIp) {}
+            @Valid @NotNull Limit mfaPerIp,
+            @Valid @NotNull Limit entryPerUser) {}
 
     public record Limit(@Positive int max, @NotNull Duration window) {}
 

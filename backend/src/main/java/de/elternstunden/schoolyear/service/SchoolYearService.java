@@ -62,6 +62,14 @@ public class SchoolYearService {
         return all.stream().filter(year -> year.endsOn().isBefore(today)).max(Comparator.comparing(SchoolYear::endsOn));
     }
 
+    /** School years that have started (Europe/Berlin), newest first: the ones a family can look at (7.3 rule 2). */
+    public List<SchoolYear> started() {
+        LocalDate today = BusinessTime.today(clock);
+        return schoolYears.findAll().stream()
+                .filter(year -> !year.startsOn().isAfter(today))
+                .toList();
+    }
+
     /** The school year a work date belongs to (5.5 rule 2, INV-01). */
     public Optional<SchoolYear> forDate(LocalDate date) {
         return schoolYears.findAll().stream()

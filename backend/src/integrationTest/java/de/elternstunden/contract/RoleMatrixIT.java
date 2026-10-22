@@ -97,7 +97,10 @@ class RoleMatrixIT extends IntegrationTest {
     void familyOperationsWithIdsHaveIdorCases() {
         Set<String> covered = Set.of(
                 // OidcIT.foreignIdentitiesAreNotFound
-                "DELETE /api/v1/me/identities/{identityId}");
+                "DELETE /api/v1/me/identities/{identityId}",
+                // EntryIT.entriesOfOtherFamiliesAreNotFound
+                "PATCH /api/v1/me/family/entries/{entryId}",
+                "DELETE /api/v1/me/family/entries/{entryId}");
         List<String> needingCases = calls().stream()
                 .filter(call -> call.path().matches(".*\\{[a-zA-Z]+Id}.*"))
                 .filter(call -> call.roles().contains("F") || call.roles().contains("U"))

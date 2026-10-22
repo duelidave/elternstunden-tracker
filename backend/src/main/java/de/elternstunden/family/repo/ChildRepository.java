@@ -159,6 +159,17 @@ public class ChildRepository {
         return result;
     }
 
+    public boolean anyEnrolled(UUID familyId, UUID schoolYearId) {
+        return jdbc.sql("""
+                        SELECT EXISTS (SELECT 1 FROM child c JOIN child_enrollment e ON e.child_id = c.id
+                                       WHERE c.family_id = :familyId AND e.school_year_id = :yearId)
+                        """)
+                .param("familyId", familyId)
+                .param("yearId", schoolYearId)
+                .query(Boolean.class)
+                .single();
+    }
+
     public List<UUID> enrollmentsOf(UUID childId) {
         return jdbc.sql("SELECT school_year_id FROM child_enrollment WHERE child_id = :childId")
                 .param("childId", childId)

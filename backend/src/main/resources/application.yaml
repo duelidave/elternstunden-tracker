@@ -108,6 +108,7 @@ app:
     master-failure-alarm: { max: 10, window: 1h }
     oidc-callback-per-ip: { max: 30, window: 1m }
     mfa-per-ip: { max: 5, window: 15m }
+    entry-per-user: { max: 60, window: 1h }
   # D-20
   sessions:
     family-member: { idle: 30d, absolute: 90d }

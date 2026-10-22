@@ -99,6 +99,21 @@ public class FamilyService {
         return families.exists(id);
     }
 
+    /** Children of a family for its own overview (7.3); the caller passes the family of the session. */
+    public List<Child> childrenOf(UUID familyId) {
+        return children.findByFamily(familyId);
+    }
+
+    /** Members of a family for its own overview (7.3); the caller passes the family of the session. */
+    public List<Member> membersOf(UUID familyId) {
+        return families.members(familyId);
+    }
+
+    /** OPEN-04: a family owes hours in a school year if at least one of its children is enrolled. */
+    public boolean obligated(UUID familyId, UUID schoolYearId) {
+        return children.anyEnrolled(familyId, schoolYearId);
+    }
+
     /** Merge patch: {@code null} keeps the value, an empty text clears it. */
     @Transactional
     @AdminOnly
