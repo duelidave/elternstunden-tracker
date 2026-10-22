@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Elternstunden API
-  version: 0.1.0
+  version: 0.2.0
   description: |
     API-Vertrag der Elternstunden-Zeiterfassung und Quelle der Wahrheit für Backend und Frontend
     (Lastenheft D-25). Jede API-Änderung beginnt hier, danach wird auf beiden Seiten neu generiert.
@@ -19,6 +19,16 @@ tags:
     description: Registrierung, E-Mail-Link, Master-Login und Abmelden (FS-REG 7.1.4, FS-AUTH 7.2).
   - name: me
     description: Das eigene Konto.
+  - name: dashboard
+    description: Admin-Startseite mit Widgets (FS-ADMOV 7.6).
+  - name: school-years
+    description: Schuljahre mit Stichtagen und Soll (5.5, FS-ADM 7.7).
+  - name: families
+    description: Familien (FS-ADM 7.7).
+  - name: children
+    description: Kinder, Einschreibungen und CSV-Import (FS-ADM 7.7).
+  - name: users
+    description: Nutzerverwaltung und Zuordnung zur Familie (FS-ADM 7.7, F5).
   - name: dev
     description: Nur in der lokalen Entwicklung (Profil dev, FS-DEV 7.12). Fehlt in Produktion.
 security:
@@ -217,6 +227,748 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
+  /me/claim:
+    put:
+      tags: [me]
+      operationId: updateMyClaim
+      summary: Kinderdaten eingeben oder korrigieren
+      description: >-
+        Nur für Familienmitglieder ohne Familie (7.1.7). Ohne gültigen Claim ist es die erste Eingabe, sonst eine Korrektur (höchstens 3 pro Konto, danach 409 CLAIM_CORRECTION_LIMIT). Zugeordnete Nutzer erhalten 409 ALREADY_ASSIGNED. Passt die Eingabe genau auf ein Kind, wird sofort zugeordnet.
+      x-roles: [U]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChildClaim'
+      responses:
+        '200':
+          description: Das Konto nach der Eingabe.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/dashboard:
+    get:
+      tags: [dashboard]
+      operationId: getAdminDashboard
+      summary: Admin-Startseite
+      description: >-
+        Widgets "Unzugeordnete Nutzer" mit Claim und Kandidaten (7.1.7) und "Neue automatische Zuordnungen" der letzten 14 Tage (7.1.6).
+      x-roles: [AD]
+      responses:
+        '200':
+          description: Die Widgets.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDashboard'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/school-years:
+    get:
+      tags: [school-years]
+      operationId: listSchoolYears
+      summary: Schuljahre auflisten
+      description: >-
+        Neueste zuerst. `current` markiert das aktuelle Schuljahr (5.5).
+      x-roles: [AD]
+      responses:
+        '200':
+          description: Alle Schuljahre.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SchoolYear'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [school-years]
+      operationId: createSchoolYear
+      summary: Schuljahr anlegen
+      description: >-
+        Überlappung: 409 SCHOOL_YEAR_OVERLAP, Label vergeben: 409 SCHOOL_YEAR_LABEL_TAKEN (INV-09).
+      x-roles: [AD]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchoolYearCreate'
+      responses:
+        '201':
+          description: Angelegt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolYear'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/school-years/{schoolYearId}:
+    patch:
+      tags: [school-years]
+      operationId: updateSchoolYear
+      summary: Schuljahr ändern
+      description: >-
+        Nur angegebene Felder ändern sich. Abgeschlossen: 409 SCHOOL_YEAR_CLOSED (OPEN-06). Lägen vorhandene Einträge außerhalb der neuen Stichtage: 409 ENTRIES_OUTSIDE_RANGE. Überlappung: 409 SCHOOL_YEAR_OVERLAP (INV-09).
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/SchoolYearId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchoolYearUpdate'
+      responses:
+        '200':
+          description: Geändert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolYear'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/school-years/{schoolYearId}/close:
+    post:
+      tags: [school-years]
+      operationId: closeSchoolYear
+      summary: Schuljahr abschließen
+      description: >-
+        Danach ist das Jahr für alle schreibgeschützt (OPEN-06). Idempotent.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/SchoolYearId'
+      responses:
+        '200':
+          description: Abgeschlossen.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolYear'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/school-years/{schoolYearId}/reopen:
+    post:
+      tags: [school-years]
+      operationId: reopenSchoolYear
+      summary: Schuljahr wieder öffnen
+      description: >-
+        Hebt den Schreibschutz auf (OPEN-06). Idempotent.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/SchoolYearId'
+      responses:
+        '200':
+          description: Wieder offen.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolYear'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/school-years/{schoolYearId}/enrollments/copy-previous:
+    post:
+      tags: [school-years]
+      operationId: copyPreviousEnrollments
+      summary: Einschreibung aus Vorjahr übernehmen
+      description: >-
+        Schreibt alle Kinder des vorherigen Schuljahres auch in dieses ein (7.7). Bereits eingeschriebene bleiben unverändert. Abgeschlossen: 409 SCHOOL_YEAR_CLOSED.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/SchoolYearId'
+      responses:
+        '200':
+          description: Übernommen.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentCopyResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/families:
+    get:
+      tags: [families]
+      operationId: listFamilies
+      summary: Familien auflisten
+      description: >-
+        Suche in Bezeichnung, Kindernamen, Anzeigenamen und E-Mail der Mitglieder (Normalisierung wie 7.1.3).
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/Query'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Eine Seite Familien.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FamilyPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/families/{familyId}:
+    get:
+      tags: [families]
+      operationId: getFamily
+      summary: Familie anzeigen
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/FamilyId'
+      responses:
+        '200':
+          description: Die Familie mit Kindern und Mitgliedern.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FamilyDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags: [families]
+      operationId: updateFamily
+      summary: Familie ändern
+      description: >-
+        Bezeichnung und Notiz. Nur angegebene Felder ändern sich, ein leerer Text löscht den Wert.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/FamilyId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FamilyUpdate'
+      responses:
+        '200':
+          description: Geändert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FamilyDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/children:
+    get:
+      tags: [children]
+      operationId: listChildren
+      summary: Kinder auflisten
+      description: >-
+        Suche in Vor- und Nachname (Normalisierung wie 7.1.3). `schoolYearId` filtert auf eingeschriebene Kinder dieses Schuljahres.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/Query'
+        - $ref: '#/components/parameters/SchoolYearFilter'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Eine Seite Kinder.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChildPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [children]
+      operationId: createChild
+      summary: Kind anlegen
+      description: >-
+        Mit `familyId` in eine bestehende Familie, sonst in eine neue Familie (optional mit `newFamilyLabel`).
+      x-roles: [AD]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChildCreate'
+      responses:
+        '201':
+          description: Angelegt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminChild'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/children/{childId}:
+    get:
+      tags: [children]
+      operationId: getChild
+      summary: Kind anzeigen
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/ChildId'
+      responses:
+        '200':
+          description: Das Kind.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminChild'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags: [children]
+      operationId: updateChild
+      summary: Kind ändern
+      description: >-
+        Nur angegebene Felder ändern sich, ein leerer Text bei `externalRef` löscht den Wert. `familyId` wechselt die Familie. Kein Löschen (DP-05).
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/ChildId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChildUpdate'
+      responses:
+        '200':
+          description: Geändert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminChild'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/children/{childId}/enrollments/{schoolYearId}:
+    put:
+      tags: [children]
+      operationId: enrollChild
+      summary: Kind einschreiben
+      description: >-
+        Idempotent. Abgeschlossenes Schuljahr: 409 SCHOOL_YEAR_CLOSED.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/ChildId'
+        - $ref: '#/components/parameters/SchoolYearId'
+      responses:
+        '204':
+          description: Eingeschrieben.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [children]
+      operationId: unenrollChild
+      summary: Einschreibung entfernen
+      description: >-
+        Idempotent. Abgeschlossenes Schuljahr: 409 SCHOOL_YEAR_CLOSED.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/ChildId'
+        - $ref: '#/components/parameters/SchoolYearId'
+      responses:
+        '204':
+          description: Nicht mehr eingeschrieben.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/children/import:
+    post:
+      tags: [children]
+      operationId: importChildren
+      summary: Kinder per CSV importieren
+      description: >-
+        Spalten `first_name;last_name;birth_date;family_key;external_ref` mit Kopfzeile, UTF-8, Datum `YYYY-MM-DD` oder `DD.MM.YYYY` (7.7). Kinder mit gleichem `family_key` bilden eine Familie. Bestehende Kinder werden über `external_ref`, sonst über Name und Geburtsdatum erkannt. Alles oder nichts in einer Transaktion: Bei fehlerhaften Zeilen wird nichts geschrieben (`applied: false`). Höchstens 1 MB, sonst 413.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/DryRun'
+      requestBody:
+        required: true
+        content:
+          text/csv:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Ergebnis bzw. Vorschau.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/users:
+    get:
+      tags: [users]
+      operationId: listUsers
+      summary: Nutzer auflisten
+      description: >-
+        Suche in Anzeigename und E-Mail. `unassigned=true` zeigt nur aktive Familienmitglieder ohne Familie.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/Query'
+        - $ref: '#/components/parameters/UserStatusFilter'
+        - $ref: '#/components/parameters/UnassignedFilter'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Eine Seite Nutzer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/users/{userId}:
+    get:
+      tags: [users]
+      operationId: getUser
+      summary: Nutzer anzeigen
+      description: >-
+        Mit gültigem Claim und Kandidaten für die Zuordnung (7.1.7).
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Der Nutzer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/users/{userId}/family:
+    put:
+      tags: [users]
+      operationId: assignUserToFamily
+      summary: Nutzer einer Familie zuordnen
+      description: >-
+        Zuordnung durch Admins (F5, 7.1.7). Erledigt den offenen Claim. Master: 409 ACCOUNT_MANAGED_BY_CONFIG.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FamilyAssignment'
+      responses:
+        '200':
+          description: Zugeordnet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUser'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [users]
+      operationId: removeUserFromFamily
+      summary: Zuordnung entfernen
+      description: >-
+        Idempotent. Master: 409 ACCOUNT_MANAGED_BY_CONFIG.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '204':
+          description: Nicht mehr zugeordnet.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/users/{userId}/role:
+    put:
+      tags: [users]
+      operationId: setUserRole
+      summary: Rolle setzen
+      description: >-
+        Familienmitglied oder Admin (D-13). Master: 409 ACCOUNT_MANAGED_BY_CONFIG, eigenes Konto: 409 OWN_ACCOUNT.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleChange'
+      responses:
+        '200':
+          description: Geändert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUser'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/users/{userId}/disable:
+    post:
+      tags: [users]
+      operationId: disableUser
+      summary: Nutzer deaktivieren
+      description: >-
+        Beendet alle Sessions des Nutzers (7.2). Idempotent. Master: 409 ACCOUNT_MANAGED_BY_CONFIG, eigenes Konto: 409 OWN_ACCOUNT.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Deaktiviert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUser'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/users/{userId}/enable:
+    post:
+      tags: [users]
+      operationId: enableUser
+      summary: Nutzer wieder aktivieren
+      description: >-
+        Idempotent. Ein Konto mit nie bestätigter Adresse wird wieder unbestätigt. Anonymisierte Konten bleiben deaktiviert (409 USER_ANONYMIZED).
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Aktiviert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUser'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/users/{userId}/terminate-sessions:
+    post:
+      tags: [users]
+      operationId: terminateUserSessions
+      summary: Alle Sessions beenden
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '204':
+          description: Alle Sessions des Nutzers sind beendet.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/users/{userId}/anonymize:
+    post:
+      tags: [users]
+      operationId: anonymizeUser
+      summary: Nutzer anonymisieren
+      description: >-
+        DP-05 (a): E-Mail `deleted-{id}@invalid`, Name "Gelöschter Nutzer", Tokens, Claims und Sessions gelöscht, deaktiviert, aus der Familie gelöst. Einträge bleiben. Nicht umkehrbar. Master: 409 ACCOUNT_MANAGED_BY_CONFIG, eigenes Konto: 409 OWN_ACCOUNT.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Anonymisiert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUser'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /dev/login-as:
     post:
       tags: [dev]
@@ -383,6 +1135,441 @@ components:
           enum: [FAMILY_MEMBER, ADMIN, MASTER_ADMIN]
         assignedToFamily:
           type: boolean
+        pendingClaim:
+          $ref: '#/components/schemas/ChildClaim'
+        claimCorrectionsLeft:
+          type: integer
+          format: int32
+          minimum: 0
+          description: >-
+            Nur für Familienmitglieder ohne Familie: verbleibende Korrekturen der Kinderdaten (7.1.7). Fehlt
+            `pendingClaim`, ist die nächste Eingabe die erste und zählt nicht als Korrektur.
+    PageInfo:
+      type: object
+      description: Paging-Angaben jeder Liste (8.1).
+      required: [page, size, totalElements, totalPages]
+      properties:
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    SchoolYear:
+      type: object
+      required: [id, label, startsOn, endsOn, requiredMinutes, closed, current]
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+          example: 2026/27
+        startsOn:
+          type: string
+          format: date
+        endsOn:
+          type: string
+          format: date
+        requiredMinutes:
+          type: integer
+          format: int32
+          example: 600
+        closed:
+          type: boolean
+        current:
+          type: boolean
+          description: Das aktuelle Schuljahr nach 5.5 (heute, sonst das zuletzt beendete).
+    SchoolYearCreate:
+      type: object
+      required: [label, startsOn, endsOn]
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 20
+        startsOn:
+          type: string
+          format: date
+        endsOn:
+          type: string
+          format: date
+          description: Muss nach `startsOn` liegen.
+        requiredMinutes:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 60000
+          default: 600
+    SchoolYearUpdate:
+      type: object
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 20
+        startsOn:
+          type: string
+          format: date
+        endsOn:
+          type: string
+          format: date
+        requiredMinutes:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 60000
+    EnrollmentCopyResult:
+      type: object
+      required: [copied]
+      properties:
+        copied:
+          type: integer
+          format: int32
+    ChildName:
+      type: object
+      required: [id, firstName, lastName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+    FamilySummary:
+      type: object
+      required: [id, displayLabel, children, memberCount]
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        displayLabel:
+          type: string
+          description: Die Bezeichnung oder, falls leer, die Nachnamen der Kinder.
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChildName'
+        memberCount:
+          type: integer
+          format: int32
+          description: Aktive Mitglieder.
+    FamilyPage:
+      allOf:
+        - $ref: '#/components/schemas/PageInfo'
+        - type: object
+          required: [content]
+          properties:
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/FamilySummary'
+    FamilyMember:
+      type: object
+      required: [id, displayName, email, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        email:
+          type: string
+        status:
+          $ref: '#/components/schemas/UserStatus'
+    FamilyDetail:
+      type: object
+      required: [id, displayLabel, children, members]
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        note:
+          type: string
+        displayLabel:
+          type: string
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminChild'
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/FamilyMember'
+    FamilyUpdate:
+      type: object
+      properties:
+        label:
+          type: string
+          maxLength: 80
+        note:
+          type: string
+          maxLength: 1000
+    AdminChild:
+      type: object
+      required: [id, firstName, lastName, birthDate, familyId, familyLabel, enrolledSchoolYearIds]
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        externalRef:
+          type: string
+        familyId:
+          type: string
+          format: uuid
+        familyLabel:
+          type: string
+        enrolledSchoolYearIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    ChildPage:
+      allOf:
+        - $ref: '#/components/schemas/PageInfo'
+        - type: object
+          required: [content]
+          properties:
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/AdminChild'
+    ChildCreate:
+      type: object
+      required: [firstName, lastName, birthDate]
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        birthDate:
+          type: string
+          format: date
+          description: Nicht in der Zukunft.
+        externalRef:
+          type: string
+          maxLength: 100
+          description: Eindeutig, sonst 409 EXTERNAL_REF_TAKEN (D-04).
+        familyId:
+          type: string
+          format: uuid
+        newFamilyLabel:
+          type: string
+          maxLength: 80
+    ChildUpdate:
+      type: object
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        birthDate:
+          type: string
+          format: date
+        externalRef:
+          type: string
+          maxLength: 100
+        familyId:
+          type: string
+          format: uuid
+    ImportResult:
+      type: object
+      required: [dryRun, applied, created, updated, unchanged, errors]
+      properties:
+        dryRun:
+          type: boolean
+        applied:
+          type: boolean
+          description: true, wenn der Import geschrieben wurde (kein Dry-Run und keine fehlerhaften Zeilen).
+        created:
+          type: integer
+          format: int32
+        updated:
+          type: integer
+          format: int32
+        unchanged:
+          type: integer
+          format: int32
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportError'
+    ImportError:
+      type: object
+      required: [line, code]
+      properties:
+        line:
+          type: integer
+          format: int32
+          description: Zeilennummer in der Datei, die Kopfzeile ist Zeile 1.
+        code:
+          type: string
+          enum: [INVALID_HEADER, INVALID_COLUMNS, MISSING_VALUE, VALUE_TOO_LONG, INVALID_DATE, DUPLICATE_CHILD, EXTERNAL_REF_CONFLICT, FAMILY_KEY_CONFLICT]
+    UserStatus:
+      type: string
+      enum: [PENDING_VERIFICATION, ACTIVE, DISABLED]
+    AdminUser:
+      type: object
+      required: [id, displayName, email, role, status, managedByConfig, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [FAMILY_MEMBER, ADMIN, MASTER_ADMIN]
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        familyId:
+          type: string
+          format: uuid
+        familyLabel:
+          type: string
+        managedByConfig:
+          type: boolean
+          description: Der Master-Admin, nur per Konfiguration änderbar (D-22).
+        lastLoginAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    UserPage:
+      allOf:
+        - $ref: '#/components/schemas/PageInfo'
+        - type: object
+          required: [content]
+          properties:
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/AdminUser'
+    AdminClaim:
+      type: object
+      description: Die bei der Registrierung oder auf dem Wartescreen angegebenen Kinderdaten (7.1.7).
+      required: [id, firstName, lastName, birthDate, matchResult, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        matchResult:
+          type: string
+          enum: [MATCHED, NO_MATCH, AMBIGUOUS, THROTTLED]
+        createdAt:
+          type: string
+          format: date-time
+    ChildCandidate:
+      type: object
+      description: Kind mit gleichem Geburtsdatum oder ähnlichem Nachnamen (7.1.7).
+      required: [childId, firstName, lastName, birthDate, familyId, familyLabel]
+      properties:
+        childId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        familyId:
+          type: string
+          format: uuid
+        familyLabel:
+          type: string
+    AdminUserDetail:
+      type: object
+      required: [user, candidates]
+      properties:
+        user:
+          $ref: '#/components/schemas/AdminUser'
+        claim:
+          $ref: '#/components/schemas/AdminClaim'
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChildCandidate'
+    FamilyAssignment:
+      type: object
+      required: [familyId]
+      properties:
+        familyId:
+          type: string
+          format: uuid
+    RoleChange:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          enum: [FAMILY_MEMBER, ADMIN]
+    AutoAssignment:
+      type: object
+      required: [userId, displayName, familyId, familyLabel, assignedAt]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        familyId:
+          type: string
+          format: uuid
+        familyLabel:
+          type: string
+        assignedAt:
+          type: string
+          format: date-time
+    AdminDashboard:
+      type: object
+      required: [unassignedUsers, recentAutoAssignments]
+      properties:
+        unassignedUsers:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminUserDetail'
+        recentAutoAssignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/AutoAssignment'
     OtherDeviceProblem:
       allOf:
         - $ref: '#/components/schemas/Problem'
@@ -444,6 +1631,83 @@ components:
         message:
           type: string
           example: size must be between 3 and 500
+  parameters:
+    SchoolYearId:
+      name: schoolYearId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    FamilyId:
+      name: familyId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ChildId:
+      name: childId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Query:
+      name: q
+      in: query
+      description: Suchtext, wirkt erst ab 2 Zeichen.
+      schema:
+        type: string
+        maxLength: 100
+    Page:
+      name: page
+      in: query
+      description: Seite, ab 0.
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      description: Einträge pro Seite, höchstens 200 (sonst 400 PAGE_SIZE_EXCEEDED).
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        default: 50
+    SchoolYearFilter:
+      name: schoolYearId
+      in: query
+      schema:
+        type: string
+        format: uuid
+    UserStatusFilter:
+      name: status
+      in: query
+      schema:
+        $ref: '#/components/schemas/UserStatus'
+    UnassignedFilter:
+      name: unassigned
+      in: query
+      schema:
+        type: boolean
+    DryRun:
+      name: dryRun
+      in: query
+      description: Nur prüfen und zählen, nichts schreiben.
+      schema:
+        type: boolean
+        default: false
   responses:
     BadRequest:
       description: Ungültige Anfrage oder Validierungsfehler.
@@ -471,6 +1735,12 @@ components:
             $ref: '#/components/schemas/Problem'
     Conflict:
       description: Konflikt mit dem aktuellen Zustand.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    PayloadTooLarge:
+      description: Anfrage zu groß.
       content:
         application/problem+json:
           schema:
