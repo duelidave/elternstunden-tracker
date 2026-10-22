@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| Version | 0.4.1 (Entwurf) |
-| Stand | 2026-10-20 |
+| Version | 0.4.2 (Entwurf) |
+| Stand | 2026-10-22 |
 | Einrichtung | Hort an der Montessorischule (Elterninitiative, Verein) |
 | Zielgruppe | Entwickler:innen und KI-Coding-Agents |
 | Fachliche Basis | Lastenheft v0.4 (`docs/lastenheft-elternstunden-v0.4.pdf`, 2 Seiten, für die Abstimmung mit Menschen). Dieses Dokument konkretisiert es technisch. Im Folgenden kurz "Lastenheft (PDF)". |
@@ -18,6 +18,7 @@
 | 0.3.1 | 2026-10-20 | Lastenheft-PDF auf v0.4 gebracht (F3 ohne Passwort, offene Punkte 6 und 7 an D-24 angepasst) und Verweise darauf vereinheitlicht ("Lastenheft (PDF)"). |
 | 0.4 | 2026-10-21 | API-first (D-25): gemeinsamer OpenAPI-Vertrag `api/openapi.yaml` als Quelle der Wahrheit, Backend-Interfaces und DTOs per openapi-generator, Frontend-Client und Zod-Schemas per orval, springdoc entfällt. Vertrag in OpenAPI 3.0.3 (ersetzt die 3.1-Vorgabe aus 0.3). Betroffen: 0.4, 2, 4.2 bis 4.4, 8.1, SEC-01, 12.5, 13.2. |
 | 0.4.1 | 2026-10-21 | Rollenwechsel für manuelle Tests in der lokalen Entwicklung (D-26, FS-DEV 7.12, AC-DEV), Umsetzung in M1. |
+| 0.4.2 | 2026-10-22 | Endpunktübersicht (8.2) um die Endpunkte für schon spezifizierte Funktionen ergänzt: Nutzer anonymisieren (DP-05) und Einschreibung aus Vorjahr übernehmen (7.7). |
 
 ---
 
@@ -1148,11 +1149,13 @@ Rollen: **A** = anonym, **U** = angemeldet (jede Rolle), **F** = `FAMILY_MEMBER`
 | `PUT /admin/users/{id}/family`, `DELETE /admin/users/{id}/family` | AD | Zuordnung (F5) |
 | `PUT /admin/users/{id}/role` | AD | Rolle (`FAMILY_MEMBER` oder `ADMIN`) |
 | `POST /admin/users/{id}/disable`, `…/enable`, `…/terminate-sessions` | AD | FS-ADM, Deaktivieren beendet alle Sessions (7.2) |
+| `POST /admin/users/{id}/anonymize` | AD | DP-05 (a), nicht umkehrbar, beendet alle Sessions |
 | `DELETE /admin/users/{id}/totp` | AD | Admin-TOTP eines anderen Admins zurücksetzen (7.2) |
 | `GET /admin/entries?status=OPEN` | AD | FS-CONF |
 | `POST /admin/entries/{id}/confirm`, `POST /admin/entries/confirm` (Bulk) | AD | FS-CONF |
 | `POST /admin/families/{id}/entries`, `PATCH/DELETE /admin/entries/{id}` | AD | Korrekturen (INV-07) |
 | `GET/POST /admin/school-years`, `PATCH /admin/school-years/{id}`, `POST …/close`, `POST …/reopen` | AD | FS-ADM, 5.5 |
+| `POST /admin/school-years/{id}/enrollments/copy-previous` | AD | Einschreibung aus Vorjahr übernehmen (7.7) |
 | `GET /admin/reports/billing` | AD | FS-PDF |
 | `GET /admin/audit` | AD | SEC-11 |
 | `GET /master/backups/status`, `POST /master/backups/run` | M | Abschnitt 11 |

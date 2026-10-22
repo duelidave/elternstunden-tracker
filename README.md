@@ -43,6 +43,11 @@ Am besten mit Chrome oder Firefox: Beide akzeptieren das `Secure`-Session-Cookie
   Sie gibt es nur mit `npm run dev`, nie im Produktions-Build.
 - **Master-Login:** `/login/master` mit `master@dev.local` und dem Passwort `local-dev-master`. Den Code liefert eine
   Authenticator-App mit dem Secret `MASTER_ADMIN_TOTP_SECRET` aus `.env`, oder `oathtool --totp -b <secret>`.
+- **Automatische Zuordnung:** Registriere dich mit dem Kind "Anna Müller", geboren am 03.05.2017. Nach dem Klick auf den
+  Link (im selben Browser) bist du der "Familie Müller" zugeordnet. Mit einem Tippfehler landest du auf dem Wartescreen.
+- **Admin-Bereich:** Über die Dev-Leiste als Admin anmelden, dann "Zum Admin-Bereich". Die Übersicht zeigt
+  "Uli Unzugeordnet" mit dem Vorschlag "Mila Muster" zum Zuordnen. Dort gibt es auch Kinder, Familien, Nutzer und
+  Schuljahre, inklusive CSV-Import.
 
 ## Bauen und testen
 
