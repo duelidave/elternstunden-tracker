@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -105,14 +106,15 @@ public class SessionLogin {
     }
 
     static Authentication authentication(AppUserPrincipal principal) {
-        List<SimpleGrantedAuthority> authorities = principal.role() == UserRole.MASTER_ADMIN
-                ? List.of(
-                        new SimpleGrantedAuthority(Authorities.USER),
-                        new SimpleGrantedAuthority(UserRole.MASTER_ADMIN.authority()),
-                        new SimpleGrantedAuthority(UserRole.ADMIN.authority()))
-                : List.of(
-                        new SimpleGrantedAuthority(Authorities.USER),
-                        new SimpleGrantedAuthority(principal.role().authority()));
-        return UsernamePasswordAuthenticationToken.authenticated(principal, null, authorities);
+        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority(Authorities.USER));
+        authorities.add(new SimpleGrantedAuthority(principal.role().authority()));
+        if (principal.role() == UserRole.MASTER_ADMIN) {
+            authorities.add(new SimpleGrantedAuthority(UserRole.ADMIN.authority()));
+        }
+        if (principal.familyId() != null) {
+            authorities.add(new SimpleGrantedAuthority(Authorities.FAMILY));
+        }
+        return UsernamePasswordAuthenticationToken.authenticated(principal, null, List.copyOf(authorities));
     }
 }

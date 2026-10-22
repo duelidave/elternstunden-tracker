@@ -8,6 +8,8 @@ public final class Authorities {
 
     /** x-roles U: any full login. */
     public static final String USER = "ROLE_USER";
+    /** x-roles F: a full login assigned to a family (INV-10); the role does not matter (6). */
+    public static final String FAMILY = "ROLE_FAMILY";
     /** x-roles OP: after the provider login without an account (7.1.5 step 4). */
     public static final String OIDC_PENDING = "ROLE_OIDC_PENDING";
     /** x-roles MP: an admin after the first factor (7.2). */

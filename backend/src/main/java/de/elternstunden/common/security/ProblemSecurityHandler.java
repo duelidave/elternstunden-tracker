@@ -1,5 +1,8 @@
 package de.elternstunden.common.security;
 
+import de.elternstunden.common.error.ApiException;
+import de.elternstunden.common.error.ErrorCode;
+import de.elternstunden.common.web.ApiPaths;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -46,6 +49,14 @@ public class ProblemSecurityHandler implements AuthenticationEntryPoint, AccessD
         if (halfSignedIn && !(accessDeniedException instanceof CsrfException)) {
             resolver.resolveException(
                     request, response, null, new InsufficientAuthenticationException("Login not finished"));
+            return;
+        }
+        // The family endpoints (x-roles F) tell unassigned accounts why, so the client shows the waiting screen
+        boolean unassigned = principal instanceof AppUserPrincipal user && user.familyId() == null;
+        if (unassigned
+                && !(accessDeniedException instanceof CsrfException)
+                && request.getRequestURI().startsWith(ApiPaths.BASE + "/me/family/")) {
+            resolver.resolveException(request, response, null, new ApiException(ErrorCode.FAMILY_ASSIGNMENT_PENDING));
             return;
         }
         resolver.resolveException(request, response, null, accessDeniedException);

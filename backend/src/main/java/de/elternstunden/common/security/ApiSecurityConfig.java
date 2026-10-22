@@ -10,8 +10,10 @@ import de.elternstunden.api.AuthApi;
 import de.elternstunden.api.ChildrenApi;
 import de.elternstunden.api.DashboardApi;
 import de.elternstunden.api.DevApi;
+import de.elternstunden.api.EntriesApi;
 import de.elternstunden.api.FamiliesApi;
 import de.elternstunden.api.MeApi;
+import de.elternstunden.api.MyFamilyApi;
 import de.elternstunden.api.SchoolYearsApi;
 import de.elternstunden.api.SystemApi;
 import de.elternstunden.api.UsersApi;
@@ -115,6 +117,17 @@ public class ApiSecurityConfig {
                         .hasAuthority(Authorities.USER)
                         .requestMatchers(DELETE, api + MeApi.PATH_DELETE_IDENTITY)
                         .hasAuthority(Authorities.USER)
+                        // x-roles: [F]; unassigned accounts get FAMILY_ASSIGNMENT_PENDING (INV-10, AC-FAM-04)
+                        .requestMatchers(GET, api + MyFamilyApi.PATH_GET_FAMILY_OVERVIEW)
+                        .hasAuthority(Authorities.FAMILY)
+                        .requestMatchers(GET, api + MyFamilyApi.PATH_LIST_FAMILY_ENTRIES)
+                        .hasAuthority(Authorities.FAMILY)
+                        .requestMatchers(POST, api + MyFamilyApi.PATH_CREATE_FAMILY_ENTRY)
+                        .hasAuthority(Authorities.FAMILY)
+                        .requestMatchers(PATCH, api + MyFamilyApi.PATH_UPDATE_FAMILY_ENTRY)
+                        .hasAuthority(Authorities.FAMILY)
+                        .requestMatchers(DELETE, api + MyFamilyApi.PATH_DELETE_FAMILY_ENTRY)
+                        .hasAuthority(Authorities.FAMILY)
                         // x-roles: [U]; only unassigned family members, checked in the service (7.1.7)
                         .requestMatchers(PUT, api + MeApi.PATH_UPDATE_MY_CLAIM)
                         .hasAuthority(Authorities.USER)
@@ -180,6 +193,18 @@ public class ApiSecurityConfig {
                         .requestMatchers(POST, api + UsersApi.PATH_TERMINATE_USER_SESSIONS)
                         .hasAuthority(ADMIN)
                         .requestMatchers(POST, api + UsersApi.PATH_ANONYMIZE_USER)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(GET, api + EntriesApi.PATH_LIST_ENTRIES)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(POST, api + EntriesApi.PATH_CONFIRM_ENTRIES)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(POST, api + EntriesApi.PATH_CONFIRM_ENTRY)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(PATCH, api + EntriesApi.PATH_UPDATE_ENTRY)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(DELETE, api + EntriesApi.PATH_DELETE_ENTRY)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(POST, api + EntriesApi.PATH_CREATE_ENTRY_FOR_FAMILY)
                         .hasAuthority(ADMIN)
                         .anyRequest()
                         .denyAll())

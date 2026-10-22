@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Objects;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
@@ -93,11 +93,16 @@ public class SessionAccountFilter extends OncePerRequestFilter {
             return;
         }
         AppUser current = user.get();
-        if (current.role() != principal.role() || !Objects.equals(current.familyId(), principal.familyId())) {
-            AppUserPrincipal updated =
-                    new AppUserPrincipal(current.id(), current.role(), current.familyId(), principal.authenticatedAt());
+        AppUserPrincipal updated =
+                new AppUserPrincipal(current.id(), current.role(), current.familyId(), principal.authenticatedAt());
+        Authentication fresh = SessionLogin.authentication(updated);
+        Authentication stored = holder.getContext().getAuthentication();
+        // Also sessions from before a change of the authorities get the current ones
+        if (!updated.equals(principal)
+                || stored == null
+                || !List.copyOf(fresh.getAuthorities()).equals(List.copyOf(stored.getAuthorities()))) {
             SecurityContext context = holder.createEmptyContext();
-            context.setAuthentication(SessionLogin.authentication(updated));
+            context.setAuthentication(fresh);
             holder.setContext(context);
             contextRepository.saveContext(context, request, response);
             session.setMaxInactiveInterval(
