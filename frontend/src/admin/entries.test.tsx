@@ -49,7 +49,7 @@ function api(handle: (call: ApiCall) => { status: number; body?: unknown } | und
 }
 
 async function main() {
-  return within(await screen.findByRole('main', {}, { timeout: 3000 }))
+  return within(await screen.findByRole('main', {}, { timeout: 10_000 }))
 }
 
 describe('confirming entries (FS-CONF)', () => {

@@ -57,6 +57,8 @@ Am besten mit Chrome oder Firefox: Beide akzeptieren das `Secure`-Session-Cookie
 - **Stunden eintragen:** Als Familie anmelden. Die Startseite zeigt den Fortschritt von "Familie Demo" (zwei bestätigte
   Einträge, einer wartet). "Stunden eintragen" öffnet das Formular: Dauer-Chip, Text, "Eintragen". "Andere Dauer"
   wechselt zu Uhrzeit und 15-Minuten-Schritten. Offene Einträge lassen sich ändern und löschen.
+- **Übersicht:** Auf jeder Admin-Seite steht oben, wie viele Familien im Schuljahr noch Stunden offen haben. Ein Klick
+  zeigt die Liste unter "Familien": Suche, Schuljahr, "Nur Familien mit fehlenden Stunden", sortierbare Spalten.
 - **Bestätigen:** Als Admin unter "Zu bestätigen" einzeln, alle einer Familie oder eine Auswahl bestätigen. Die Zahl
   offener Einträge steht in der Navigation und auf der Übersicht. Im Familiendetail können Admins Einträge korrigieren
   und für die Familie eintragen.

@@ -1,69 +1,201 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState } from 'react'
+import { keepPreviousData } from '@tanstack/react-query'
+import { useId, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useParams } from 'react-router'
 import type { z } from 'zod'
-import { errorText } from '../api/errors'
+import { errorText, hasCode } from '../api/errors'
 import { useCreateEntryForFamily, useListEntries } from '../api/generated/endpoints/entries/entries'
-import { useGetFamily, useListFamilies, useUpdateFamily } from '../api/generated/endpoints/families/families'
-import type { FamilyDetail, FamilySummary } from '../api/generated/model'
+import { useGetFamily, useUpdateFamily } from '../api/generated/endpoints/families/families'
+import { useGetAdminOverview } from '../api/generated/endpoints/overview/overview'
+import { useListSchoolYears } from '../api/generated/endpoints/school-years/school-years'
+import type { FamilyDetail, OverviewRow } from '../api/generated/model'
 import { UpdateFamilyBody } from '../api/generated/zod/families/families.zod'
-import { type Column, DataTable } from '../components/DataTable'
+import { type Column, DataTable, type Sort } from '../components/DataTable'
 import { EntryForm, type EntryValues } from '../components/EntryForm'
 import { Pager } from '../components/Pager'
 import { SearchField } from '../components/SearchField'
 import { TextField } from '../components/TextField'
 import { texts } from '../i18n/de'
-import { formatDate } from '../time'
+import { formatDate, formatDuration } from '../time'
 import { AdminEntryItem } from './EntriesPage'
 import { useInvalidateAll } from './invalidate'
 import { useListParams } from './params'
 
-const columns: Column<FamilySummary>[] = [
+const columns: Column<OverviewRow>[] = [
   {
     header: texts.admin.families.family,
-    cell: (family) => (
-      <Link to={`/admin/families/${family.id}`}>{family.displayLabel || texts.admin.families.noLabel}</Link>
+    sortField: 'familyLabel',
+    cell: (row) => (
+      <Link to={`/admin/families/${row.familyId}`}>{row.familyLabel || texts.admin.families.noLabel}</Link>
     ),
   },
   {
     header: texts.admin.families.children,
-    cell: (family) => family.children.map((child) => `${child.firstName} ${child.lastName}`).join(', ') || texts.admin.none,
+    sortField: 'children',
+    cell: (row) => row.children.map((child) => `${child.firstName} ${child.lastName}`).join(', ') || texts.admin.none,
   },
-  { header: texts.admin.families.members, cell: (family) => String(family.memberCount) },
+  { header: texts.admin.families.members, sortField: 'memberCount', cell: (row) => String(row.memberCount) },
+  {
+    header: texts.admin.overview.confirmed,
+    sortField: 'confirmedMinutes',
+    cell: (row) => formatDuration(row.confirmedMinutes),
+  },
+  { header: texts.admin.overview.open, sortField: 'openMinutes', cell: (row) => formatDuration(row.openMinutes) },
+  {
+    header: texts.admin.overview.missing,
+    sortField: 'missingMinutes',
+    cell: (row) => (
+      <span>
+        {row.missingMinutes === 0 ? (
+          <span className="status status--confirmed">{texts.admin.overview.fulfilled}</span>
+        ) : (
+          <span className="status">{texts.admin.overview.missingChip(formatDuration(row.missingMinutes))}</span>
+        )}
+        {row.openMinutes > 0 && (
+          <span className="block text-sm text-muted">
+            {texts.admin.overview.waiting(formatDuration(row.openMinutes))}
+          </span>
+        )}
+      </span>
+    ),
+  },
 ]
 
-/** Families (FS-ADM 7.7); the overview with hours follows in M5 (FS-ADMOV). */
+// The direction a column starts with: names A to Z, numbers largest first
+const firstDirection: Record<string, Sort['direction']> = {
+  familyLabel: 'asc',
+  children: 'asc',
+  memberCount: 'desc',
+  confirmedMinutes: 'desc',
+  openMinutes: 'desc',
+  missingMinutes: 'desc',
+}
+const DEFAULT_SORT = 'missingMinutes,desc'
+
+function parseSort(value: string): Sort {
+  const [field = 'missingMinutes', direction] = value.split(',')
+  return { field, direction: direction === 'asc' ? 'asc' : 'desc' }
+}
+
+/**
+ * Families with their hours in a school year (FS-ADMOV 7.6, D-11): search, only missing ones, sortable columns and
+ * paging, everything in the URL (UI-11). A click on a family opens its detail.
+ */
 export function FamiliesPage() {
   const params = useListParams()
-  const families = useListFamilies({ q: params.get('q') || undefined, page: params.page })
+  const yearId = useId()
+  const missingId = useId()
+  const sortId = useId()
+  const schoolYears = useListSchoolYears()
+  const sortValue = params.get('sort') || DEFAULT_SORT
+  const sort = parseSort(sortValue)
+  const overview = useGetAdminOverview(
+    {
+      ...(params.get('year') === '' ? {} : { schoolYearId: params.get('year') }),
+      ...(params.get('q') === '' ? {} : { q: params.get('q') }),
+      onlyMissing: params.get('onlyMissing') === 'true',
+      sort: sortValue,
+      page: params.page,
+    },
+    // The table stays while the next sort or page loads
+    { query: { placeholderData: keepPreviousData } },
+  )
+
+  const sortBy = (field: string) => {
+    const direction =
+      field === sort.field ? (sort.direction === 'asc' ? 'desc' : 'asc') : (firstDirection[field] ?? 'asc')
+    const next = `${field},${direction}`
+    params.set('sort', next === DEFAULT_SORT ? '' : next)
+  }
+
   return (
     <section className="card">
       <h2>{texts.admin.families.title}</h2>
-      <SearchField
-        value={params.get('q')}
-        onSearch={(query) => {
-          params.set('q', query)
-        }}
-      />
-      {families.isError && (
-        <p className="alert" role="alert">
-          {errorText(families.error)}
+      <div className="overview-filters">
+        <SearchField
+          value={params.get('q')}
+          onSearch={(query) => {
+            params.set('q', query)
+          }}
+        />
+        <div className="field">
+          <label htmlFor={yearId}>{texts.admin.overview.schoolYear}</label>
+          <select
+            id={yearId}
+            value={overview.data?.schoolYear.id ?? params.get('year')}
+            onChange={(event) => {
+              const current = schoolYears.data?.find((year) => year.current)?.id
+              params.set('year', event.target.value === current ? '' : event.target.value)
+            }}
+          >
+            {schoolYears.data?.map((year) => (
+              <option key={year.id} value={year.id}>
+                {year.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="checkbox">
+          <input
+            id={missingId}
+            type="checkbox"
+            checked={params.get('onlyMissing') === 'true'}
+            onChange={(event) => {
+              params.set('onlyMissing', event.target.checked ? 'true' : '')
+            }}
+          />
+          <label htmlFor={missingId}>{texts.admin.overview.onlyMissing}</label>
+        </div>
+      </div>
+      {/* Below 768 px the rows are cards without column heads, so the sort is a select */}
+      <div className="field md:hidden">
+        <label htmlFor={sortId}>{texts.admin.sort}</label>
+        <select
+          id={sortId}
+          value={sortValue}
+          onChange={(event) => {
+            params.set('sort', event.target.value === DEFAULT_SORT ? '' : event.target.value)
+          }}
+        >
+          {columns.map((column) => {
+            const value = `${column.sortField ?? ''},${firstDirection[column.sortField ?? ''] ?? 'asc'}`
+            return (
+              <option key={value} value={value}>
+                {column.header}
+              </option>
+            )
+          })}
+          {/* A sort chosen in the table on a wide screen, e.g. the other direction */}
+          {!columns.some((column) => `${column.sortField ?? ''},${firstDirection[column.sortField ?? ''] ?? ''}` === sortValue) && (
+            <option value={sortValue}>
+              {columns.find((column) => column.sortField === sort.field)?.header}{' '}
+              {sort.direction === 'asc' ? '▲' : '▼'}
+            </option>
+          )}
+        </select>
+      </div>
+      {overview.isError && (
+        <p className={hasCode(overview.error, 'NO_CURRENT_SCHOOL_YEAR') ? 'text-muted' : 'alert'} role="alert">
+          {hasCode(overview.error, 'NO_CURRENT_SCHOOL_YEAR') ? texts.admin.overview.noYear : errorText(overview.error)}
         </p>
       )}
-      {families.data && (
+      {overview.isPending && <p role="status">{texts.common.loading}</p>}
+      {overview.data && (
         <>
           <DataTable
             caption={texts.admin.families.title}
             columns={columns}
-            rows={families.data.content}
-            rowKey={(family) => family.id}
-            empty={texts.admin.empty}
+            rows={overview.data.content}
+            rowKey={(row) => row.familyId}
+            empty={texts.admin.overview.empty}
+            sort={sort}
+            onSort={sortBy}
           />
           <Pager
-            page={families.data.page}
-            totalPages={families.data.totalPages}
-            totalElements={families.data.totalElements}
+            page={overview.data.page}
+            totalPages={overview.data.totalPages}
+            totalElements={overview.data.totalElements}
             onPage={(page) => {
               params.set('page', String(page))
             }}

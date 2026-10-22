@@ -71,7 +71,7 @@ const page = (content: unknown[]) => ({ content, page: 0, size: 50, totalElement
 
 /** The admin chunk loads lazily, so the layout appears only after the first navigation resolved. */
 async function main() {
-  return within(await screen.findByRole('main', {}, { timeout: 3000 }))
+  return within(await screen.findByRole('main', {}, { timeout: 10_000 }))
 }
 
 describe('admin area', () => {

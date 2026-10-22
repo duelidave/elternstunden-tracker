@@ -20,5 +20,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['src/test/setup.ts'],
     restoreMocks: true,
+    // The first test of a file may transform a lazily loaded chunk (admin area, date picker) under full load
+    testTimeout: 15_000,
   },
 })

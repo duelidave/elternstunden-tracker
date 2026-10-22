@@ -2,6 +2,7 @@ import { NavLink, Navigate, Outlet } from 'react-router'
 import { useListEntries } from '../api/generated/endpoints/entries/entries'
 import { useSession } from '../api/session'
 import { texts } from '../i18n/de'
+import { HintBar } from './HintBar'
 
 const links = [
   { to: '/admin', label: texts.admin.nav.dashboard, end: true },
@@ -30,6 +31,7 @@ export function AdminLayout() {
   }
   return (
     <div className="flex flex-col gap-4">
+      <HintBar />
       <nav aria-label={texts.admin.nav.label} className="admin-nav">
         {links.map((link) => (
           <NavLink key={link.to} to={link.to} end={link.end} className="admin-nav__link">
