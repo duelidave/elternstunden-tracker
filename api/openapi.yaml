@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Elternstunden API
-  version: 0.4.1
+  version: 0.5.0
   description: |
     API-Vertrag der Elternstunden-Zeiterfassung und Quelle der Wahrheit für Backend und Frontend
     (Lastenheft D-25). Jede API-Änderung beginnt hier, danach wird auf beiden Seiten neu generiert.
@@ -25,6 +25,8 @@ tags:
     description: Bestätigen und Korrigieren von Einträgen durch Admins (FS-CONF 7.5, INV-07).
   - name: dashboard
     description: Admin-Startseite mit Widgets (FS-ADMOV 7.6).
+  - name: overview
+    description: Admin-Übersicht der Familien mit Stunden und Hinweisleiste (FS-ADMOV 7.6, D-11).
   - name: school-years
     description: Schuljahre mit Stichtagen und Soll (5.5, FS-ADM 7.7).
   - name: families
@@ -828,6 +830,41 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/overview:
+    get:
+      tags: [overview]
+      operationId: getAdminOverview
+      summary: Familien mit Stunden im Schuljahr
+      description: >-
+        Soll-pflichtige Familien (5.6, OPEN-04) mit bestätigten, offenen und fehlenden Minuten; nur bestätigte zählen
+        (D-10). Suche, Filter, Sortierung (Whitelist, SEC-07) und Paging serverseitig. `familyCount` und `missingCount`
+        für die Hinweisleiste gelten unabhängig von Suche und Filter. Ohne schoolYearId das aktuelle Schuljahr (5.5),
+        ohne Schuljahr: 404 NO_CURRENT_SCHOOL_YEAR.
+      x-roles: [AD]
+      parameters:
+        - $ref: '#/components/parameters/SchoolYearFilter'
+        - $ref: '#/components/parameters/OverviewQuery'
+        - $ref: '#/components/parameters/OnlyMissing'
+        - $ref: '#/components/parameters/OverviewSort'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Eine Seite der Übersicht.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OverviewPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
   /admin/school-years:
@@ -2147,6 +2184,69 @@ components:
         assignedAt:
           type: string
           format: date-time
+    OverviewPage:
+      type: object
+      required: [schoolYear, requiredMinutes, familyCount, missingCount, content, page, size, totalElements,
+                 totalPages]
+      properties:
+        schoolYear:
+          $ref: '#/components/schemas/SchoolYearRef'
+        requiredMinutes:
+          type: integer
+          format: int32
+          description: Soll je Familie im Schuljahr (D-02).
+        familyCount:
+          type: integer
+          format: int32
+          description: Soll-pflichtige Familien im Schuljahr ("m" der Hinweisleiste), ohne Suche und Filter.
+        missingCount:
+          type: integer
+          format: int32
+          description: Davon Familien mit fehlenden Minuten ("n" der Hinweisleiste), ohne Suche und Filter.
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/OverviewRow'
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    OverviewRow:
+      type: object
+      required: [familyId, familyLabel, children, memberCount, confirmedMinutes, openMinutes, missingMinutes]
+      properties:
+        familyId:
+          type: string
+          format: uuid
+        familyLabel:
+          type: string
+          description: Bezeichnung oder aus den Nachnamen der Kinder abgeleitet.
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChildName'
+        memberCount:
+          type: integer
+          format: int32
+          description: Aktive Mitglieder.
+        confirmedMinutes:
+          type: integer
+          format: int32
+        openMinutes:
+          type: integer
+          format: int32
+        missingMinutes:
+          type: integer
+          format: int32
+          description: max(Soll - bestätigt, 0).
     AdminDashboard:
       type: object
       required: [unassignedUsers, recentAutoAssignments, openEntryCount]
@@ -2639,6 +2739,33 @@ components:
       schema:
         type: string
         maxLength: 100
+    OverviewQuery:
+      name: q
+      in: query
+      description: >-
+        Suche in Familienbezeichnung, Kindernamen, Anzeigenamen und E-Mail-Adressen der Mitglieder; Groß- und
+        Kleinschreibung und Diakritika egal (7.1.3). Mindestens 2 Zeichen (AC-OV-04).
+      schema:
+        type: string
+        minLength: 2
+        maxLength: 100
+    OnlyMissing:
+      name: onlyMissing
+      in: query
+      description: Nur Familien, denen noch bestätigte Minuten fehlen.
+      schema:
+        type: boolean
+        default: false
+    OverviewSort:
+      name: sort
+      in: query
+      description: >-
+        `feld,richtung`. Erlaubte Felder (Whitelist): familyLabel, children, memberCount, confirmedMinutes,
+        openMinutes, missingMinutes. Danach immer familyLabel aufsteigend.
+      schema:
+        type: string
+        pattern: '^(familyLabel|children|memberCount|confirmedMinutes|openMinutes|missingMinutes),(asc|desc)$'
+        default: missingMinutes,desc
     Page:
       name: page
       in: query
