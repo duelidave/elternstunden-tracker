@@ -83,6 +83,30 @@ public class AppUserRepository {
                         """).param("id", id).param("now", utc(now)).update();
     }
 
+    /** Assigns the account to a family or, with {@code null}, removes the assignment (F5, 7.1.4 step 7). */
+    public void setFamily(UUID id, @Nullable UUID familyId, Instant now) {
+        jdbc.sql("UPDATE app_user SET family_id = :familyId, updated_at = :now WHERE id = :id")
+                .param("id", id)
+                .param("familyId", familyId)
+                .param("now", utc(now))
+                .update();
+    }
+
+    /** Corrections of the child data so far (7.1.7). */
+    public int claimCorrections(UUID id) {
+        return jdbc.sql("SELECT claim_corrections FROM app_user WHERE id = :id")
+                .param("id", id)
+                .query(Integer.class)
+                .optional()
+                .orElse(0);
+    }
+
+    public void incrementClaimCorrections(UUID id) {
+        jdbc.sql("UPDATE app_user SET claim_corrections = claim_corrections + 1 WHERE id = :id")
+                .param("id", id)
+                .update();
+    }
+
     public void touchLogin(UUID id, Instant now) {
         jdbc.sql("UPDATE app_user SET last_login_at = :now WHERE id = :id")
                 .param("id", id)

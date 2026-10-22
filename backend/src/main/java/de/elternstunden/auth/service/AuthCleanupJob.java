@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Daily cleanup (7.2 "Aufräumen", 7.1.4 step 9): expired and redeemed tokens, and accounts that stayed unconfirmed
- * for 24 hours without a valid token. Claim retention (DP-05) follows with the claims in M2.
+ * for 24 hours without a valid token. Claim retention (DP-05): ClaimCleanupJob.
  */
 @Component
 public class AuthCleanupJob {

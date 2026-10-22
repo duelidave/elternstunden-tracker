@@ -3,19 +3,16 @@ package de.elternstunden.auth.service;
 import de.elternstunden.api.model.MeDto;
 import de.elternstunden.audit.AuditLog;
 import de.elternstunden.auth.domain.AppUser;
-import de.elternstunden.auth.repo.AppUserRepository;
 import de.elternstunden.common.config.AppProperties;
 import de.elternstunden.common.error.ApiException;
 import de.elternstunden.common.error.ErrorCode;
 import de.elternstunden.common.ratelimit.RateLimiter;
-import de.elternstunden.common.security.AppUserPrincipal;
 import de.elternstunden.common.security.SessionLogin;
 import de.elternstunden.common.web.ClientIp;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.util.Map;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -27,9 +24,9 @@ public class AuthService {
     private final MasterLoginService masterLogin;
     private final SessionLogin sessionLogin;
     private final BindingCookie bindingCookie;
-    private final AppUserRepository users;
     private final RateLimiter rateLimiter;
     private final AuditLog audit;
+    private final MeService meService;
     private final AppProperties.RateLimits limits;
 
     public AuthService(
@@ -37,17 +34,17 @@ public class AuthService {
             MasterLoginService masterLogin,
             SessionLogin sessionLogin,
             BindingCookie bindingCookie,
-            AppUserRepository users,
             RateLimiter rateLimiter,
             AuditLog audit,
+            MeService meService,
             AppProperties properties) {
         this.magicLinks = magicLinks;
         this.masterLogin = masterLogin;
         this.sessionLogin = sessionLogin;
         this.bindingCookie = bindingCookie;
-        this.users = users;
         this.rateLimiter = rateLimiter;
         this.audit = audit;
+        this.meService = meService;
         this.limits = properties.rateLimits();
     }
 
@@ -89,22 +86,7 @@ public class AuthService {
         }
     }
 
-    public MeDto me() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !(authentication.getPrincipal() instanceof AppUserPrincipal principal)) {
-            throw new ApiException(ErrorCode.UNAUTHORIZED);
-        }
-        return users.findById(principal.userId())
-                .map(AuthService::toMe)
-                .orElseThrow(() -> new ApiException(ErrorCode.UNAUTHORIZED));
-    }
-
-    static MeDto toMe(AppUser user) {
-        return new MeDto(
-                user.id(),
-                user.displayName(),
-                user.email(),
-                MeDto.RoleEnum.fromValue(user.role().name()),
-                user.familyId() != null);
+    private MeDto toMe(AppUser user) {
+        return meService.toMe(user);
     }
 }

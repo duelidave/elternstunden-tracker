@@ -1,12 +1,21 @@
 package de.elternstunden.common.security;
 
+import static org.springframework.http.HttpMethod.DELETE;
 import static org.springframework.http.HttpMethod.GET;
+import static org.springframework.http.HttpMethod.PATCH;
 import static org.springframework.http.HttpMethod.POST;
+import static org.springframework.http.HttpMethod.PUT;
 
 import de.elternstunden.api.AuthApi;
+import de.elternstunden.api.ChildrenApi;
+import de.elternstunden.api.DashboardApi;
 import de.elternstunden.api.DevApi;
+import de.elternstunden.api.FamiliesApi;
 import de.elternstunden.api.MeApi;
+import de.elternstunden.api.SchoolYearsApi;
 import de.elternstunden.api.SystemApi;
+import de.elternstunden.api.UsersApi;
+import de.elternstunden.auth.domain.UserRole;
 import de.elternstunden.auth.repo.AppUserRepository;
 import de.elternstunden.common.web.ApiPaths;
 import jakarta.servlet.DispatcherType;
@@ -14,6 +23,7 @@ import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -29,12 +39,15 @@ import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWrite
  * API contract; {@code ContractCoverageTest} keeps contract and this configuration in sync.
  */
 @Configuration(proxyBeanMethods = false)
+@EnableMethodSecurity
 public class ApiSecurityConfig {
 
     /** SEC-10. Spring adds X-Content-Type-Options, X-Frame-Options and (over HTTPS) HSTS by default. */
     static final String CONTENT_SECURITY_POLICY = "default-src 'self'; script-src 'self'; style-src 'self';"
             + " img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self';"
             + " form-action 'self'; frame-ancestors 'none'";
+
+    private static final String ADMIN = UserRole.ADMIN.authority();
 
     static final String PERMISSIONS_POLICY = "camera=(), microphone=(), geolocation=()";
 
@@ -73,6 +86,62 @@ public class ApiSecurityConfig {
                         .authenticated()
                         .requestMatchers(GET, api + MeApi.PATH_GET_ME)
                         .authenticated()
+                        // x-roles: [U]; only unassigned family members, checked in the service (7.1.7)
+                        .requestMatchers(PUT, api + MeApi.PATH_UPDATE_MY_CLAIM)
+                        .authenticated()
+                        // x-roles: [AD] (MASTER_ADMIN holds the ADMIN authority too)
+                        .requestMatchers(GET, api + DashboardApi.PATH_GET_ADMIN_DASHBOARD)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(GET, api + SchoolYearsApi.PATH_LIST_SCHOOL_YEARS)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(POST, api + SchoolYearsApi.PATH_CREATE_SCHOOL_YEAR)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(PATCH, api + SchoolYearsApi.PATH_UPDATE_SCHOOL_YEAR)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(POST, api + SchoolYearsApi.PATH_CLOSE_SCHOOL_YEAR)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(POST, api + SchoolYearsApi.PATH_REOPEN_SCHOOL_YEAR)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(POST, api + SchoolYearsApi.PATH_COPY_PREVIOUS_ENROLLMENTS)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(GET, api + FamiliesApi.PATH_LIST_FAMILIES)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(GET, api + FamiliesApi.PATH_GET_FAMILY)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(PATCH, api + FamiliesApi.PATH_UPDATE_FAMILY)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(GET, api + ChildrenApi.PATH_LIST_CHILDREN)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(POST, api + ChildrenApi.PATH_CREATE_CHILD)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(POST, api + ChildrenApi.PATH_IMPORT_CHILDREN)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(GET, api + ChildrenApi.PATH_GET_CHILD)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(PATCH, api + ChildrenApi.PATH_UPDATE_CHILD)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(PUT, api + ChildrenApi.PATH_ENROLL_CHILD)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(DELETE, api + ChildrenApi.PATH_UNENROLL_CHILD)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(GET, api + UsersApi.PATH_LIST_USERS)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(GET, api + UsersApi.PATH_GET_USER)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(PUT, api + UsersApi.PATH_ASSIGN_USER_TO_FAMILY)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(DELETE, api + UsersApi.PATH_REMOVE_USER_FROM_FAMILY)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(PUT, api + UsersApi.PATH_SET_USER_ROLE)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(POST, api + UsersApi.PATH_DISABLE_USER)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(POST, api + UsersApi.PATH_ENABLE_USER)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(POST, api + UsersApi.PATH_TERMINATE_USER_SESSIONS)
+                        .hasAuthority(ADMIN)
+                        .requestMatchers(POST, api + UsersApi.PATH_ANONYMIZE_USER)
+                        .hasAuthority(ADMIN)
                         .anyRequest()
                         .denyAll())
                 // Cookie XSRF-TOKEN, header X-XSRF-TOKEN (Lastenheft 8.1), shared with SessionLogin

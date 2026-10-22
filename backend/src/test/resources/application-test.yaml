@@ -10,3 +10,5 @@ app:
     captcha:
       hmac-key: test-altcha-hmac-key-not-secret-0123456789
       cost: 1
+  school-years:
+    job-cron: "-"

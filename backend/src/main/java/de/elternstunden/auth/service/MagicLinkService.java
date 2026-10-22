@@ -9,6 +9,7 @@ import de.elternstunden.auth.repo.UserTokenRepository.LockedToken;
 import de.elternstunden.common.crypto.Hashing;
 import de.elternstunden.common.error.ApiException;
 import de.elternstunden.common.error.ErrorCode;
+import de.elternstunden.family.service.ClaimService;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Map;
@@ -26,12 +27,15 @@ public class MagicLinkService {
 
     private final UserTokenRepository tokens;
     private final AppUserRepository users;
+    private final ClaimService claims;
     private final AuditLog audit;
     private final Clock clock;
 
-    public MagicLinkService(UserTokenRepository tokens, AppUserRepository users, AuditLog audit, Clock clock) {
+    public MagicLinkService(
+            UserTokenRepository tokens, AppUserRepository users, ClaimService claims, AuditLog audit, Clock clock) {
         this.tokens = tokens;
         this.users = users;
+        this.claims = claims;
         this.audit = audit;
         this.clock = clock;
     }
@@ -65,8 +69,9 @@ public class MagicLinkService {
         tokens.markUsed(locked.id(), now);
         if (user.status() == UserStatus.PENDING_VERIFICATION) {
             users.activate(user.id(), now);
-            // M2: apply the claim if it was created in this browser, otherwise discard it (7.1.4 step 7)
             audit.user(user.id(), "USER_ACTIVATED", "app_user", user.id());
+            // 7.1.4 step 7: only now, and only in the browser that registered, the claim may assign the family
+            claims.onActivation(user, browserBindingHash, now);
         }
         users.touchLogin(user.id(), now);
         audit.write(

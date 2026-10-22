@@ -12,9 +12,12 @@ import de.elternstunden.common.crypto.Hashing;
 import de.elternstunden.common.mail.MailMessage;
 import de.elternstunden.common.mail.MailService;
 import de.elternstunden.common.ratelimit.RateLimiter;
+import de.elternstunden.family.domain.ChildData;
+import de.elternstunden.family.service.ClaimService;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -43,6 +46,7 @@ public class AuthWorker {
     private final AppUserRepository users;
     private final UserTokenRepository tokens;
     private final AuthMails mails;
+    private final ClaimService claims;
     private final MailService mailService;
     private final RateLimiter rateLimiter;
     private final AuditLog audit;
@@ -59,6 +63,7 @@ public class AuthWorker {
             AppUserRepository users,
             UserTokenRepository tokens,
             AuthMails mails,
+            ClaimService claims,
             MailService mailService,
             RateLimiter rateLimiter,
             AuditLog audit,
@@ -71,6 +76,7 @@ public class AuthWorker {
         this.users = users;
         this.tokens = tokens;
         this.mails = mails;
+        this.claims = claims;
         this.mailService = mailService;
         this.rateLimiter = rateLimiter;
         this.audit = audit;
@@ -190,7 +196,7 @@ public class AuthWorker {
             }
             Optional<UUID> created = users.insertPending(request.email(), displayName(request), now);
             if (created.isPresent()) {
-                // M2: store the claim from the payload with the binding hash and match it (7.1.4 step 5)
+                claims.create(created.get(), child(request), request.bindingHash(), now);
                 String token = issueToken(created.get(), request.bindingHash(), now);
                 audit.system("USER_REGISTERED", "app_user", created.get(), Map.of());
                 send(mails.registrationConfirmation(request.email(), token));
@@ -211,7 +217,8 @@ public class AuthWorker {
         }
         String token = issueToken(account.id(), request.bindingHash(), now);
         if (account.status() == UserStatus.PENDING_VERIFICATION) {
-            // M2: the new child data replace the open claim (7.1.4 step 4)
+            // The new child data replace the open claim (7.1.4 step 4); for active accounts they are discarded
+            claims.create(account.id(), child(request), request.bindingHash(), now);
             send(mails.registrationConfirmation(request.email(), token));
         } else {
             send(mails.alreadyRegistered(request.email(), token));
@@ -257,6 +264,15 @@ public class AuthWorker {
         JsonNode payload = json.readTree(request.payload() == null ? "{}" : request.payload());
         String name = payload.path("displayName").asString("");
         return name.isBlank() ? "Neues Mitglied" : name;
+    }
+
+    private ChildData child(AuthRequest request) {
+        JsonNode child = json.readTree(request.payload() == null ? "{}" : request.payload())
+                .path("child");
+        return new ChildData(
+                child.path("firstName").asString(""),
+                child.path("lastName").asString(""),
+                LocalDate.parse(child.path("birthDate").asString()));
     }
 
     private void send(MailMessage mail) {

@@ -22,6 +22,8 @@ spring:
       hibernate.jdbc.time_zone: UTC
   jackson:
     time-zone: UTC
+    # Optional fields of the contract are left out instead of sent as null (OpenAPI 3.0, not nullable)
+    default-property-inclusion: non_null
     deserialization:
       # Unknown fields are rejected (mass assignment protection, Lastenheft 8.1)
       fail-on-unknown-properties: true
@@ -109,6 +111,16 @@ app:
     family-member: { idle: 30d, absolute: 90d }
     admin: { idle: 30m, absolute: 8h }
     master-admin: { idle: 15m, absolute: 4h }
+  # 7.1.4, 7.1.7, 9.1, DP-05
+  claims:
+    max-per-target: 5
+    window: 24h
+    max-corrections: 3
+    retention: 30d
+  # 5.5: next school year 90 days ahead, daily job
+  school-years:
+    lead-time: 90d
+    job-cron: "0 15 3 * * *"
   # D-22, 7.9: from the configuration only
   master:
     email: ${MASTER_ADMIN_EMAIL:}

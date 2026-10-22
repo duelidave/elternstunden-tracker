@@ -38,7 +38,9 @@ public final class TestProperties {
                         new Timeouts(Duration.ofDays(30), Duration.ofDays(90)),
                         new Timeouts(Duration.ofMinutes(30), Duration.ofHours(8)),
                         new Timeouts(Duration.ofMinutes(15), Duration.ofHours(4))),
-                master);
+                master,
+                new AppProperties.Claims(5, Duration.ofHours(24), 3, Duration.ofDays(30)),
+                new AppProperties.SchoolYears(Duration.ofDays(90)));
     }
 
     public static AppProperties defaults() {

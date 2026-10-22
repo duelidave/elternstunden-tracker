@@ -23,7 +23,9 @@ public record AppProperties(
         @Valid @NotNull Auth auth,
         @Valid @NotNull RateLimits rateLimits,
         @Valid @NotNull Sessions sessions,
-        @Valid @NotNull Master master) {
+        @Valid @NotNull Master master,
+        @Valid @NotNull Claims claims,
+        @Valid @NotNull SchoolYears schoolYears) {
 
     public record Mail(@NotBlank String from) {}
 
@@ -72,6 +74,26 @@ public record AppProperties(
             @Valid @NotNull Timeouts masterAdmin) {}
 
     public record Timeouts(@NotNull Duration idle, @NotNull Duration absolute) {}
+
+    /**
+     * Family assignment via child data (7.1.4, 7.1.7, DP-05).
+     *
+     * @param maxPerTarget claims per child within {@code window} before THROTTLED (9.1)
+     * @param maxCorrections corrections of the child data per account on /pending
+     * @param retention resolved and superseded claims are deleted after this time
+     */
+    public record Claims(
+            @Positive int maxPerTarget,
+            @NotNull Duration window,
+            @Positive int maxCorrections,
+            @NotNull Duration retention) {}
+
+    /**
+     * School years (5.5).
+     *
+     * @param leadTime the job creates the next school year this long before it starts
+     */
+    public record SchoolYears(@NotNull Duration leadTime) {}
 
     /** The config-managed master admin (D-22, 7.9). Empty email = no master (local development without it). */
     public record Master(
