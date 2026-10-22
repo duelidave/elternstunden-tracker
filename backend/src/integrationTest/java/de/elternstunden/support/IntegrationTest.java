@@ -184,6 +184,116 @@ public abstract class IntegrationTest {
         return browser;
     }
 
+    /** Signs in a new account with the given role via magic link; returns the browser. */
+    protected ApiClient signedInAs(String role) {
+        String email = uniqueEmail();
+        insertUser(email, role, "ACTIVE");
+        return signedIn(email);
+    }
+
+    /** The master session via password and TOTP (7.2). */
+    protected ApiClient signedInMaster() {
+        ApiClient browser = browser();
+        String code = freshMasterTotpCode();
+        ApiClient.Response response = browser.post(
+                "/api/v1/auth/master/login",
+                java.util.Map.of("email", MASTER_EMAIL, "password", MASTER_PASSWORD, "totp", code));
+        if (response.status() != 200) {
+            throw new AssertionError("master login failed with " + response.status() + ": " + response.body());
+        }
+        return browser;
+    }
+
+    private static final java.util.concurrent.atomic.AtomicInteger TOTP_STEPS =
+            new java.util.concurrent.atomic.AtomicInteger();
+
+    /**
+     * The TOTP code of a fresh step. A used step stays used for the whole application context (replay protection),
+     * so every call sets the clock one step further ahead than any call before, across all test classes; 30 s per
+     * call keeps the calls inside the rate-limit window.
+     */
+    protected String freshMasterTotpCode() {
+        clock.setOffset(java.time.Duration.ofSeconds(
+                de.elternstunden.auth.service.Totp.STEP_SECONDS * TOTP_STEPS.incrementAndGet()));
+        return de.elternstunden.auth.service.Totp.codeAt(
+                de.elternstunden.auth.service.Totp.decodeBase32(MASTER_TOTP_SECRET),
+                clock.instant().getEpochSecond() / de.elternstunden.auth.service.Totp.STEP_SECONDS);
+    }
+
+    protected UUID userId(String email) {
+        return jdbc.queryForObject("SELECT id FROM app_user WHERE email = ?", UUID.class, email);
+    }
+
+    /** A family with one child; names are normalized like the application does (7.1.3). */
+    protected UUID insertFamilyWithChild(String firstName, String lastName, String birthDate) {
+        UUID familyId = jdbc.queryForObject("INSERT INTO family (label) VALUES (NULL) RETURNING id", UUID.class);
+        insertChild(familyId, firstName, lastName, birthDate);
+        return familyId;
+    }
+
+    protected UUID insertChild(UUID familyId, String firstName, String lastName, String birthDate) {
+        return jdbc.queryForObject(
+                "INSERT INTO child (family_id, first_name, last_name, birth_date, first_name_norm, last_name_norm)"
+                        + " VALUES (?, ?, ?, CAST(? AS date), ?, ?) RETURNING id",
+                UUID.class,
+                familyId,
+                firstName,
+                lastName,
+                birthDate,
+                de.elternstunden.common.text.NameNormalizer.normalize(firstName),
+                de.elternstunden.common.text.NameNormalizer.normalize(lastName));
+    }
+
+    /** Registration with explicit child data. */
+    protected ApiClient.Response register(ApiClient browser, String email, String first, String last, String birth) {
+        return browser.post(
+                "/api/v1/auth/register",
+                java.util.Map.of(
+                        "displayName",
+                        "Test Parent",
+                        "email",
+                        email,
+                        "privacyAccepted",
+                        true,
+                        "captcha",
+                        browser.solveCaptcha(),
+                        "child",
+                        java.util.Map.of("firstName", first, "lastName", last, "birthDate", birth)));
+    }
+
+    /** Registers with the child data and redeems the link in the same browser. */
+    protected ApiClient registeredMember(String email, String first, String last, String birth) {
+        ApiClient browser = browser();
+        register(browser, email, first, last, birth);
+        ApiClient.Response response = redeem(browser, latestToken(email));
+        if (response.status() != 200) {
+            throw new AssertionError("redeem failed with " + response.status() + ": " + response.body());
+        }
+        return browser;
+    }
+
+    protected @org.jspecify.annotations.Nullable UUID familyOf(String email) {
+        return jdbc.queryForObject("SELECT family_id FROM app_user WHERE email = ?", UUID.class, email);
+    }
+
+    /** Waits for asynchronous mails (AsyncMailer). */
+    protected java.util.List<CapturingMailSender.SentMail> awaitMails(String email, int count) {
+        long deadline = System.nanoTime() + java.time.Duration.ofSeconds(10).toNanos();
+        while (System.nanoTime() < deadline) {
+            java.util.List<CapturingMailSender.SentMail> sent = mails.sentTo(email);
+            if (sent.size() >= count) {
+                return sent;
+            }
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError(ex);
+            }
+        }
+        return mails.sentTo(email);
+    }
+
     /** Direct connection as the owner role, for checks the app role must not be able to do. */
     protected static Connection ownerConnection() throws SQLException {
         return DriverManager.getConnection(POSTGRES.getJdbcUrl(), OWNER, OWNER_PASSWORD);

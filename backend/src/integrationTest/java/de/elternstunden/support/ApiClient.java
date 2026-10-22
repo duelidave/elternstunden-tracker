@@ -61,6 +61,41 @@ public class ApiClient {
                 .POST(HttpRequest.BodyPublishers.ofString(json)));
     }
 
+    public Response put(String path, Object body) {
+        return send(HttpRequest.newBuilder(uri(path))
+                .header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString(json(body))));
+    }
+
+    public Response put(String path) {
+        return send(HttpRequest.newBuilder(uri(path)).PUT(HttpRequest.BodyPublishers.noBody()));
+    }
+
+    public Response patch(String path, Object body) {
+        return send(HttpRequest.newBuilder(uri(path))
+                .header("Content-Type", "application/json")
+                .method("PATCH", HttpRequest.BodyPublishers.ofString(json(body))));
+    }
+
+    public Response delete(String path) {
+        return send(HttpRequest.newBuilder(uri(path)).DELETE());
+    }
+
+    public Response post(String path) {
+        return send(HttpRequest.newBuilder(uri(path)).POST(HttpRequest.BodyPublishers.noBody()));
+    }
+
+    /** A request body in another media type, e.g. {@code text/csv}. */
+    public Response post(String path, String contentType, String body) {
+        return send(HttpRequest.newBuilder(uri(path))
+                .header("Content-Type", contentType)
+                .POST(HttpRequest.BodyPublishers.ofString(body)));
+    }
+
+    private static String json(Object body) {
+        return body instanceof String text ? text : JSON.writeValueAsString(body);
+    }
+
     /** First GET so the server sets the XSRF-TOKEN cookie, like the SPA does on start. */
     public ApiClient withCsrf() {
         get("/api/v1/status");

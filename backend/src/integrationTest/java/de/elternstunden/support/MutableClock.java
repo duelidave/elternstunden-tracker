@@ -24,6 +24,11 @@ public class MutableClock extends Clock {
         offset.set(duration);
     }
 
+    /** Jumps to (about) the given point in time; time keeps running from there. */
+    public void setOffsetTo(Instant target) {
+        offset.set(Duration.between(Instant.now(), target));
+    }
+
     @Override
     public Instant instant() {
         return Instant.now().plus(offset.get());

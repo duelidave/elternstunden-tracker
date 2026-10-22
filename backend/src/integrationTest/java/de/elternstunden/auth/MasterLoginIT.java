@@ -2,21 +2,17 @@ package de.elternstunden.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import de.elternstunden.auth.service.Totp;
 import de.elternstunden.support.ApiClient;
 import de.elternstunden.support.IntegrationTest;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 /** Master login with password and TOTP (D-22, 7.2, AC-MASTER). */
 class MasterLoginIT extends IntegrationTest {
 
     private static final String PATH = "/api/v1/auth/master/login";
-    private static final AtomicInteger STEPS = new AtomicInteger();
 
     /** AC-MASTER-02: the master signs in even when there is no admin at all. */
     @Test
@@ -76,14 +72,8 @@ class MasterLoginIT extends IntegrationTest {
         return browser.post(PATH, Map.of("email", email, "password", password, "totp", totp));
     }
 
-    /**
-     * The TOTP code of a fresh step. A used step stays used for the whole application, so every call sets the clock
-     * one step further ahead than any call before; 30 s per call keeps all calls inside the rate-limit window.
-     */
     private String currentCode() {
-        clock.setOffset(Duration.ofSeconds(Totp.STEP_SECONDS * STEPS.incrementAndGet()));
-        return Totp.codeAt(
-                Totp.decodeBase32(MASTER_TOTP_SECRET), clock.instant().getEpochSecond() / Totp.STEP_SECONDS);
+        return freshMasterTotpCode();
     }
 
     private static String wrong(String code) {
