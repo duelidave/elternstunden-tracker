@@ -1,11 +1,11 @@
 package de.elternstunden.auth.service;
 
 import de.elternstunden.common.config.AppProperties;
+import de.elternstunden.common.mail.MailLayout;
 import de.elternstunden.common.mail.MailMessage;
 import java.net.URI;
 import java.util.List;
 import org.springframework.stereotype.Component;
-import org.springframework.web.util.HtmlUtils;
 
 /**
  * The auth mails (7.11): German, informal, plain text plus HTML, no tracking, no external images. The link appears as
@@ -14,9 +14,6 @@ import org.springframework.web.util.HtmlUtils;
  */
 @Component
 public class AuthMails {
-
-    private static final String IGNORE = "Du hast diese Mail nicht angefordert? Dann ignoriere sie einfach.";
-    private static final String SIGNATURE = "Dein Hort-Team";
 
     private final URI baseUrl;
 
@@ -102,35 +99,6 @@ public class AuthMails {
 
     private static MailMessage mail(
             String to, String subject, List<String> intro, String button, String link, List<String> outro) {
-        StringBuilder text = new StringBuilder();
-        intro.forEach(line -> text.append(line).append("\n\n"));
-        text.append(link).append("\n\n");
-        outro.forEach(line -> text.append(line).append("\n\n"));
-        text.append(IGNORE).append("\n\n").append(SIGNATURE).append('\n');
-
-        StringBuilder html = new StringBuilder();
-        html.append("<!doctype html><html lang=\"de\"><body style=\"font-family:system-ui,sans-serif;")
-                .append("color:#2e2e2e;line-height:1.5;max-width:36rem;margin:0 auto;padding:1rem\">");
-        intro.forEach(line -> html.append("<p>").append(escape(line)).append("</p>"));
-        html.append("<p><a href=\"")
-                .append(escape(link))
-                .append("\" style=\"display:inline-block;background:#f5c400;color:#2e2e2e;padding:0.75rem 1.25rem;")
-                .append("border-radius:0.5rem;text-decoration:none;font-weight:600\">")
-                .append(escape(button))
-                .append("</a></p>")
-                .append("<p style=\"word-break:break-all;color:#6e6e6e\">")
-                .append(escape(link))
-                .append("</p>");
-        outro.forEach(line -> html.append("<p>").append(escape(line)).append("</p>"));
-        html.append("<p style=\"color:#6e6e6e\">")
-                .append(escape(IGNORE))
-                .append("</p><p>")
-                .append(escape(SIGNATURE))
-                .append("</p></body></html>");
-        return new MailMessage(to, subject, text.toString(), html.toString());
-    }
-
-    private static String escape(String value) {
-        return HtmlUtils.htmlEscape(value);
+        return MailLayout.mail(to, subject, intro, new MailLayout.Action(button, link), outro);
     }
 }

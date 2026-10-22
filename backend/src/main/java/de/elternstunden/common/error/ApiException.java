@@ -1,5 +1,7 @@
 package de.elternstunden.common.error;
 
+import de.elternstunden.api.model.ValidationErrorDto;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -28,6 +30,15 @@ public class ApiException extends RuntimeException {
         super(detail);
         this.code = code;
         this.properties = Map.copyOf(properties);
+    }
+
+    /** 400 VALIDATION_FAILED for rules beyond the contract's schema; the messages never contain the value. */
+    public static ApiException validation(List<ValidationErrorDto> errors) {
+        return new ApiException(ErrorCode.VALIDATION_FAILED, Map.of("errors", List.copyOf(errors)));
+    }
+
+    public static ApiException validation(String field, String code, String message) {
+        return validation(List.of(new ValidationErrorDto(field, code, message)));
     }
 
     public ErrorCode code() {
