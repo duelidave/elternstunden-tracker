@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 0.4.8 (Entwurf) |
+| Version | 0.4.9 (Entwurf) |
 | Stand | 2026-10-24 |
 | Einrichtung | Hort an der Montessorischule (Elterninitiative, Verein) |
 | Zielgruppe | Entwickler:innen und KI-Coding-Agents |
@@ -25,6 +25,7 @@
 | 0.4.6 | 2026-10-22 | OPEN-02 entschieden: Abrechnung je Familie **und** als Gesamtliste (D-12). Endpunkt mit optionalem Parameter `kind` (FS-PDF). |
 | 0.4.7 | 2026-10-24 | Familien erfassen, ändern und löschen nur Einträge im laufenden Schuljahr; andere offene Schuljahre nur Admins (D-29, INV-14, 7.3, 7.4, AC-ENTRY-13). |
 | 0.4.8 | 2026-10-24 | Tätigkeitstext höchstens 255 Zeichen statt 500, mit mitlaufendem Zähler und Pflichtfeld-Markierung in der UI (D-09, 7.4, AC-ENTRY-03). Uhrzeiten tolerant eingeben, z. B. `9` für `09:00` (UI-12). |
+| 0.4.9 | 2026-10-24 | OPEN-15 teilweise entschieden: netID (Login mit GMX und WEB.DE) als weiterer OIDC-Anbieter und Passkeys als eigener Anmeldeweg, Microsoft folgt später (D-30, 7.2, 5.3, 8.2, 9.1, UI-06, AC-OIDC-14 bis 16, AC-PASSKEY, Meilenstein M6a). |
 
 ---
 
@@ -129,6 +130,7 @@ Laut Website des Horts: 65 Vollzeitplätze, etwa 70 Kinder in drei Gruppen. Erwa
 | D-27 | **Datumseingabe immer im deutschen Format.** Datumsfelder zeigen und erwarten `TT.MM.JJJJ` und haben einen deutschen Kalender, unabhängig von der Sprache des Browsers oder Geräts (UI-12). Die API bleibt bei ISO-Daten (8.1). | `[DECIDED]` | Auftraggeber, 2026-10-22 |
 | D-28 | Einer Familie sind **höchstens zwei Nutzer** zugeordnet (z. B. beide Elternteile). Es zählen alle zugeordneten Konten, unabhängig von Rolle und Status. Anonymisierte Konten gehören keiner Familie mehr an (DP-05). | `[DECIDED]` | Auftraggeber, 2026-10-22 |
 | D-29 | Familien erfassen, ändern und löschen Stunden **nur im laufenden Schuljahr** (das heute enthält, 5.5). Einträge in einem anderen, noch nicht abgeschlossenen Schuljahr legen nur Admins an oder ändern sie, z. B. Nachträge im September für das Vorjahr. | `[DECIDED]` | Auftraggeber, 2026-10-24 |
+| D-30 | **Weitere Anmeldewege.** Zusätzlich zu E-Mail-Link und Google: **netID** (Login mit dem GMX- oder WEB.DE-Konto, OIDC) und **Passkeys** (WebAuthn: Face ID, Fingerabdruck, Windows Hello, Sicherheitsschlüssel). Microsoft folgt später, Apple ist zurückgestellt. Der E-Mail-Link bleibt immer erhalten (INV-11). | `[DECIDED]` | Auftraggeber, 2026-10-24 |
 
 ---
 
@@ -451,6 +453,32 @@ CREATE TABLE audit_log (
     details       jsonb       NOT NULL DEFAULT '{}'::jsonb   -- nur IDs und technische Werte, keine Freitexte (SEC-12)
 );
 CREATE INDEX audit_log_entity_idx ON audit_log (entity_type, entity_id, occurred_at DESC);
+
+-- ---------------------------------------------------------------
+-- Passkeys (7.2, D-30): Schema von Spring Security, angelegt mit Migration V7.
+-- user_entities.id = app_user.id (16 Byte, Base64url), name = E-Mail-Adresse, display_name = Anzeigename
+-- ---------------------------------------------------------------
+CREATE TABLE user_entities (
+    id           varchar(1000) PRIMARY KEY,
+    name         varchar(100)  NOT NULL,
+    display_name varchar(200)
+);
+CREATE TABLE user_credentials (
+    credential_id                varchar(1000) PRIMARY KEY,
+    user_entity_user_id          varchar(1000) NOT NULL REFERENCES user_entities (id) ON DELETE CASCADE,
+    public_key                   bytea         NOT NULL,       -- nur der öffentliche Schlüssel, nie Biometrie
+    signature_count              bigint,
+    uv_initialized               boolean,
+    backup_eligible              boolean       NOT NULL,
+    authenticator_transports     varchar(1000),
+    public_key_credential_type   varchar(100),
+    backup_state                 boolean       NOT NULL,
+    attestation_object           bytea,
+    attestation_client_data_json bytea,
+    created                      timestamp,
+    last_used                    timestamp,
+    label                        varchar(1000) NOT NULL
+);
 
 -- ---------------------------------------------------------------
 -- Integration (FS-INT)
@@ -804,7 +832,8 @@ app:
 ```
 
 - **PKCE MUSS explizit** aktiv sein (`ClientRegistration.clientSettings.requireProofKey(true)`), nicht auf Framework-Defaults verlassen. AC-OIDC-09 prüft `code_challenge_method=S256`.
-- Weitere Anbieter werden durch **zusätzliche Konfigurationsblöcke** ergänzt (generischer `issuer-uri`), ohne Codeänderung. Welche Anbieter aktiv sind: OPEN-15. Interim: nur Google.
+- Weitere Anbieter werden durch **zusätzliche Konfigurationsblöcke** ergänzt (generischer `issuer-uri`). Aktiv sind Google und netID (D-30), Microsoft folgt. Ein Anbieter ist aktiv, wenn seine Client-ID gesetzt ist. `GET /auth/providers` liefert die aktiven Anbieter (Kennung und Name), die SPA zeigt nur deren Buttons (UI-06).
+- **netID (D-30):** Issuer `https://broker.netid.de/`, Authorization Code mit PKCE, Scopes `openid profile email`. Nutzer können bei netID die Weitergabe einzelner Daten abwählen, deshalb fordert der Login die E-Mail-Adresse mit dem Parameter `claims={"userinfo":{"email":{"essential":true},"email_verified":{"essential":true}}}` als Pflicht an (Konfiguration `essential-email: true`). Autoritativ für die E-Mail ist netID nur für die Postfächer seiner Kontoanbieter: `trust-email-for-linking: DOMAINS` mit `trusted-email-domains: gmx.de, gmx.net, gmx.at, gmx.ch, web.de`, jeweils nur mit `email_verified = true`. Andere Adressen verknüpfen nie per E-Mail (7.1.5). Lokal steht der OIDC-Mock auch für netID (Issuer-Pfad `/netid`).
 - Der Server MUSS `iss`, `aud`, Signatur, `exp` und `nonce` validieren (Spring tut das für OIDC; Test erforderlich) und `email_verified = true` verlangen.
 - **Keine Anbieter-Tokens speichern:** `OAuth2AuthorizedClientRepository` ist ein No-op. Nach dem Callback mappt ein eigener `AuthenticationSuccessHandler` auf den `AppUserPrincipal` (oben). Das `OAuth2AuthenticationToken` wird **nicht** in den `SecurityContext` übernommen.
 - **Pending-Zustand:** Ohne DB-Konto (7.1.5 Schritt 4) hat die Session nur den Zustand `OIDC_PENDING`. Er gilt ausschließlich für `GET /auth/oidc/pending` und `POST /auth/oidc/complete` und verfällt nach 15 Minuten. Alle anderen Endpunkte liefern `401`.
@@ -813,6 +842,15 @@ app:
 - **Profil:** Eingeloggte Nutzer KÖNNEN weitere Anbieter verknüpfen und Verknüpfungen jederzeit entfernen. Der E-Mail-Link bleibt immer als Anmeldeweg erhalten (INV-11). Verknüpfen verlangt eine frische Anmeldung (nicht älter als 5 Minuten, sonst `403 REAUTH_REQUIRED`). Ablauf: `POST /me/identities/{provider}/link` (JSON, CSRF) liefert die Einstiegs-URL, die SPA navigiert per Top-Level-GET dorthin. So greift `form-action 'self'` (SEC-10) nicht. Beim Verknüpfen gilt die E-Mail-Regel nicht, weil der Nutzer bereits angemeldet ist.
 - `MASTER_ADMIN` kann OIDC **nicht** nutzen (D-22, INV-12).
 - ADMIN-Konten dürfen sich per OIDC anmelden. Danach greift der zweite Faktor wie oben.
+
+#### Passkeys (D-30) `[PROPOSED]`
+
+- **Technik:** WebAuthn als Relying Party mit den Bausteinen von Spring Security (`spring-security-webauthn`, darin webauthn4j). Die Endpunkte sind eigene API-Endpunkte im Vertrag (D-25), nicht die Standardfilter von Spring. RP-ID ist der Host aus `APP_BASE_URL`, erlaubter Origin genau `APP_BASE_URL` (SEC-06). Passkeys sind auffindbar (Resident Key Pflicht), die Nutzerprüfung (Biometrie oder Geräte-PIN) ist Pflicht. Der Server speichert nur den öffentlichen Schlüssel, nie biometrische Daten.
+- **Anlegen:** nur angemeldet im Profil und nur mit frischer Anmeldung (5 Minuten, sonst `403 REAUTH_REQUIRED`), nicht für `MASTER_ADMIN` (INV-12). `POST /me/passkeys/options` liefert die WebAuthn-Optionen und eine `challengeId`, `POST /me/passkeys` mit `challengeId`, Antwort des Browsers und optionaler Bezeichnung (höchstens 60 Zeichen, Standard "Passkey") legt ihn an. Höchstens 10 Passkeys pro Konto, sonst `409 PASSKEY_LIMIT`. Audit `PASSKEY_ADDED`.
+- **Anmelden:** Auf `/login` "Mit Passkey anmelden", ohne E-Mail-Eingabe. `POST /auth/passkey/options` liefert Optionen ohne `allowCredentials` und eine `challengeId`, `POST /auth/passkey/login` prüft die Antwort. Danach gilt dasselbe wie beim E-Mail-Link: neue Session-ID, und Admins mit TOTP kommen nur in den Zustand `MFA_PENDING` (der Passkey ersetzt den zweiten Faktor nicht, `[PROPOSED]`). Nur aktive Konten (`ACTIVE`), sonst wie bei jedem Fehler neutral `401 LOGIN_FAILED`. Audit `PASSKEY_LOGIN`, bei Fehler `PASSKEY_LOGIN_FAILED` ohne Details.
+- **Challenge:** zufällig, einmal verwendbar, 5 Minuten gültig, serverseitig im Speicher (eine Instanz genügt, wie bei den Rate-Limits). Die Registrierungs-Challenge gilt nur für das Konto, das sie angefordert hat.
+- **Verwalten:** `GET /me/passkeys` (Bezeichnung, angelegt, zuletzt benutzt), `DELETE /me/passkeys/{passkeyId}` nur für eigene (fremde: `404`, SEC-08), Audit `PASSKEY_REMOVED`. Der E-Mail-Link bleibt immer (INV-11).
+- **Speicherung:** Tabellen `user_entities` und `user_credentials` nach dem Schema von Spring Security (5.3). `user_entities.id` ist die `app_user.id` (16 Byte, Base64url), `name` die E-Mail-Adresse (so zeigt sie der Passwortmanager), `display_name` der Anzeigename. Anonymisieren (DP-05) löscht alle Passkeys des Kontos, Deaktivieren verhindert die Anmeldung.
 
 #### Sitzung (D-20)
 
@@ -1146,6 +1184,11 @@ Rollen: **A** = anonym, **U** = angemeldet (jede Rolle), **F** = `FAMILY_MEMBER`
 | `PATCH /me` | U | Anzeigename ändern |
 | `POST /me/identities/{provider}/link` | U | Liefert die Einstiegs-URL zum Verknüpfen, frische Anmeldung nötig (`403 REAUTH_REQUIRED`) |
 | `DELETE /me/identities/{id}` | U | Nur **eigene** Identitäten (SEC-08), Entfernen immer erlaubt (INV-11) |
+| `GET /auth/providers` | A | Aktive OIDC-Anbieter für die Buttons (7.2, UI-06) |
+| `POST /auth/passkey/options`, `POST /auth/passkey/login` | A | Anmelden mit Passkey (7.2, D-30) |
+| `GET /me/passkeys` | U | Eigene Passkeys |
+| `POST /me/passkeys/options`, `POST /me/passkeys` | U | Passkey anlegen, frische Anmeldung nötig (`403 REAUTH_REQUIRED`), nicht für den Master (INV-12) |
+| `DELETE /me/passkeys/{id}` | U | Nur **eigene** Passkeys (SEC-08) |
 | `PUT /me/claim` | U (unzugeordnet) | Kinderdaten eingeben oder korrigieren (max. 3 Korrekturen), zugeordnet: `409 ALREADY_ASSIGNED` |
 | `POST /me/totp/setup`, `POST /me/totp/confirm`, `DELETE /me/totp` | AD | Admin-TOTP (7.2, OPEN-09) |
 | `GET /me/family/overview` | F | FS-FAM |
@@ -1228,6 +1271,7 @@ Grundhaltung: Die App verarbeitet Daten von Minderjährigen. Sicherheit hat Vorr
 | E-Mail-Link anfordern | global | 200 pro Stunde, bei Überschreitung Alarm an Master |
 | E-Mail-Link einlösen | IP | 30 pro 15 Minuten |
 | OIDC-Callback | IP | 30 pro Minute |
+| Passkey-Anmeldung (Optionen und Prüfung) | IP | 30 pro Minute |
 | Master-Login und MFA-Prüfung | IP | 5 pro 15 Minuten, danach `429` bis zum Ablauf des Fensters |
 | Master-Login | Konto | Keine Sperre (Notzugang). Ab 10 Fehlversuchen pro Stunde Alarm-Mail an den Master (7.2). |
 | Eintrag erfassen | Nutzer | 60 pro Stunde |
@@ -1730,7 +1774,7 @@ Wichtig: **Docker umgeht `ufw`** für veröffentlichte Ports. Deshalb veröffent
 | UI-03 | **Mobile first.** Basis 360 px Breite, einspaltig. Tippflächen mindestens 44×44 px. Wichtige Aktionen im Daumenbereich (unten). Keine Hover-Abhängigkeit. Safe-Area-Insets beachten. Keine horizontale Scrollleiste ab 320 px. Ab 768 px: Admin-Listen als Tabelle, darunter als Karten. Zielgeräte: aktuelle und vorherige Version von iOS Safari und Android Chrome, dazu aktuelle Desktop-Browser. |
 | UI-04 | **Erfassung in höchstens 4 Interaktionen** für den Standardfall (Öffnen, Dauer-Chip, Text, Absenden). Primäre Schaltfläche "Stunden eintragen" ist auf der Familienübersicht dauerhaft erreichbar. Erfassung als Bottom-Sheet. Datum standardmäßig heute. Nach dem Absenden: Hinweis "Eingetragen. Wartet auf Bestätigung." und aktualisierte Fortschrittsanzeige. |
 | UI-05 | **Screens** (Tabelle unten). |
-| UI-06 | **Login und Registrierung (ohne Passwort, D-24).** Oben "Mit Google anmelden" (Link auf `/oauth2/authorization/google`), dann Trenner "oder", dann ein Feld "E-Mail" und die Schaltfläche "Anmeldelink schicken". Es gibt kein Passwortfeld. Nach dem Absenden: "Schau in dein Postfach. Der Link ist 15 Minuten gültig." mit der Möglichkeit, erneut zu senden. Die Bestätigungsseite `/login/link` zeigt eine große Schaltfläche "Jetzt anmelden". Wurde der Link auf einem anderen Gerät angefordert, folgt die Rückfrage "Dieser Link wurde auf einem anderen Gerät angefordert. Als m\*\*\*@gmail.com anmelden?" mit "Ja, anmelden" und "Abbrechen" (7.2). Bei ungültigem Link erscheint der Text aus 7.2 plus das Feld zum erneuten Anfordern. Der Google-Button MUSS die Branding-Vorgaben des Anbieters einhalten (Prüfung vor Go-live). Keine Anbieter-Skripte (DP-04). |
+| UI-06 | **Login und Registrierung (ohne Passwort, D-24).** Oben die Buttons der aktiven Anbieter (`GET /auth/providers`): "Mit Google anmelden" (Link auf `/oauth2/authorization/google`) und der netID-Button nach dem netID-Styleguide (Grün `#76b82a`, weißes Logo, Beschriftung "netID", Screenreader-Name "Mit netID anmelden", darunter der Hinweis auf GMX und WEB.DE; die Beschriftung "netID" ist als Markenname von der Kontrastregel ausgenommen, Weiß auf diesem Grün erreicht nur etwa 2,4:1). Auf `/login` zusätzlich "Mit Passkey anmelden", wenn der Browser Passkeys kann. Dann Trenner "oder", dann ein Feld "E-Mail" und die Schaltfläche "Anmeldelink schicken". Es gibt kein Passwortfeld. Nach dem Absenden: "Schau in dein Postfach. Der Link ist 15 Minuten gültig." mit der Möglichkeit, erneut zu senden. Die Bestätigungsseite `/login/link` zeigt eine große Schaltfläche "Jetzt anmelden". Wurde der Link auf einem anderen Gerät angefordert, folgt die Rückfrage "Dieser Link wurde auf einem anderen Gerät angefordert. Als m\*\*\*@gmail.com anmelden?" mit "Ja, anmelden" und "Abbrechen" (7.2). Bei ungültigem Link erscheint der Text aus 7.2 plus das Feld zum erneuten Anfordern. Der Google-Button MUSS die Branding-Vorgaben des Anbieters einhalten (Prüfung vor Go-live). Keine Anbieter-Skripte (DP-04). |
 | UI-07 | **Fortschrittsanzeige.** Balken oder Ring: bestätigt als Vollfläche, offen als schraffiert oder heller. Text: "4 h 30 min von 10 h bestätigt", darunter "plus 1 h wartet auf Bestätigung". Bei Erfüllung: "Geschafft! Eure 10 Stunden sind erfüllt." |
 | UI-08 | **Zustände.** Lade-Skelette, freundliche Leerzustände ("Noch keine Stunden eingetragen. Tippe auf 'Stunden eintragen'."), Fehlermeldungen verständlich und ohne technische Details, Inline-Validierung mit denselben Regeln wie serverseitig (Zod). Offline: Banner "Keine Verbindung". Es gibt **kein** Offline-Schreiben. |
 | UI-09 | **Barrierefreiheit WCAG 2.2 AA.** Semantisches HTML, beschriftete Felder, sichtbarer Fokus, `aria-live` für Rückmeldungen, `aria-sort` in Tabellenköpfen, Bedienung per Tastatur, Skalierung bis 200 %, `prefers-reduced-motion` beachten. |
@@ -1837,11 +1881,19 @@ Notation: Gegeben / Wenn / Dann. Jedes Kriterium MUSS als automatisierter Test e
 | AC-OIDC-11 | **Deaktiviert über Identität.** Bei vorhandener `(iss, sub)` und Kontostatus `DISABLED` wird abgelehnt. |
 | AC-OIDC-12 | **Nicht autoritative E-Mail.** Google-Token ohne `hd` und ohne `@gmail.com`, gleiche E-Mail wie ein bestehendes Konto: Es wird **nicht** automatisch verknüpft, die Meldung verweist auf E-Mail-Link plus Verknüpfung im Profil. |
 | AC-OIDC-13 | **Verknüpfen nur frisch.** Liegt die letzte Anmeldung länger als 5 Minuten zurück, liefert `POST /me/identities/{provider}/link` `403 REAUTH_REQUIRED`. |
+| AC-OIDC-14 | **netID: E-Mail ist Pflicht.** Die Einstiegs-URL von netID enthält den Parameter `claims` mit `email` und `email_verified` als `essential`. Ein Login ohne bestätigte E-Mail wird abgelehnt (`OIDC_EMAIL_UNVERIFIED`). |
+| AC-OIDC-15 | **netID: E-Mail-Regel.** Eine bestätigte Adresse `@gmx.de` oder `@web.de` verknüpft ein bestehendes Konto per E-Mail (7.1.5), eine andere Adresse nicht (`OIDC_NOT_AUTHORITATIVE`). |
+| AC-OIDC-16 | **Nur aktive Anbieter.** `GET /auth/providers` liefert genau die Anbieter mit Client-ID, die SPA zeigt nur deren Buttons. |
 
 ### 15.3 Anmeldung (FS-AUTH)
 
 | ID | Kriterium |
 |---|---|
+| AC-PASSKEY-01 | **Anlegen.** Mit frischer Anmeldung legt ein Nutzer im Profil einen Passkey an. Ohne frische Anmeldung `403 REAUTH_REQUIRED`, als Master `403`, eine fremde oder abgelaufene `challengeId` `400`, mehr als 10 Passkeys `409 PASSKEY_LIMIT`. |
+| AC-PASSKEY-02 | **Anmelden.** Mit dem Passkey meldet sich der Nutzer ohne E-Mail-Eingabe an und erhält eine neue Session-ID. Ein Admin mit TOTP erhält nur `MFA_REQUIRED`. |
+| AC-PASSKEY-03 | **Ungültig.** Falsche Signatur, fremder Origin, unbekannter Passkey, wiederverwendete oder abgelaufene Challenge: `401 LOGIN_FAILED`, keine Session. |
+| AC-PASSKEY-04 | **Kontozustand.** Ein deaktiviertes Konto meldet sich nicht per Passkey an (`401`). Anonymisieren löscht alle Passkeys. |
+| AC-PASSKEY-05 | **Verwalten.** `GET /me/passkeys` zeigt nur eigene, `DELETE` eines fremden Passkeys liefert `404`. |
 | AC-AUTH-01 | **Neutrale Anfrage.** `POST /auth/magic-link` liefert für aktive, unbestätigte, unbekannte und deaktivierte E-Mail sowie für die Master-E-Mail identischen Status (`202`), Body und Header. Ein Test vergleicht die Antworten. |
 | AC-AUTH-02 | **Scanner-Prefetch.** Ein `GET` auf den Link aus der Mail (inklusive aller Ressourcen und API-Aufrufe, die die Bestätigungsseite ohne Klick auslöst) verbraucht den Token nicht und legt keine Session an. Ein anschließender `POST /auth/magic-link/redeem` meldet an. Es gibt keinen Endpunkt, der einen Token per `GET` einlöst (E2E und Integrationstest). |
 | AC-AUTH-03 | **Einmalig.** Ein zweites Einlösen desselben Tokens liefert `400 LINK_INVALID`, auch direkt nach dem ersten Erfolg. |
@@ -2034,7 +2086,7 @@ Regel für KI-Agents: Bei jedem Punkt gilt der **Interim-Default**, bis der Auft
 | OPEN-12 | Selbstkorrektur bei falscher automatischer Zuordnung (z. B. Familienmitglied meldet oder entfernt)? Admin-Freigabe neuer Mitglieder als Verschärfung? | Nur Mail an Mitglieder und Admin-Widget. | FS-REG 7.1.6 |
 | OPEN-13 | Hosting: VPS-Standort Deutschland bestätigen, Tarif, wer bucht? Domain und DNS? Staging-Umgebung? | Entwicklung lokal per Compose. Ziel-VPS M+. Domain offen. | Abschnitt 12 |
 | OPEN-14 | Soll die Integration später schreibend sein? Brauchen Admins einen CSV-Export? | Nur lesende API. Kein CSV-Export. | FS-INT |
-| OPEN-15 | Welche OIDC-Anbieter über Google hinaus (Microsoft, Apple, andere)? | Nur Google. Weitere nur per Konfiguration ergänzbar. | FS-AUTH |
+| OPEN-15 | Welche OIDC-Anbieter über Google hinaus (Microsoft, Apple, andere)? Teilweise entschieden 2026-10-24: netID und Passkeys (D-30). Offen: wann Microsoft. | Google und netID, dazu Passkeys. Microsoft folgt, Apple zurückgestellt. | FS-AUTH |
 | OPEN-16 | Datenschutz und Recht: Rechtsgrundlage, Hinweise, Google-Login (Drittlandübermittlung), Löschfristen, AV-Verträge, Audit-Log-Aufbewahrung, Cookie-Hinweis. | Technisch datensparsam, Texte Platzhalter. Keine Löschautomatik für Fachdaten. Ausnahmen aus Sicherheitsgründen: unbestätigte Registrierungen (24 h), Claims (30 Tage, DP-05), Tokens und Auth-Anfragen. | Abschnitt 10 |
 | OPEN-17 | Backup: Welche Cloud (Google Drive oder Microsoft)? Welcher Anbieter hinter dem Borg-Bucket? Aufbewahrung 14/8/12 passend? | restic nach IONOS S3 plus Borg-Bucket. Cloud-Ziel aus. Aufbewahrung 14/8/12. | Abschnitt 11 |
 | OPEN-18 | Dürfen Nutzer mehreren Familien angehören (Patchwork)? Gibt es eine Obergrenze für Mitglieder je Familie? | Genau eine Familie je Nutzer, keine Obergrenze. | 5.3 |
@@ -2057,6 +2109,7 @@ Jeder Meilenstein ist erst fertig, wenn die zugehörigen Abnahmekriterien (Absch
 | M4 | Erfassen und Bestätigen | Einträge, Familienübersicht, Partnerhinweis, Admin-Bestätigung | AC-ENTRY, AC-CONF, AC-FAM, AC-SEC-10 |
 | M5 | Admin-Übersicht | Hinweisleiste, Liste mit Suche, Sortierung, Paging, Familiendetail, Dashboard | AC-OV |
 | M6 | Abrechnung | PDF `ALL` und `FAMILY` (ohne externe Ressourcen), Audit | AC-PDF, AC-SEC-12 |
+| M6a | Weitere Anmeldewege | netID als OIDC-Anbieter, Passkeys (D-30) | AC-OIDC-14 bis 16, AC-PASSKEY |
 | M7 | Betrieb und Backup | Dockerfiles, Prod-Compose (DB-Rollen nach OPS-14), Caddy, Backup-Sidecar, Restore-Skript, Restore-Test, Server-Härtung, Deploy-Pipeline, Monitoring inkl. Mailversand (OPS-13), Runbooks | AC-BAK, AC-SEC-07 |
 | M8 | Integration | API-Clients, Integrations-API | AC-INT |
 | M9 | Härtung und Abnahme | ZAP, Barrierefreiheits-Audit, Lasttest, Datenschutzdokumente mit dem Verein, Pilot mit einer Testgruppe, Go-live | AC-SEC-08, AC-UI, manuelle Abnahme |
