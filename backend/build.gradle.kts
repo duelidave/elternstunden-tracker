@@ -106,6 +106,8 @@ dependencies {
     // Billing PDF (FS-PDF): HTML template with auto-escaping, rendered without any external resource
     implementation("org.thymeleaf:thymeleaf")
     implementation(libs.openhtmltopdf)
+    // Passkeys (WebAuthn): relying party operations and JDBC storage from Spring Security, webauthn4j inside
+    implementation("org.springframework.security:spring-security-webauthn")
     runtimeOnly("org.postgresql:postgresql")
 
     errorprone(libs.errorprone.core)
@@ -134,6 +136,8 @@ testing {
                 implementation("org.testcontainers:testcontainers-junit-jupiter")
                 implementation("org.testcontainers:testcontainers-postgresql")
                 implementation(libs.swagger.parser)
+                // Authenticator emulator for the passkey tests (same version as in spring-security-webauthn)
+                implementation("com.webauthn4j:webauthn4j-test:0.31.9.RELEASE")
                 runtimeOnly("org.postgresql:postgresql")
             }
             targets.all {

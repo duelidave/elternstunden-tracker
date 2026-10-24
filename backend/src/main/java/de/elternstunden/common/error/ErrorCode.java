@@ -35,6 +35,8 @@ public enum ErrorCode {
     USER_ANONYMIZED(HttpStatus.CONFLICT, "The account is anonymized."),
     MFA_INVALID(HttpStatus.BAD_REQUEST, "Second factor invalid."),
     REAUTH_REQUIRED(HttpStatus.FORBIDDEN, "A fresh login is required."),
+    PASSKEY_INVALID(HttpStatus.BAD_REQUEST, "The passkey could not be created."),
+    PASSKEY_LIMIT(HttpStatus.CONFLICT, "The account has the maximum number of passkeys."),
     TOTP_REQUIRED(HttpStatus.CONFLICT, "TOTP is required for admins."),
     TOTP_SETUP_MISSING(HttpStatus.CONFLICT, "No TOTP setup to confirm."),
     TOTP_ALREADY_ENABLED(HttpStatus.CONFLICT, "TOTP is already enabled."),

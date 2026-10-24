@@ -37,6 +37,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.client.web.OAuth2LoginAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
@@ -73,6 +74,7 @@ public class ApiSecurityConfig {
             AppUserRepository users,
             SessionLogin sessionLogin,
             OidcLoginHandler oidcHandler,
+            OAuth2AuthorizationRequestResolver authorizationRequestResolver,
             RateLimiter rateLimiter,
             AppProperties properties,
             Clock clock)
@@ -92,6 +94,12 @@ public class ApiSecurityConfig {
                         .requestMatchers(POST, api + AuthApi.PATH_REDEEM_MAGIC_LINK)
                         .permitAll()
                         .requestMatchers(POST, api + AuthApi.PATH_LOGIN_MASTER)
+                        .permitAll()
+                        .requestMatchers(GET, api + AuthApi.PATH_LIST_LOGIN_PROVIDERS)
+                        .permitAll()
+                        .requestMatchers(POST, api + AuthApi.PATH_START_PASSKEY_LOGIN)
+                        .permitAll()
+                        .requestMatchers(POST, api + AuthApi.PATH_LOGIN_WITH_PASSKEY)
                         .permitAll()
                         // x-roles: [A], x-dev-only: the handler exists only in the dev profile, otherwise 404
                         .requestMatchers(POST, api + DevApi.PATH_DEV_LOGIN_AS)
@@ -118,6 +126,14 @@ public class ApiSecurityConfig {
                         .requestMatchers(POST, api + MeApi.PATH_START_IDENTITY_LINK)
                         .hasAuthority(Authorities.USER)
                         .requestMatchers(DELETE, api + MeApi.PATH_DELETE_IDENTITY)
+                        .hasAuthority(Authorities.USER)
+                        .requestMatchers(GET, api + MeApi.PATH_LIST_PASSKEYS)
+                        .hasAuthority(Authorities.USER)
+                        .requestMatchers(POST, api + MeApi.PATH_START_PASSKEY_REGISTRATION)
+                        .hasAuthority(Authorities.USER)
+                        .requestMatchers(POST, api + MeApi.PATH_REGISTER_PASSKEY)
+                        .hasAuthority(Authorities.USER)
+                        .requestMatchers(DELETE, api + MeApi.PATH_DELETE_PASSKEY)
                         .hasAuthority(Authorities.USER)
                         // x-roles: [F]; unassigned accounts get FAMILY_ASSIGNMENT_PENDING (INV-10, AC-FAM-04)
                         .requestMatchers(GET, api + MyFamilyApi.PATH_GET_FAMILY_OVERVIEW)
@@ -224,6 +240,8 @@ public class ApiSecurityConfig {
                         AuthorizationFilter.class)
                 // OIDC (7.2): PKCE from the client settings, no provider tokens anywhere, our own principal only
                 .oauth2Login(oauth2 -> oauth2.authorizedClientRepository(new NoOpAuthorizedClientRepository())
+                        .authorizationEndpoint(
+                                endpoint -> endpoint.authorizationRequestResolver(authorizationRequestResolver))
                         .successHandler(oidcHandler)
                         .failureHandler(oidcHandler)
                         // The provider's authentication must never reach the session (AC-OIDC-08); the handler

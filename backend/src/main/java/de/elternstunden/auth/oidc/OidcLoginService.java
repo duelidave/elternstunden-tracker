@@ -215,8 +215,11 @@ public class OidcLoginService {
     boolean authoritative(OidcIdentity identity, String email) {
         AppProperties.OidcProvider provider = properties.oidc().providers().get(identity.provider());
         EmailTrust trust = provider == null ? EmailTrust.NEVER : provider.trustEmailForLinking();
+        String domain = email.substring(email.lastIndexOf('@') + 1).toLowerCase(Locale.ROOT);
         return switch (trust) {
             case NEVER -> false;
+            // D-30: netID manages the mailboxes of its account providers (GMX, WEB.DE)
+            case DOMAINS -> provider.trustedEmailDomains().contains(domain);
             case GMAIL_OR_HD ->
                 email.toLowerCase(Locale.ROOT).endsWith("@gmail.com")
                         || (identity.hostedDomain() != null

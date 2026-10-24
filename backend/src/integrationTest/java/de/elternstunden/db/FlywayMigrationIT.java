@@ -38,7 +38,7 @@ class FlywayMigrationIT extends IntegrationTest {
             while (rows.next()) {
                 versions.add(rows.getString(1));
             }
-            assertThat(versions).containsExactly("1", "2", "3", "4", "5", "6");
+            assertThat(versions).containsExactly("1", "2", "3", "4", "5", "6", "7");
         }
     }
 

@@ -3,6 +3,7 @@ package de.elternstunden.auth.web;
 import de.elternstunden.api.AuthApi;
 import de.elternstunden.api.model.CaptchaChallengeDto;
 import de.elternstunden.api.model.ChildClaimDto;
+import de.elternstunden.api.model.LoginProviderDto;
 import de.elternstunden.api.model.LoginResultDto;
 import de.elternstunden.api.model.MagicLinkRedemptionDto;
 import de.elternstunden.api.model.MagicLinkRequestDto;
@@ -11,15 +12,20 @@ import de.elternstunden.api.model.MeDto;
 import de.elternstunden.api.model.MfaVerificationDto;
 import de.elternstunden.api.model.OidcCompletionDto;
 import de.elternstunden.api.model.OidcPendingDto;
+import de.elternstunden.api.model.PasskeyChallengeDto;
+import de.elternstunden.api.model.PasskeyLoginDto;
 import de.elternstunden.api.model.RegistrationRequestDto;
+import de.elternstunden.auth.passkey.PasskeyService;
 import de.elternstunden.auth.service.AuthRequestService;
 import de.elternstunden.auth.service.AuthService;
 import de.elternstunden.auth.service.CaptchaService;
 import de.elternstunden.auth.service.LoginFlow;
+import de.elternstunden.common.config.AppProperties;
 import de.elternstunden.common.security.CurrentUser;
 import de.elternstunden.common.security.PendingOidc;
 import de.elternstunden.common.web.CurrentRequest;
 import de.elternstunden.family.domain.ChildData;
+import java.util.List;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,13 +38,47 @@ public class AuthController implements AuthApi {
     private final CaptchaService captcha;
     private final AuthRequestService authRequests;
     private final AuthService auth;
+    private final PasskeyService passkeys;
+    private final AppProperties properties;
     private final JsonMapper json;
 
-    public AuthController(CaptchaService captcha, AuthRequestService authRequests, AuthService auth, JsonMapper json) {
+    public AuthController(
+            CaptchaService captcha,
+            AuthRequestService authRequests,
+            AuthService auth,
+            PasskeyService passkeys,
+            AppProperties properties,
+            JsonMapper json) {
         this.captcha = captcha;
         this.authRequests = authRequests;
         this.auth = auth;
+        this.passkeys = passkeys;
+        this.properties = properties;
         this.json = json;
+    }
+
+    /** Providers with a client id, in the order of the configuration (7.2, UI-06). */
+    @Override
+    public ResponseEntity<List<LoginProviderDto>> listLoginProviders() {
+        return ResponseEntity.ok(properties.oidc().providers().entrySet().stream()
+                .filter(entry -> entry.getValue().enabled())
+                .map(entry ->
+                        new LoginProviderDto(entry.getKey(), entry.getValue().name()))
+                .toList());
+    }
+
+    @Override
+    public ResponseEntity<PasskeyChallengeDto> startPasskeyLogin() {
+        PasskeyService.Challenge challenge = passkeys.startLogin(CurrentRequest.request());
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(new PasskeyChallengeDto(challenge.challengeId(), challenge.options()));
+    }
+
+    @Override
+    public ResponseEntity<LoginResultDto> loginWithPasskey(PasskeyLoginDto login) {
+        return ResponseEntity.ok(result(passkeys.login(
+                login.getChallengeId(), login.getCredential(), CurrentRequest.request(), CurrentRequest.response())));
     }
 
     @Override

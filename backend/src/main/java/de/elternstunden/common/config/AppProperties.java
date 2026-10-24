@@ -6,6 +6,9 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import java.net.URI;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -68,6 +71,7 @@ public record AppProperties(
             @Valid @NotNull Limit masterLoginPerIp,
             @Valid @NotNull Limit masterFailureAlarm,
             @Valid @NotNull Limit oidcCallbackPerIp,
+            @Valid @NotNull Limit passkeyPerIp,
             @Valid @NotNull Limit mfaPerIp,
             @Valid @NotNull Limit entryPerUser) {}
 
@@ -111,7 +115,8 @@ public record AppProperties(
             @NotNull Duration pendingTtl, @NotNull Duration reauthWindow, Map<String, @Valid OidcProvider> providers) {
 
         public Oidc {
-            providers = providers == null ? Map.of() : Map.copyOf(providers);
+            // Keeps the order of the configuration: the login page shows the buttons in this order
+            providers = providers == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(providers));
         }
     }
 
@@ -119,6 +124,8 @@ public record AppProperties(
      * One OIDC provider. Without explicit endpoints they are discovered from the issuer at start.
      *
      * @param trustEmailForLinking whether the provider is authoritative for the e-mail address (7.1.5)
+     * @param trustedEmailDomains with {@code DOMAINS}: the mailbox domains the provider manages itself
+     * @param essentialEmail ask for the e-mail as an essential claim, e.g. netID, where users can deselect it (7.2)
      */
     public record OidcProvider(
             @NotBlank String name,
@@ -128,16 +135,26 @@ public record AppProperties(
             @Nullable URI authorizationUri,
             @Nullable URI tokenUri,
             @Nullable URI jwkSetUri,
-            @NotNull EmailTrust trustEmailForLinking) {
+            @NotNull EmailTrust trustEmailForLinking,
+            @Nullable List<String> trustedEmailDomains,
+            boolean essentialEmail) {
+
+        public OidcProvider {
+            trustedEmailDomains = trustedEmailDomains == null ? List.of() : List.copyOf(trustedEmailDomains);
+        }
 
         public boolean enabled() {
             return clientId != null && !clientId.isBlank();
         }
     }
 
-    /** 7.1.5: Google only for @gmail.com or with the hd claim; other providers never link by e-mail. */
+    /**
+     * 7.1.5: Google only for @gmail.com or with the hd claim, netID only for the mailboxes of its account providers
+     * (D-30); other providers never link by e-mail.
+     */
     public enum EmailTrust {
         NEVER,
+        DOMAINS,
         GMAIL_OR_HD
     }
 

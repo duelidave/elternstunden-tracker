@@ -36,6 +36,7 @@ public final class TestProperties {
                         new Limit(5, Duration.ofMinutes(15)),
                         limit(10, 1),
                         new Limit(30, Duration.ofMinutes(1)),
+                        new Limit(30, Duration.ofMinutes(1)),
                         new Limit(5, Duration.ofMinutes(15)),
                         limit(60, 1)),
                 new AppProperties.Sessions(

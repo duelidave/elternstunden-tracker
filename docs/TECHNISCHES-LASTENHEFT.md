@@ -460,7 +460,7 @@ CREATE INDEX audit_log_entity_idx ON audit_log (entity_type, entity_id, occurred
 -- ---------------------------------------------------------------
 CREATE TABLE user_entities (
     id           varchar(1000) PRIMARY KEY,
-    name         varchar(100)  NOT NULL,
+    name         varchar(320)  NOT NULL,                     -- E-Mail-Adresse, länger als die 100 des Spring-Schemas
     display_name varchar(200)
 );
 CREATE TABLE user_credentials (

@@ -107,6 +107,7 @@ app:
     master-login-per-ip: { max: 5, window: 15m }
     master-failure-alarm: { max: 10, window: 1h }
     oidc-callback-per-ip: { max: 30, window: 1m }
+    passkey-per-ip: { max: 30, window: 1m }
     mfa-per-ip: { max: 5, window: 15m }
     entry-per-user: { max: 60, window: 1h }
   # D-20
@@ -124,7 +125,7 @@ app:
   school-years:
     lead-time: 90d
     job-cron: "0 15 3 * * *"
-  # 7.2, D-23. OPEN-15: Google only; more providers by configuration
+  # 7.2, D-23, D-30. A provider without client id is off; the login page shows the buttons in this order
   oidc:
     pending-ttl: 15m
     reauth-window: 5m
@@ -135,6 +136,15 @@ app:
         client-secret: ${GOOGLE_CLIENT_SECRET:}
         issuer: https://accounts.google.com
         trust-email-for-linking: GMAIL_OR_HD
+      # Login with the GMX or WEB.DE account; users may deselect data, so the e-mail is an essential claim
+      netid:
+        name: netID
+        client-id: ${NETID_CLIENT_ID:}
+        client-secret: ${NETID_CLIENT_SECRET:}
+        issuer: https://broker.netid.de/
+        trust-email-for-linking: DOMAINS
+        trusted-email-domains: [gmx.de, gmx.net, gmx.at, gmx.ch, web.de]
+        essential-email: true
   # SEC-05
   mfa:
     pending-ttl: 10m

@@ -76,7 +76,10 @@ class RoleMatrixIT extends IntegrationTest {
                 if (role.allowedBy(call.roles())) {
                     // an allowed role may still need a fresh login for sensitive changes (7.2)
                     boolean reauth = status == 403 && response.body().contains("REAUTH_REQUIRED");
-                    softly.assertThat(reauth ? 200 : status)
+                    // the master is U, but has only password and TOTP (INV-12): no passkeys
+                    boolean masterOnlyPassword =
+                            role == Role.MASTER && status == 403 && call.path().endsWith("/me/passkeys/options");
+                    softly.assertThat(reauth || masterOnlyPassword ? 200 : status)
                             .as("%s %s as %s", call.method(), call.path(), role)
                             .isNotIn(401, 403);
                 } else {
@@ -98,6 +101,8 @@ class RoleMatrixIT extends IntegrationTest {
         Set<String> covered = Set.of(
                 // OidcIT.foreignIdentitiesAreNotFound
                 "DELETE /api/v1/me/identities/{identityId}",
+                // PasskeyIT.ownPasskeysOnly
+                "DELETE /api/v1/me/passkeys/{passkeyId}",
                 // EntryIT.entriesOfOtherFamiliesAreNotFound
                 "PATCH /api/v1/me/family/entries/{entryId}",
                 "DELETE /api/v1/me/family/entries/{entryId}");

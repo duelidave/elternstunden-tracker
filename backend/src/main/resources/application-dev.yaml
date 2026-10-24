@@ -13,8 +13,8 @@ spring:
 app:
   # Links in mails point to the Vite dev server
   base-url: ${APP_BASE_URL:http://localhost:5173}
-  # "Google" is the local OIDC mock (compose: oidc behind oidc-gateway). The browser and the app see the same
-  # issuer, because the gateway always passes Host localhost:8090 (OPEN-15).
+  # "Google" and "netID" are the local OIDC mock (compose: oidc behind oidc-gateway), each with its own issuer path.
+  # The browser and the app see the same issuer, because the gateway always passes Host localhost:8090 (OPEN-15).
   oidc:
     providers:
       google:
@@ -24,6 +24,13 @@ app:
         authorization-uri: http://localhost:8090/default/authorize
         token-uri: ${OIDC_SERVER_URL:http://localhost:8090}/default/token
         jwk-set-uri: ${OIDC_SERVER_URL:http://localhost:8090}/default/jwks
+      netid:
+        client-id: ${NETID_CLIENT_ID:elternstunden-dev}
+        client-secret: ${NETID_CLIENT_SECRET:dev-secret-not-for-production}
+        issuer: http://localhost:8090/netid
+        authorization-uri: http://localhost:8090/netid/authorize
+        token-uri: ${OIDC_SERVER_URL:http://localhost:8090}/netid/token
+        jwk-set-uri: ${OIDC_SERVER_URL:http://localhost:8090}/netid/jwks
 
 logging:
   level:

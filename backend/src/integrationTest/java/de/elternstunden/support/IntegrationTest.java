@@ -74,6 +74,13 @@ public abstract class IntegrationTest {
         registry.add("app.oidc.providers.google.authorization-uri", () -> OIDC.issuer() + "/authorize");
         registry.add("app.oidc.providers.google.token-uri", () -> OIDC.issuer() + "/token");
         registry.add("app.oidc.providers.google.jwk-set-uri", () -> OIDC.issuer() + "/jwks");
+        // netID (D-30) is the same fake provider under its own registration id
+        registry.add("app.oidc.providers.netid.client-id", () -> FakeOidcProvider.CLIENT_ID);
+        registry.add("app.oidc.providers.netid.client-secret", () -> FakeOidcProvider.CLIENT_SECRET);
+        registry.add("app.oidc.providers.netid.issuer", OIDC::issuer);
+        registry.add("app.oidc.providers.netid.authorization-uri", () -> OIDC.issuer() + "/authorize");
+        registry.add("app.oidc.providers.netid.token-uri", () -> OIDC.issuer() + "/token");
+        registry.add("app.oidc.providers.netid.jwk-set-uri", () -> OIDC.issuer() + "/jwks");
     }
 
     @LocalServerPort
@@ -329,8 +336,13 @@ public abstract class IntegrationTest {
      * and query), e.g. {@code /}, {@code /register/claim} or {@code /login?error=...}.
      */
     protected String oidcLogin(ApiClient browser, FakeOidcProvider.Login login) {
+        return oidcLogin(browser, login, "google");
+    }
+
+    /** A login with the given provider registration, e.g. netid (D-30). */
+    protected String oidcLogin(ApiClient browser, FakeOidcProvider.Login login, String provider) {
         OIDC.nextLogin(login);
-        ApiClient.Response start = browser.get("/oauth2/authorization/google");
+        ApiClient.Response start = browser.get("/oauth2/authorization/" + provider);
         if (start.status() != 302) {
             throw new AssertionError("no redirect to the provider: " + start.status());
         }
