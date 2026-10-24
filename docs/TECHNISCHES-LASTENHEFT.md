@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| Version | 0.4.6 (Entwurf) |
-| Stand | 2026-10-22 |
+| Version | 0.4.7 (Entwurf) |
+| Stand | 2026-10-24 |
 | Einrichtung | Hort an der Montessorischule (Elterninitiative, Verein) |
 | Zielgruppe | Entwickler:innen und KI-Coding-Agents |
 | Fachliche Basis | Lastenheft v0.4 (`docs/lastenheft-elternstunden-v0.4.pdf`, 2 Seiten, für die Abstimmung mit Menschen). Dieses Dokument konkretisiert es technisch. Im Folgenden kurz "Lastenheft (PDF)". |
@@ -23,6 +23,7 @@
 | 0.4.4 | 2026-10-22 | Design an Logo und Website des Horts angelehnt: Palette, Überschriften-Schrift, Logo-Zeichen (UI-01, OPEN-19). |
 | 0.4.5 | 2026-10-22 | Höchstens zwei Nutzer pro Familie (D-28, INV-13, 7.1.6, AC-REG-17). |
 | 0.4.6 | 2026-10-22 | OPEN-02 entschieden: Abrechnung je Familie **und** als Gesamtliste (D-12). Endpunkt mit optionalem Parameter `kind` (FS-PDF). |
+| 0.4.7 | 2026-10-24 | Familien erfassen, ändern und löschen nur Einträge im laufenden Schuljahr; andere offene Schuljahre nur Admins (D-29, INV-14, 7.3, 7.4, AC-ENTRY-13). |
 
 ---
 
@@ -126,6 +127,7 @@ Laut Website des Horts: 65 Vollzeitplätze, etwa 70 Kinder in drei Gruppen. Erwa
 | D-26 | **Rollenwechsel für manuelle Tests (nur lokal).** In der lokalen Entwicklung kann man ohne Mail und ohne TOTP schnell zwischen Demo-Konten der Rollen Familienmitglied, unzugeordnet, Admin und Master wechseln (FS-DEV 7.12). In Produktion existiert die Funktion nicht. | Wunsch `[DECIDED]`, Ausgestaltung `[PROPOSED]` | Auftraggeber, 2026-10-21 |
 | D-27 | **Datumseingabe immer im deutschen Format.** Datumsfelder zeigen und erwarten `TT.MM.JJJJ` und haben einen deutschen Kalender, unabhängig von der Sprache des Browsers oder Geräts (UI-12). Die API bleibt bei ISO-Daten (8.1). | `[DECIDED]` | Auftraggeber, 2026-10-22 |
 | D-28 | Einer Familie sind **höchstens zwei Nutzer** zugeordnet (z. B. beide Elternteile). Es zählen alle zugeordneten Konten, unabhängig von Rolle und Status. Anonymisierte Konten gehören keiner Familie mehr an (DP-05). | `[DECIDED]` | Auftraggeber, 2026-10-22 |
+| D-29 | Familien erfassen, ändern und löschen Stunden **nur im laufenden Schuljahr** (das heute enthält, 5.5). Einträge in einem anderen, noch nicht abgeschlossenen Schuljahr legen nur Admins an oder ändern sie, z. B. Nachträge im September für das Vorjahr. | `[DECIDED]` | Auftraggeber, 2026-10-24 |
 
 ---
 
@@ -478,7 +480,7 @@ Rechte: Eine eigene Migration vergibt die Rechte an die App-Rolle (OPS-14): DML 
 | INV-03 | `work_date` DARF NICHT in der Zukunft liegen (Zeitzone Europe/Berlin). | Service, `[PROPOSED]` OPEN-10 |
 | INV-04 | Einträge in einem abgeschlossenen Schuljahr (`closed_at` gesetzt) sind unveränderlich. | Service, OPEN-06 |
 | INV-05 | Ein `CONFIRMED`-Eintrag DARF von Familienmitgliedern weder geändert noch gelöscht werden. | Service |
-| INV-06 | Ein `OPEN`-Eintrag DARF von Familienmitgliedern der **eigenen** Familie geändert oder (soft) gelöscht werden. | Service, `[PROPOSED]` OPEN-11 |
+| INV-06 | Ein `OPEN`-Eintrag DARF von Familienmitgliedern der **eigenen** Familie geändert oder (soft) gelöscht werden, wenn er zum laufenden Schuljahr gehört (INV-14). | Service, `[PROPOSED]` OPEN-11 |
 | INV-07 | Ändert ein Admin einen `CONFIRMED`-Eintrag inhaltlich (Dauer, Datum, Text), wird er wieder `OPEN` und muss neu bestätigt werden. Ein Audit-Eintrag entsteht. | Service, `[PROPOSED]` OPEN-11 |
 | INV-08 | Es gibt höchstens einen Nutzer mit `managed_by_config = true`. | DB-Constraint plus Start-Synchronisation |
 | INV-09 | Schuljahre überlappen sich nicht. Beim Ändern der Stichtage DARF kein bestehender Eintrag außerhalb des neuen Bereichs landen (sonst Ablehnung mit klarer Fehlermeldung). | DB-Constraint, Service |
@@ -486,6 +488,7 @@ Rechte: Eine eigene Migration vergibt die Rechte an die App-Rolle (OPS-14): DML 
 | INV-11 | Jedes Konto (außer `MASTER_ADMIN`) hat **immer** seine E-Mail-Adresse als Anmeldeweg (E-Mail-Link, D-24). OIDC-Identitäten kommen hinzu und dürfen jederzeit entfernt werden. | Service, Test |
 | INV-12 | Ein `MASTER_ADMIN` hat **keine** `user_identity` (kein OIDC-Login) und erhält **keine** E-Mail-Links (kein `user_token`). Er meldet sich nur per Passwort plus TOTP an (D-22). | Service, Test |
 | INV-13 | Einer Familie sind höchstens zwei Nutzer zugeordnet (`app_user.family_id`, D-28). Jede Zuordnung sperrt dafür die Familie (`SELECT … FROM family … FOR UPDATE`), damit parallele Zuordnungen die Grenze nicht überschreiten. | Service, Test |
+| INV-14 | Über die Familienendpunkte (x-roles `F`, auch wenn dort ein Admin für die eigene Familie erfasst) entstehen, ändern sich und verschwinden nur Einträge des **laufenden** Schuljahres: `work_date` liegt darin, und ein geänderter oder gelöschter Eintrag gehört dazu (D-29). Admins nutzen für andere offene Schuljahre die Admin-Endpunkte (7.5). | Service, Test |
 
 ### 5.5 Schuljahr-Logik
 
@@ -858,7 +861,7 @@ Die Familienübersicht ist die **Startseite nach dem Login** für zugeordnete Fa
 2. Ohne `schoolYearId` wird das aktuelle Schuljahr (5.5) geliefert. Frühere Schuljahre sind abrufbar, schreibgeschützt.
 3. Einträge: neueste zuerst (`work_date` absteigend, dann `created_at`). Gelöschte (Soft-Delete) Einträge erscheinen nicht.
 4. Dauer-Darstellung im Client: `45 min`, `1 h`, `2 h 15 min`. Nie Dezimalstunden.
-5. `canEdit` und `canDelete` sind nur bei `OPEN` und eigener Familie wahr (INV-05, INV-06) und im offenen Schuljahr (INV-04).
+5. `canEdit` und `canDelete` sind nur bei `OPEN` und eigener Familie wahr (INV-05, INV-06), im offenen Schuljahr (INV-04) und nur im laufenden Schuljahr (INV-14).
 6. **Partnerhinweis (F4):** `partnerHint = true`, wenn die Familie genau **ein** aktives Mitglied hat. Der Client zeigt: "Dein Partner oder deine Partnerin ist noch nicht verknüpft. Bitte registriere dich mit denselben Angaben zu {Vorname des Kindes}." Der Hinweis ist dauerhaft ausblendbar (Einstellung im Browser-Speicher, `[PROPOSED]`), z. B. für Alleinerziehende.
 7. Familiendaten, die der Nutzer sieht: Vornamen der Kinder (keine Nachnamen, kein Geburtsdatum), Anzeigenamen der Mitglieder (keine E-Mail-Adressen).
 8. Nutzer ohne Familie erhalten `403` mit Code `FAMILY_ASSIGNMENT_PENDING`; der Client zeigt den Wartescreen (7.1.7).
@@ -880,7 +883,7 @@ Gemeinsam: **Freitext "Was hast du gemacht?"** ist Pflicht, 3 bis 500 Zeichen na
 
 1. `duration_minutes % 15 == 0`, `15 <= duration <= 720` (OPEN-10 für Obergrenze).
 2. `description` getrimmt, Länge 3 bis 500. HTML wird nicht interpretiert, Ausgabe stets escaped.
-3. `work_date` in einem existierenden, nicht abgeschlossenen Schuljahr (INV-01, INV-04), nicht in der Zukunft (INV-03). Fehler: Zukunft `400 DATE_IN_FUTURE`, kein Schuljahr `400 NO_SCHOOL_YEAR`, abgeschlossenes Schuljahr `409 SCHOOL_YEAR_CLOSED`.
+3. `work_date` in einem existierenden, nicht abgeschlossenen Schuljahr (INV-01, INV-04), nicht in der Zukunft (INV-03). Fehler: Zukunft `400 DATE_IN_FUTURE`, kein Schuljahr `400 NO_SCHOOL_YEAR`, abgeschlossenes Schuljahr `409 SCHOOL_YEAR_CLOSED`. Über die Familienendpunkte zusätzlich nur im **laufenden** Schuljahr (D-29, INV-14), sonst `400 DATE_OUTSIDE_CURRENT_SCHOOL_YEAR`. Die Prüfungen laufen in dieser Reihenfolge. Admins tragen über `POST /admin/families/{id}/entries` auch in andere offene Schuljahre ein.
 4. Familie des Nutzers (INV-02). `created_by` ist der angemeldete Nutzer.
 5. **Duplikatschutz:** Ein inhaltlich identischer Eintrag (gleiche Familie, Datum, Startzeit, Dauer, Beschreibung) innerhalb von 2 Minuten wird mit `409 DUPLICATE_ENTRY` abgelehnt `[PROPOSED]`. Prüfung und Einfügen laufen unter `pg_advisory_xact_lock` auf die Familie, damit ein Doppelklick nicht zwei Einträge erzeugt.
 6. Rate-Limit: höchstens 60 Einträge pro Nutzer und Stunde `[PROPOSED]`.
@@ -889,6 +892,7 @@ Gemeinsam: **Freitext "Was hast du gemacht?"** ist Pflicht, 3 bis 500 Zeichen na
 #### Ändern und Löschen
 
 - Familienmitglieder: nur eigene Familie, nur `OPEN` (INV-05, INV-06). Ein `CONFIRMED`-Eintrag liefert `409 ENTRY_CONFIRMED`. Löschen ist Soft-Delete.
+- Familienmitglieder ändern und löschen nur Einträge des laufenden Schuljahres (D-29, INV-14). Ein Eintrag aus einem anderen Schuljahr liefert `409 SCHOOL_YEAR_NOT_CURRENT` (nach `CONCURRENT_MODIFICATION`, `ENTRY_CONFIRMED` und `SCHOOL_YEAR_CLOSED`). Ein neues Datum muss ebenfalls im laufenden Schuljahr liegen (Regel 3).
 - Admins: alle Einträge, siehe INV-07.
 - Jede Änderung und Löschung erzeugt einen Audit-Eintrag.
 - Änderungen per `PATCH` als JSON Merge Patch (RFC 7396, 8.1). Änderbar sind nur `workDate`, `startTime`, `durationMinutes`, `description`. Andere oder unbekannte Felder (z. B. `status`, `familyId`, `createdBy`) führen zu `400 VALIDATION_FAILED`.
@@ -1878,6 +1882,7 @@ Notation: Gegeben / Wenn / Dann. Jedes Kriterium MUSS als automatisierter Test e
 | AC-ENTRY-10 | **Nebenläufigkeit.** Zwei gleichzeitige Änderungen am selben Eintrag: eine liefert `409 CONCURRENT_MODIFICATION`. |
 | AC-ENTRY-11 | **Doppelklick.** Zwei gleichzeitige identische `POST` ergeben genau einen Eintrag und einmal `409 DUPLICATE_ENTRY`. |
 | AC-ENTRY-12 | **Bestätigen gegen Bearbeiten.** Ein Familien-`PATCH` mit altem `version` nach einer Sammelbestätigung ergibt `409 CONCURRENT_MODIFICATION`. Der Eintrag bleibt `CONFIRMED` und unverändert. |
+| AC-ENTRY-13 | **Nur das laufende Schuljahr (D-29).** Schuljahre 2025/26 (beendet, nicht abgeschlossen) und 2026/27 (läuft). Ein Familienmitglied mit Datum aus 2025/26: `400 DATE_OUTSIDE_CURRENT_SCHOOL_YEAR`. Ein offener Eintrag aus 2025/26 hat `canEdit = canDelete = false`; Ändern oder Löschen liefert `409 SCHOOL_YEAR_NOT_CURRENT`, ebenso das Verschieben eines Eintrags aus 2026/27 nach 2025/26 `400 DATE_OUTSIDE_CURRENT_SCHOOL_YEAR`. Ein Admin trägt über `POST /admin/families/{id}/entries` für 2025/26 ein (`201`) und ändert den alten Eintrag (`200`). |
 | AC-CONF-01 | **Bestätigen.** Admin bestätigt: Status `CONFIRMED`, `confirmed_by` und `confirmed_at` gesetzt, Minuten zählen für das Soll. Zweites Bestätigen ändert nichts und liefert Erfolg. |
 | AC-CONF-02 | **Sammelbestätigung.** Bei 3 ausgewählten Einträgen werden alle bestätigt. Bereits bestätigte bleiben unverändert. |
 | AC-CONF-03 | **Änderung nach Bestätigung.** Ändert ein Admin Dauer, Datum oder Text eines bestätigten Eintrags, wird er wieder `OPEN`, die bestätigte Summe sinkt, ein Audit-Eintrag entsteht. |
