@@ -38,7 +38,7 @@ class FlywayMigrationIT extends IntegrationTest {
             while (rows.next()) {
                 versions.add(rows.getString(1));
             }
-            assertThat(versions).containsExactly("1", "2", "3", "4", "5");
+            assertThat(versions).containsExactly("1", "2", "3", "4", "5", "6");
         }
     }
 
@@ -110,7 +110,7 @@ class FlywayMigrationIT extends IntegrationTest {
     }
 
     @Test
-    void entriesFollowTheFifteenMinuteGrid() {
+    void entriesFollowTheGridAndTheTextLimit() {
         UUID family = jdbc.queryForObject("INSERT INTO family (label) VALUES ('F') RETURNING id", UUID.class);
         UUID year = jdbc.queryForObject(
                 "INSERT INTO school_year (label, starts_on, ends_on) VALUES ('2030/31', '2030-09-01', '2031-08-31')"
@@ -127,6 +127,16 @@ class FlywayMigrationIT extends IntegrationTest {
                         family,
                         year,
                         user),
+                CHECK_VIOLATION);
+        // D-09: at most 255 characters (V6)
+        assertSqlState(
+                () -> jdbc.update(
+                        "INSERT INTO time_entry (family_id, school_year_id, created_by, work_date, duration_minutes,"
+                                + " description) VALUES (?, ?, ?, '2030-10-01', 15, ?)",
+                        family,
+                        year,
+                        user,
+                        "x".repeat(256)),
                 CHECK_VIOLATION);
     }
 

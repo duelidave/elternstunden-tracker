@@ -77,10 +77,10 @@ class EntryIT extends IntegrationTest {
                 .isEqualTo(201);
     }
 
-    /** AC-ENTRY-03: description required, 3 to 500 characters after trimming. */
+    /** AC-ENTRY-03: description required, 3 to 255 characters after trimming. */
     @Test
     void descriptionIsRequired() {
-        for (String text : new String[] {"", "     ", "ab", "  ab  ", "x".repeat(501)}) {
+        for (String text : new String[] {"", "     ", "ab", "  ab  ", "x".repeat(256)}) {
             assertThat(member.post(ENTRIES, entry("2061-01-03", 60, text)).status())
                     .as("'%s'", text)
                     .isEqualTo(400);
@@ -88,7 +88,7 @@ class EntryIT extends IntegrationTest {
         ApiClient.Response three = member.post(ENTRIES, entry("2061-01-03", 60, "  abc  "));
         assertThat(three.status()).isEqualTo(201);
         assertThat(three.json().get("description").asString()).isEqualTo("abc");
-        assertThat(member.post(ENTRIES, entry("2061-01-03", 60, "x".repeat(500)))
+        assertThat(member.post(ENTRIES, entry("2061-01-03", 60, "x".repeat(255)))
                         .status())
                 .isEqualTo(201);
     }

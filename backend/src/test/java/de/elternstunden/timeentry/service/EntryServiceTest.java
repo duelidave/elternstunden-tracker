@@ -38,11 +38,11 @@ class EntryServiceTest {
                 .isEqualTo("abc");
         assertThatThrownBy(() -> EntryService.normalize(new EntryContent(DAY, null, 60, "  ab  ")))
                 .isInstanceOf(ApiException.class);
-        // 500 emoji are 1000 UTF-16 units but 500 characters, like char_length in the database
-        assertThat(EntryService.normalize(new EntryContent(DAY, null, 60, "🌱".repeat(500)))
+        // 255 emoji are 510 UTF-16 units but 255 characters, like char_length in the database
+        assertThat(EntryService.normalize(new EntryContent(DAY, null, 60, "🌱".repeat(255)))
                         .description())
-                .hasSize(1000);
-        assertThatThrownBy(() -> EntryService.normalize(new EntryContent(DAY, null, 60, "🌱".repeat(501))))
+                .hasSize(510);
+        assertThatThrownBy(() -> EntryService.normalize(new EntryContent(DAY, null, 60, "🌱".repeat(256))))
                 .isInstanceOf(ApiException.class);
     }
 

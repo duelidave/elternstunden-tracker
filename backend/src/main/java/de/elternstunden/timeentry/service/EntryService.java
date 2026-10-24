@@ -44,7 +44,8 @@ public class EntryService {
     static final int STEP_MINUTES = 15;
     static final int MAX_MINUTES = 720;
     static final int MIN_DESCRIPTION = 3;
-    static final int MAX_DESCRIPTION = 500;
+    // D-09: at most 255 characters since 2026-10-24
+    static final int MAX_DESCRIPTION = 255;
 
     /** Result of a bulk confirmation (7.5 point 4). */
     public record Confirmation(int confirmed, int skipped) {}
@@ -301,13 +302,13 @@ public class EntryService {
         return year;
     }
 
-    /** 7.4 rules 1 and 2: description trimmed to 3 to 500 characters, duration on the 15-minute grid. */
+    /** 7.4 rules 1 and 2: description trimmed to 3 to 255 characters, duration on the 15-minute grid. */
     static EntryContent normalize(EntryContent content) {
         String description = content.description().strip();
         // Characters as the database counts them (char_length), not UTF-16 units
         int length = description.codePointCount(0, description.length());
         if (length < MIN_DESCRIPTION || length > MAX_DESCRIPTION) {
-            throw ApiException.validation("description", "Size", "must be 3 to 500 characters after trimming");
+            throw ApiException.validation("description", "Size", "must be 3 to 255 characters after trimming");
         }
         int duration = content.durationMinutes();
         if (duration < STEP_MINUTES || duration > MAX_MINUTES || duration % STEP_MINUTES != 0) {
