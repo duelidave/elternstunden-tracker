@@ -24,7 +24,7 @@
 | 0.4.5 | 2026-10-22 | Höchstens zwei Nutzer pro Familie (D-28, INV-13, 7.1.6, AC-REG-17). |
 | 0.4.6 | 2026-10-22 | OPEN-02 entschieden: Abrechnung je Familie **und** als Gesamtliste (D-12). Endpunkt mit optionalem Parameter `kind` (FS-PDF). |
 | 0.4.7 | 2026-10-24 | Familien erfassen, ändern und löschen nur Einträge im laufenden Schuljahr; andere offene Schuljahre nur Admins (D-29, INV-14, 7.3, 7.4, AC-ENTRY-13). |
-| 0.4.8 | 2026-10-24 | Tätigkeitstext höchstens 255 Zeichen statt 500, mit mitlaufendem Zähler und Pflichtfeld-Markierung in der UI (D-09, 7.4, AC-ENTRY-03). |
+| 0.4.8 | 2026-10-24 | Tätigkeitstext höchstens 255 Zeichen statt 500, mit mitlaufendem Zähler und Pflichtfeld-Markierung in der UI (D-09, 7.4, AC-ENTRY-03). Uhrzeiten tolerant eingeben, z. B. `9` für `09:00` (UI-12). |
 
 ---
 
@@ -1736,7 +1736,7 @@ Wichtig: **Docker umgeht `ufw`** für veröffentlichte Ports. Deshalb veröffent
 | UI-09 | **Barrierefreiheit WCAG 2.2 AA.** Semantisches HTML, beschriftete Felder, sichtbarer Fokus, `aria-live` für Rückmeldungen, `aria-sort` in Tabellenköpfen, Bedienung per Tastatur, Skalierung bis 200 %, `prefers-reduced-motion` beachten. |
 | UI-10 | **PWA.** Manifest (Name, Icons, Theme-Farbe), installierbar. Service Worker cacht nur die App-Hülle, **nie** API-Antworten. Update-Hinweis bei neuer Version. Kein Push. |
 | UI-11 | **Admin-Listen.** Suchfeld oben (Debounce 250 ms, mindestens 2 Zeichen), sortierbare Spaltenköpfe, Filter und Suche in der URL (teilbar, Zurück-Button funktioniert), Sammelaktionen mit Mehrfachauswahl. Hinweisleiste (FS-ADMOV) auf allen Admin-Seiten. |
-| UI-12 | **Datum und Uhrzeit.** Datumsfelder als eigenes Eingabefeld im Format `TT.MM.JJJJ` (Punkte werden beim Tippen ergänzt) mit deutschem Kalender zum Aufklappen, unabhängig von der Browsersprache (D-27). Uhrzeiten im 24-Stunden-Format `HH:MM` `[PROPOSED]`. Anzeige de-DE. Datumsgrenzen (`min`, `max`) aus dem Schuljahr und "nicht in der Zukunft". |
+| UI-12 | **Datum und Uhrzeit.** Datumsfelder als eigenes Eingabefeld im Format `TT.MM.JJJJ` (Punkte werden beim Tippen ergänzt) mit deutschem Kalender zum Aufklappen, unabhängig von der Browsersprache (D-27). Uhrzeiten als Textfeld im 24-Stunden-Format `HH:MM`. Eingaben wie `9`, `9:00`, `9.30`, `930` oder `1530` werden beim Verlassen des Felds zu `09:00`, `09:30` bzw. `15:30` ergänzt, auch über den Ziffernblock ohne Doppelpunkt. Anzeige de-DE. Datumsgrenzen (`min`, `max`) aus dem Schuljahr und "nicht in der Zukunft". |
 | UI-13 | **Datenschutz und Impressum** aus jedem Screen erreichbar (Fußzeile), auch ohne Login. |
 
 ### 13.1 Screens (UI-05)
