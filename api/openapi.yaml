@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Elternstunden API
-  version: 0.6.1
+  version: 0.6.2
   description: |
     API-Vertrag der Elternstunden-Zeiterfassung und Quelle der Wahrheit für Backend und Frontend
     (Lastenheft D-25). Jede API-Änderung beginnt hier, danach wird auf beiden Seiten neu generiert.
@@ -2550,8 +2550,8 @@ components:
         description:
           type: string
           minLength: 3
-          maxLength: 500
-          description: '"Was hast du gemacht?", 3 bis 500 Zeichen nach Trim. Bitte keine sensiblen Daten (DP-01).'
+          maxLength: 255
+          description: '"Was hast du gemacht?", 3 bis 255 Zeichen nach Trim (D-09). Bitte keine sensiblen Daten (DP-01).'
     EntryUpdate:
       type: object
       description: >-
@@ -2579,7 +2579,7 @@ components:
         description:
           type: string
           minLength: 3
-          maxLength: 500
+          maxLength: 255
     AdminEntry:
       type: object
       required: [id, familyId, familyLabel, schoolYearId, schoolYearClosed, workDate, durationMinutes, description,
