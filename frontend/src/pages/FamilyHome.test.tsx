@@ -21,6 +21,11 @@ const openEntry: FamilyEntry = {
   version: 2,
 }
 
+/** The text field; its label also says that it is required. */
+function descriptionOf(sheet: Pick<typeof screen, 'getByRole'>) {
+  return sheet.getByRole('textbox', { name: (name: string) => name.startsWith(texts.entry.description) })
+}
+
 const year = { id: 'year-1', label: '2026/27', startsOn: '2026-09-01', endsOn: '2027-08-31', closed: false }
 
 function overview(changes: Partial<FamilyOverview> = {}): FamilyOverview {
@@ -107,7 +112,7 @@ describe('FamilyHome', () => {
     fireEvent.click(await screen.findByRole('link', { name: texts.family.addEntry }))
     const sheet = within(await screen.findByRole('dialog', { name: texts.entry.title }))
     fireEvent.click(sheet.getByRole('button', { name: '1 h' }))
-    fireEvent.change(sheet.getByLabelText(texts.entry.description), { target: { value: 'Garten aufgeräumt' } })
+    fireEvent.change(descriptionOf(sheet), { target: { value: 'Garten aufgeräumt' } })
     fireEvent.click(sheet.getByRole('button', { name: texts.entry.submit }))
 
     expect(await screen.findByText(texts.family.saved)).toBeInTheDocument()
@@ -124,12 +129,77 @@ describe('FamilyHome', () => {
     renderRoute('/entries/new')
 
     const sheet = within(await screen.findByRole('dialog', { name: texts.entry.title }))
-    fireEvent.change(sheet.getByLabelText(texts.entry.description), { target: { value: '  ab  ' } })
+    fireEvent.change(descriptionOf(sheet), { target: { value: '  ab  ' } })
     fireEvent.click(sheet.getByRole('button', { name: texts.entry.submit }))
 
     expect(await sheet.findByText(texts.fields.duration)).toBeInTheDocument()
-    expect(sheet.getByText(texts.fields.description)).toBeInTheDocument()
+    expect(sheet.getByText(texts.fields.descriptionShort)).toBeInTheDocument()
     expect(calls.filter((call) => call.method === 'POST')).toHaveLength(0)
+  })
+
+  it('marks the empty description red and counts the characters (D-09)', async () => {
+    family(overview())
+    renderRoute('/entries/new')
+
+    const sheet = within(await screen.findByRole('dialog', { name: texts.entry.title }))
+    const field = descriptionOf(sheet)
+    expect(field).toBeRequired()
+    expect(field).toHaveAttribute('maxLength', '255')
+    expect(sheet.getByText(texts.fields.counter(0, 255))).toBeInTheDocument()
+
+    fireEvent.click(sheet.getByRole('button', { name: '1 h' }))
+    fireEvent.click(sheet.getByRole('button', { name: texts.entry.submit }))
+
+    expect(await sheet.findByText(texts.fields.description)).toBeInTheDocument()
+    expect(field).toHaveAttribute('aria-invalid', 'true')
+    fireEvent.change(field, { target: { value: 'Garten' } })
+    expect(await sheet.findByText(texts.fields.counter(6, 255))).toBeInTheDocument()
+    await vi.waitFor(() => {
+      expect(field).toHaveAttribute('aria-invalid', 'false')
+    })
+  })
+
+  it.each([
+    ['9', '09:00'],
+    ['9:00', '09:00'],
+    ['9.30', '09:30'],
+    ['930', '09:30'],
+    ['1530', '15:30'],
+  ])('reads the time %s as %s (UI-12)', async (typed, time) => {
+    const calls = family(overview(), (call) =>
+      call.method === 'POST' && call.url === ENTRIES ? { status: 201, body: openEntry } : undefined,
+    )
+    renderRoute('/entries/new')
+
+    const sheet = within(await screen.findByRole('dialog', { name: texts.entry.title }))
+    fireEvent.click(sheet.getByRole('button', { name: texts.entry.otherDuration }))
+    const timeField = sheet.getByLabelText(texts.entry.startTime)
+    fireEvent.change(timeField, { target: { value: typed } })
+    fireEvent.blur(timeField)
+    expect(timeField).toHaveValue(time)
+    fireEvent.change(descriptionOf(sheet), { target: { value: 'Laternenfest' } })
+    fireEvent.click(sheet.getByRole('button', { name: texts.entry.submit }))
+
+    expect(await screen.findByText(texts.family.saved)).toBeInTheDocument()
+    expect(calls).toContainEqual({
+      method: 'POST',
+      url: ENTRIES,
+      body: { workDate: todayInBerlin(), durationMinutes: 60, description: 'Laternenfest', startTime: time },
+    })
+  })
+
+  it.each(['24', '9:60', '12345', 'abc'])('rejects %s as time', async (typed) => {
+    family(overview())
+    renderRoute('/entries/new')
+
+    const sheet = within(await screen.findByRole('dialog', { name: texts.entry.title }))
+    fireEvent.click(sheet.getByRole('button', { name: texts.entry.otherDuration }))
+    const timeField = sheet.getByLabelText(texts.entry.startTime)
+    fireEvent.change(timeField, { target: { value: typed } })
+    fireEvent.blur(timeField)
+
+    expect(await sheet.findByText(texts.fields.time)).toBeInTheDocument()
+    expect(timeField).toHaveValue(typed)
   })
 
   it('enters an exact time and duration', async () => {
@@ -144,7 +214,7 @@ describe('FamilyHome', () => {
     fireEvent.click(sheet.getByRole('button', { name: texts.entry.more }))
     fireEvent.change(sheet.getByLabelText(texts.entry.startTime), { target: { value: '15' } })
     fireEvent.change(sheet.getByLabelText(texts.entry.startTime), { target: { value: '15:30' } })
-    fireEvent.change(sheet.getByLabelText(texts.entry.description), { target: { value: 'Laternenfest' } })
+    fireEvent.change(descriptionOf(sheet), { target: { value: 'Laternenfest' } })
     fireEvent.click(sheet.getByRole('button', { name: texts.entry.submit }))
 
     expect(await screen.findByText(texts.family.saved)).toBeInTheDocument()
@@ -163,7 +233,7 @@ describe('FamilyHome', () => {
 
     const sheet = within(await screen.findByRole('dialog', { name: texts.entry.title }))
     fireEvent.click(sheet.getByRole('button', { name: '1 h' }))
-    fireEvent.change(sheet.getByLabelText(texts.entry.description), { target: { value: 'Nachtrag' } })
+    fireEvent.change(descriptionOf(sheet), { target: { value: 'Nachtrag' } })
     fireEvent.click(sheet.getByRole('button', { name: texts.entry.submit }))
 
     expect(await sheet.findByRole('alert')).toHaveTextContent(texts.errors.DATE_OUTSIDE_CURRENT_SCHOOL_YEAR)
@@ -175,7 +245,7 @@ describe('FamilyHome', () => {
 
     const sheet = within(await screen.findByRole('dialog', { name: texts.entry.title }))
     fireEvent.click(sheet.getByRole('button', { name: '30 min' }))
-    fireEvent.change(sheet.getByLabelText(texts.entry.description), { target: { value: 'Noch einmal' } })
+    fireEvent.change(descriptionOf(sheet), { target: { value: 'Noch einmal' } })
     fireEvent.click(sheet.getByRole('button', { name: texts.entry.submit }))
 
     expect(await sheet.findByRole('alert')).toHaveTextContent(texts.errors.DUPLICATE_ENTRY)

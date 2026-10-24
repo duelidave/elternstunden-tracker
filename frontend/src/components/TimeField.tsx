@@ -1,5 +1,6 @@
 import { type FocusEventHandler, useId } from 'react'
 import { texts } from '../i18n/de'
+import { normalizeTime } from '../time'
 
 interface TimeFieldProps {
   label: string
@@ -12,8 +13,8 @@ interface TimeFieldProps {
 }
 
 /**
- * Time input in 24-hour format on every device (UI-12): HH:MM with the colon added while typing. Native time inputs
- * follow the device and may show AM/PM.
+ * Time input in 24-hour format on every device (UI-12). Typing stays free ("9", "930", "9.30"), leaving the field
+ * shows it as HH:MM; on phones the number pad has no colon. Native time inputs follow the device and may show AM/PM.
  */
 export function TimeField({ label, value, onChange, onBlur, name, error }: TimeFieldProps) {
   const id = useId()
@@ -34,11 +35,15 @@ export function TimeField({ label, value, onChange, onBlur, name, error }: TimeF
         aria-invalid={error !== undefined}
         aria-describedby={error === undefined ? undefined : errorId}
         onChange={(event) => {
-          const raw = event.target.value
-          const typing = raw.length > value.length
-          onChange(typing && /^\d{2}$/.test(raw) ? `${raw}:` : raw)
+          onChange(event.target.value)
         }}
-        onBlur={onBlur}
+        onBlur={(event) => {
+          const normalized = normalizeTime(value)
+          if (normalized !== undefined && normalized !== value) {
+            onChange(normalized)
+          }
+          onBlur?.(event)
+        }}
       />
       {error !== undefined && (
         <p id={errorId} className="field__error">

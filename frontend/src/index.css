@@ -150,7 +150,8 @@
       box-shadow 150ms ease;
   }
 
-  .field input[aria-invalid='true'] {
+  .field input[aria-invalid='true'],
+  .field textarea[aria-invalid='true'] {
     border-color: var(--color-danger);
     box-shadow: 0 0 0 1px var(--color-danger);
   }
@@ -845,6 +846,31 @@
 
   .field textarea {
     resize: vertical;
+  }
+
+  .field__required {
+    color: var(--color-muted);
+    font-weight: 400;
+  }
+
+  /* Hint on the left, character counter on the right (D-09) */
+  .field__meta {
+    display: flex;
+    justify-content: space-between;
+    gap: --spacing(3);
+    color: var(--color-muted);
+    font-size: 0.875rem;
+  }
+
+  .field__counter {
+    margin: 0;
+    flex: none;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .field__counter--full {
+    color: var(--color-text);
+    font-weight: 700;
   }
 
   /* Bottom sheet on phones, a centered dialog from 640 px (UI-04) */

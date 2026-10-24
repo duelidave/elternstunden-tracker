@@ -2,9 +2,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useId, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
-import { CreateFamilyEntryBody } from '../api/generated/zod/my-family/my-family.zod'
+import {
+  CreateFamilyEntryBody,
+  createFamilyEntryBodyDescriptionMax,
+} from '../api/generated/zod/my-family/my-family.zod'
 import { texts } from '../i18n/de'
-import { formatDuration, todayInBerlin } from '../time'
+import { formatDuration, normalizeTime, todayInBerlin } from '../time'
 import { DateField } from './DateField'
 import { TimeField } from './TimeField'
 
@@ -28,7 +31,8 @@ const schema = z
     exact: z.boolean(),
     timeRequired: z.boolean(),
     workDate: body.workDate,
-    startTime: z.string(),
+    // "9" or "9:00" count as 09:00 (UI-12)
+    startTime: z.string().transform((text) => normalizeTime(text) ?? text.trim()),
     durationMinutes: body.durationMinutes,
     description: z.string().trim().pipe(body.description),
     minDate: z.string(),
@@ -65,6 +69,8 @@ export function EntryForm({ initial, minDate, submitLabel, onSubmit }: EntryForm
   const [exact, setExact] = useState(startsExact)
   const form = useForm<EntryForm>({
     resolver: zodResolver(schema),
+    // Errors show once a field was left or the form sent, then follow every keystroke (UI-08)
+    mode: 'onTouched',
     defaultValues: {
       exact: startsExact,
       // An existing entry without a time keeps working without one
@@ -78,6 +84,7 @@ export function EntryForm({ initial, minDate, submitLabel, onSubmit }: EntryForm
   })
   const errors = form.formState.errors
   const duration = useWatch({ control: form.control, name: 'durationMinutes' })
+  const description = useWatch({ control: form.control, name: 'description' })
 
   const chooseExact = () => {
     setExact(true)
@@ -187,21 +194,35 @@ export function EntryForm({ initial, minDate, submitLabel, onSubmit }: EntryForm
         />
       )}
       <div className="field">
-        <label htmlFor={`${id}-description`}>{texts.entry.description}</label>
+        <label htmlFor={`${id}-description`}>
+          {texts.entry.description} <span className="field__required">{texts.fields.requiredMark}</span>
+        </label>
         <textarea
           id={`${id}-description`}
           rows={3}
-          maxLength={500}
+          // The browser stops typing at the limit of the contract (D-09)
+          maxLength={createFamilyEntryBodyDescriptionMax}
+          required
           aria-invalid={errors.description !== undefined}
-          aria-describedby={`${id}-hint${errors.description ? ` ${id}-description-error` : ''}`}
+          aria-describedby={`${id}-hint ${id}-counter${errors.description ? ` ${id}-description-error` : ''}`}
           {...form.register('description')}
         />
-        <p id={`${id}-hint`} className="m-0 text-sm text-muted">
-          {texts.entry.descriptionHint}
-        </p>
+        <div className="field__meta">
+          <p id={`${id}-hint`} className="m-0">
+            {texts.entry.descriptionHint}
+          </p>
+          <p
+            id={`${id}-counter`}
+            className={
+              description.length >= createFamilyEntryBodyDescriptionMax ? 'field__counter field__counter--full' : 'field__counter'
+            }
+          >
+            {texts.fields.counter(description.length, createFamilyEntryBodyDescriptionMax)}
+          </p>
+        </div>
         {errors.description && (
           <p id={`${id}-description-error`} className="field__error">
-            {texts.fields.description}
+            {description.trim() === '' ? texts.fields.description : texts.fields.descriptionShort}
           </p>
         )}
       </div>

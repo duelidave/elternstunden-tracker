@@ -69,3 +69,24 @@ export function formatDuration(minutes: number): string {
   }
   return rest === 0 ? `${String(hours)} h` : `${String(hours)} h ${String(rest)} min`
 }
+
+const LOOSE_TIME = /^(\d{1,2})(?:[:.](\d{2}))?$/
+const DIGITS_TIME = /^(\d{1,2})(\d{2})$/
+
+/**
+ * A typed time as HH:MM in 24-hour format (UI-12): "9", "9:00", "9.30", "930" and "1530" are understood, as people
+ * type them. Undefined if it is no real time of day.
+ */
+export function normalizeTime(text: string): string | undefined {
+  const trimmed = text.trim()
+  const match = LOOSE_TIME.exec(trimmed) ?? DIGITS_TIME.exec(trimmed)
+  if (match === null) {
+    return undefined
+  }
+  const hours = Number(match[1])
+  const minutes = Number(match[2] ?? '0')
+  if (hours > 23 || minutes > 59) {
+    return undefined
+  }
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
