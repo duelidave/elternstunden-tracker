@@ -155,6 +155,20 @@ describe('FamilyHome', () => {
     })
   })
 
+  it('explains that only the running school year can be booked (D-29)', async () => {
+    family(overview(), (call) =>
+      call.method === 'POST' ? problem(400, 'DATE_OUTSIDE_CURRENT_SCHOOL_YEAR') : undefined,
+    )
+    renderRoute('/entries/new')
+
+    const sheet = within(await screen.findByRole('dialog', { name: texts.entry.title }))
+    fireEvent.click(sheet.getByRole('button', { name: '1 h' }))
+    fireEvent.change(sheet.getByLabelText(texts.entry.description), { target: { value: 'Nachtrag' } })
+    fireEvent.click(sheet.getByRole('button', { name: texts.entry.submit }))
+
+    expect(await sheet.findByRole('alert')).toHaveTextContent(texts.errors.DATE_OUTSIDE_CURRENT_SCHOOL_YEAR)
+  })
+
   it('shows a duplicate in plain words', async () => {
     family(overview(), (call) => (call.method === 'POST' ? problem(409, 'DUPLICATE_ENTRY') : undefined))
     renderRoute('/entries/new')

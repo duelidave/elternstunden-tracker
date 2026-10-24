@@ -36,10 +36,10 @@ public final class EntryMapper {
                 body.getDescription());
     }
 
-    /** For the family's own view (7.3 rule 5). */
-    public static FamilyEntryDto family(EntryView view) {
+    /** For the family's own view (7.3 rule 5); {@code writableYear}: the family may still write in its school year. */
+    public static FamilyEntryDto family(EntryView view, boolean writableYear) {
         TimeEntry entry = view.entry();
-        boolean changeable = EntryService.changeableByFamily(view);
+        boolean changeable = EntryService.changeableByFamily(view, writableYear);
         FamilyEntryDto dto = new FamilyEntryDto(
                 entry.id(),
                 entry.workDate(),

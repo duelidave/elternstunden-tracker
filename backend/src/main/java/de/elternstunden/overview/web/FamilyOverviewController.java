@@ -58,27 +58,32 @@ public class FamilyOverviewController implements MyFamilyApi {
                                 member.displayName(), member.id().equals(user.userId())))
                         .toList(),
                 current.partnerHint(),
-                current.entries().stream().map(EntryMapper::family).toList()));
+                current.entries().stream()
+                        .map(view -> EntryMapper.family(view, current.canAddEntries()))
+                        .toList()));
     }
 
     @Override
     public ResponseEntity<List<FamilyEntryDto>> listFamilyEntries(@Nullable UUID schoolYearId) {
-        return ResponseEntity.ok(overview.entries(CurrentUser.principal(), schoolYearId).stream()
-                .map(EntryMapper::family)
+        FamilyOverviewService.Entries result = overview.entries(CurrentUser.principal(), schoolYearId);
+        return ResponseEntity.ok(result.entries().stream()
+                .map(view -> EntryMapper.family(view, result.writable()))
                 .toList());
     }
 
     @Override
     public ResponseEntity<FamilyEntryDto> createFamilyEntry(EntryCreateDto body) {
         return ResponseEntity.status(HttpStatus.CREATED)
+                // Only possible in the running school year, so the entry stays changeable (INV-14)
                 .body(EntryMapper.family(
-                        entries.createForOwnFamily(CurrentUser.principal(), EntryMapper.content(body))));
+                        entries.createForOwnFamily(CurrentUser.principal(), EntryMapper.content(body)), true));
     }
 
     @Override
     public ResponseEntity<FamilyEntryDto> updateFamilyEntry(UUID entryId, EntryUpdateDto body) {
         return ResponseEntity.ok(EntryMapper.family(
-                entries.updateOwn(CurrentUser.principal(), entryId, body.getVersion(), EntryMapper.change(body))));
+                entries.updateOwn(CurrentUser.principal(), entryId, body.getVersion(), EntryMapper.change(body)),
+                true));
     }
 
     @Override

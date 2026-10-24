@@ -44,6 +44,8 @@ public enum ErrorCode {
     NO_CURRENT_SCHOOL_YEAR(HttpStatus.NOT_FOUND, "There is no school year yet."),
     DATE_IN_FUTURE(HttpStatus.BAD_REQUEST, "The date must not be in the future."),
     NO_SCHOOL_YEAR(HttpStatus.BAD_REQUEST, "The date is in no school year."),
+    DATE_OUTSIDE_CURRENT_SCHOOL_YEAR(HttpStatus.BAD_REQUEST, "Families enter dates of the running school year only."),
+    SCHOOL_YEAR_NOT_CURRENT(HttpStatus.CONFLICT, "Families change entries of the running school year only."),
     DUPLICATE_ENTRY(HttpStatus.CONFLICT, "The same entry was just created."),
     ENTRY_CONFIRMED(HttpStatus.CONFLICT, "Confirmed entries cannot be changed by families."),
     CONCURRENT_MODIFICATION(HttpStatus.CONFLICT, "The entry was changed meanwhile."),

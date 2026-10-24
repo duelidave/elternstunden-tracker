@@ -92,14 +92,22 @@ public class EntryService {
         return entries.sums(familyId, schoolYearId);
     }
 
-    /** INV-04 to INV-06: only open entries of open school years. */
-    public static boolean changeableByFamily(EntryView view) {
-        return view.entry().status() == EntryStatus.OPEN && !view.schoolYearClosed();
+    /**
+     * D-29, INV-14: families write only in the running school year (it contains today, 5.5 rule 4) while it is open
+     * (INV-04). Other open school years are for admins.
+     */
+    public boolean writableForFamily(SchoolYear year) {
+        return !year.closed() && year.contains(BusinessTime.today(clock));
+    }
+
+    /** INV-04 to INV-06, INV-14: open entries of the running, open school year; {@code writableYear} tells that. */
+    public static boolean changeableByFamily(EntryView view, boolean writableYear) {
+        return view.entry().status() == EntryStatus.OPEN && writableYear;
     }
 
     @Transactional
     public EntryView createForOwnFamily(AppUserPrincipal user, EntryContent content) {
-        return create(user.userId(), requireFamily(user), content);
+        return create(user.userId(), requireFamily(user), content, true);
     }
 
     /**
@@ -111,14 +119,14 @@ public class EntryService {
         TimeEntry entry = lockOwn(user, id);
         requireVersion(entry, version);
         requireOpenForFamily(entry);
-        return update(user.userId(), entry, change);
+        return update(user.userId(), entry, change, true);
     }
 
     @Transactional
     public void deleteOwn(AppUserPrincipal user, UUID id) {
         TimeEntry entry = lockOwn(user, id);
         requireOpenForFamily(entry);
-        delete(user.userId(), entry);
+        delete(user.userId(), entry, true);
     }
 
     /** Admin list (7.5 point 1): oldest creation first. */
@@ -139,22 +147,22 @@ public class EntryService {
         if (!families.exists(familyId)) {
             throw new ApiException(ErrorCode.NOT_FOUND);
         }
-        return create(actor, familyId, content);
+        return create(actor, familyId, content, false);
     }
 
-    /** Admin correction; a changed confirmed entry becomes OPEN again (INV-07). */
+    /** Admin correction, also in other open school years; a changed confirmed entry becomes OPEN again (INV-07). */
     @Transactional
     @AdminOnly
     public EntryView update(UUID actor, UUID id, int version, EntryChange change) {
         TimeEntry entry = lock(id);
         requireVersion(entry, version);
-        return update(actor, entry, change);
+        return update(actor, entry, change, false);
     }
 
     @Transactional
     @AdminOnly
     public void delete(UUID actor, UUID id) {
-        delete(actor, lock(id));
+        delete(actor, lock(id), false);
     }
 
     /** Idempotent (7.5 point 3); closed school year: 409 (7.5 point 7). */
@@ -180,10 +188,11 @@ public class EntryService {
         return new Confirmation(confirmed.size(), distinct.size() - confirmed.size());
     }
 
-    private EntryView create(UUID actor, UUID familyId, EntryContent input) {
+    /** {@code family}: the rules of the family endpoints apply (D-29, INV-14). */
+    private EntryView create(UUID actor, UUID familyId, EntryContent input, boolean family) {
         rateLimiter.acquireOrThrow("entry-user", actor.toString(), limits.entryPerUser());
         EntryContent content = normalize(input);
-        SchoolYear year = schoolYearFor(content.workDate());
+        SchoolYear year = schoolYearFor(content.workDate(), family);
         Instant now = clock.instant();
         // Check and insert under one lock per family, so a double click creates one entry (AC-ENTRY-11)
         entries.lockFamily(familyId);
@@ -201,14 +210,14 @@ public class EntryService {
         return view(id);
     }
 
-    private EntryView update(UUID actor, TimeEntry entry, EntryChange change) {
-        requireYearOpen(entry.schoolYearId());
+    private EntryView update(UUID actor, TimeEntry entry, EntryChange change, boolean family) {
+        requireWritable(entry, family);
         EntryContent current = content(entry);
         EntryContent changed = normalize(change.applyTo(current));
         if (changed.equals(current)) {
             return view(entry.id());
         }
-        SchoolYear year = schoolYearFor(changed.workDate());
+        SchoolYear year = schoolYearFor(changed.workDate(), family);
         boolean reopen = entry.status() == EntryStatus.CONFIRMED;
         entries.updateContent(entry.id(), year.id(), changed, reopen, clock.instant());
         audit.write(
@@ -221,8 +230,8 @@ public class EntryService {
         return view(entry.id());
     }
 
-    private void delete(UUID actor, TimeEntry entry) {
-        requireYearOpen(entry.schoolYearId());
+    private void delete(UUID actor, TimeEntry entry, boolean family) {
+        requireWritable(entry, family);
         entries.softDelete(entry.id(), clock.instant());
         audit.user(actor, "ENTRY_DELETED", "time_entry", entry.id());
     }
@@ -263,14 +272,31 @@ public class EntryService {
         }
     }
 
-    /** INV-01, INV-03, INV-04: not in the future, in an existing and open school year. */
-    private SchoolYear schoolYearFor(LocalDate workDate) {
+    /** INV-04 for everyone; families additionally only in the running school year (INV-14). */
+    private void requireWritable(TimeEntry entry, boolean family) {
+        SchoolYear year = schoolYears.get(entry.schoolYearId());
+        if (year.closed()) {
+            throw new ApiException(ErrorCode.SCHOOL_YEAR_CLOSED);
+        }
+        if (family && !writableForFamily(year)) {
+            throw new ApiException(ErrorCode.SCHOOL_YEAR_NOT_CURRENT);
+        }
+    }
+
+    /**
+     * INV-01, INV-03, INV-04 in this order (7.4 rule 3): not in the future, in an existing and open school year; for
+     * families also the running one (D-29).
+     */
+    private SchoolYear schoolYearFor(LocalDate workDate, boolean family) {
         if (workDate.isAfter(BusinessTime.today(clock))) {
             throw new ApiException(ErrorCode.DATE_IN_FUTURE);
         }
         SchoolYear year = schoolYears.forDate(workDate).orElseThrow(() -> new ApiException(ErrorCode.NO_SCHOOL_YEAR));
         if (year.closed()) {
             throw new ApiException(ErrorCode.SCHOOL_YEAR_CLOSED);
+        }
+        if (family && !writableForFamily(year)) {
+            throw new ApiException(ErrorCode.DATE_OUTSIDE_CURRENT_SCHOOL_YEAR);
         }
         return year;
     }

@@ -142,7 +142,7 @@ export const texts = {
     empty: "Noch keine Stunden eingetragen. Tippe auf 'Stunden eintragen'.",
     emptyReadOnly: 'In diesem Schuljahr gibt es keine Einträge.',
     schoolYear: 'Schuljahr',
-    readOnly: 'Dieses Schuljahr kannst du nur ansehen.',
+    readOnly: 'Dieses Schuljahr kannst du nur ansehen. Nachträge trägt das Hort-Team für euch ein.',
     noCurrentYear: 'Gerade läuft kein Schuljahr. Eintragen geht wieder, sobald das nächste beginnt.',
     noSchoolYear: 'Es gibt noch kein Schuljahr. Das Hort-Team legt es bald an.',
     notObligated: 'In diesem Schuljahr ist kein Kind von euch im Hort eingeschrieben.',
@@ -468,6 +468,9 @@ export const texts = {
     NO_CURRENT_SCHOOL_YEAR: 'Es gibt noch kein Schuljahr.',
     DATE_IN_FUTURE: 'Das Datum darf nicht in der Zukunft liegen.',
     NO_SCHOOL_YEAR: 'Zu diesem Datum gibt es kein Schuljahr.',
+    DATE_OUTSIDE_CURRENT_SCHOOL_YEAR:
+      'Du kannst nur Stunden im laufenden Schuljahr eintragen. Nachträge fürs Vorjahr trägt das Hort-Team ein.',
+    SCHOOL_YEAR_NOT_CURRENT: 'Einträge aus früheren Schuljahren kann nur das Hort-Team ändern.',
     DUPLICATE_ENTRY: 'Diesen Eintrag gibt es schon. Du hast ihn gerade eben gespeichert.',
     ENTRY_CONFIRMED: 'Der Eintrag ist schon bestätigt und lässt sich nicht mehr ändern.',
     CONCURRENT_MODIFICATION: 'Der Eintrag wurde inzwischen geändert. Bitte lade die Seite neu.',

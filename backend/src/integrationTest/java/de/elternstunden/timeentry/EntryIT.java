@@ -105,6 +105,60 @@ class EntryIT extends IntegrationTest {
         assertThat(code(closed)).isEqualTo("SCHOOL_YEAR_CLOSED");
     }
 
+    /** AC-ENTRY-13: families only in the running school year, admins also in other open ones (D-29, INV-14). */
+    @Test
+    void familiesBookOnlyInTheRunningSchoolYear() {
+        clock.setOffsetTo(Instant.parse("2091-01-15T10:00:00Z"));
+        UUID previous = schoolYear("2089/90", "2089-09-01", "2090-08-31");
+        schoolYear("2090/91", "2090-09-01", "2091-08-31");
+        UUID late = insertFamilyWithChild("Nora", "Nachtrag", "2018-02-02");
+        ApiClient parent = familyMember(late);
+        UUID creator = jdbc.queryForObject("SELECT id FROM app_user WHERE family_id = ?", UUID.class, late);
+        UUID old = jdbc.queryForObject(
+                "INSERT INTO time_entry (family_id, school_year_id, created_by, work_date, duration_minutes, description)"
+                        + " VALUES (?, ?, ?, DATE '2090-06-01', 60, 'Vorjahr offen') RETURNING id",
+                UUID.class,
+                late,
+                previous,
+                creator);
+
+        ApiClient.Response backdated = parent.post(ENTRIES, entry("2090-06-02", 60, "Nachtrag Vorjahr"));
+        assertThat(backdated.status()).isEqualTo(400);
+        assertThat(code(backdated)).isEqualTo("DATE_OUTSIDE_CURRENT_SCHOOL_YEAR");
+
+        var listed = parent.get(ENTRIES + "?schoolYearId=" + previous).json().get(0);
+        assertThat(listed.get("canEdit").asBoolean()).isFalse();
+        assertThat(listed.get("canDelete").asBoolean()).isFalse();
+        assertThat(parent.get(OVERVIEW + "?schoolYearId=" + previous)
+                        .json()
+                        .get("entries")
+                        .get(0)
+                        .get("canEdit")
+                        .asBoolean())
+                .isFalse();
+        ApiClient.Response change = parent.patch(ENTRIES + "/" + old, Map.of("version", 0, "durationMinutes", 30));
+        assertThat(change.status()).isEqualTo(409);
+        assertThat(code(change)).isEqualTo("SCHOOL_YEAR_NOT_CURRENT");
+        assertThat(code(parent.delete(ENTRIES + "/" + old))).isEqualTo("SCHOOL_YEAR_NOT_CURRENT");
+
+        JsonEntry current = JsonEntry.of(parent.post(ENTRIES, entry("2091-01-10", 60, "Laufendes Jahr")));
+        ApiClient.Response moved = parent.patch(
+                ENTRIES + "/" + current.id(), Map.of("version", current.version(), "workDate", "2090-06-03"));
+        assertThat(moved.status()).isEqualTo(400);
+        assertThat(code(moved)).isEqualTo("DATE_OUTSIDE_CURRENT_SCHOOL_YEAR");
+
+        ApiClient admin = signedInAs("ADMIN");
+        assertThat(admin.post(
+                                "/api/v1/admin/families/" + late + "/entries",
+                                entry("2090-06-02", 60, "Nachtrag Vorjahr"))
+                        .status())
+                .isEqualTo(201);
+        assertThat(admin.patch("/api/v1/admin/entries/" + old, Map.of("version", 0, "durationMinutes", 90))
+                        .status())
+                .isEqualTo(200);
+        assertThat(minutes(old)).isEqualTo(90);
+    }
+
     /** AC-ENTRY-05: exact entry with start time. */
     @Test
     void exactEntryKeepsTheStartTime() {

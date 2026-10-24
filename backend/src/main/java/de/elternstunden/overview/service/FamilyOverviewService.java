@@ -4,7 +4,6 @@ import de.elternstunden.auth.domain.UserStatus;
 import de.elternstunden.common.error.ApiException;
 import de.elternstunden.common.error.ErrorCode;
 import de.elternstunden.common.security.AppUserPrincipal;
-import de.elternstunden.common.time.BusinessTime;
 import de.elternstunden.family.domain.Child;
 import de.elternstunden.family.domain.Member;
 import de.elternstunden.family.service.FamilyService;
@@ -13,7 +12,6 @@ import de.elternstunden.schoolyear.service.SchoolYearService;
 import de.elternstunden.timeentry.domain.EntryView;
 import de.elternstunden.timeentry.repo.TimeEntryRepository;
 import de.elternstunden.timeentry.service.EntryService;
-import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -53,21 +51,18 @@ public class FamilyOverviewService {
     private final SchoolYearService schoolYears;
     private final FamilyService families;
     private final EntryService entries;
-    private final Clock clock;
 
-    public FamilyOverviewService(
-            SchoolYearService schoolYears, FamilyService families, EntryService entries, Clock clock) {
+    public FamilyOverviewService(SchoolYearService schoolYears, FamilyService families, EntryService entries) {
         this.schoolYears = schoolYears;
         this.families = families;
         this.entries = entries;
-        this.clock = clock;
     }
 
     public Overview get(AppUserPrincipal user, @Nullable UUID schoolYearId) {
         UUID familyId = EntryService.requireFamily(user);
         List<SchoolYear> started = schoolYears.started();
         SchoolYear year = schoolYear(started, schoolYearId);
-        boolean canAdd = !year.closed() && year.contains(BusinessTime.today(clock));
+        boolean canAdd = entries.writableForFamily(year);
         return new Overview(
                 year,
                 started,
@@ -81,10 +76,13 @@ public class FamilyOverviewService {
                 entries.ofFamily(familyId, year.id()));
     }
 
-    public List<EntryView> entries(AppUserPrincipal user, @Nullable UUID schoolYearId) {
+    /** Entries of a school year; {@code writable} if the family may still change them (D-29, INV-14). */
+    public record Entries(boolean writable, List<EntryView> entries) {}
+
+    public Entries entries(AppUserPrincipal user, @Nullable UUID schoolYearId) {
         UUID familyId = EntryService.requireFamily(user);
-        return entries.ofFamily(
-                familyId, schoolYear(schoolYears.started(), schoolYearId).id());
+        SchoolYear year = schoolYear(schoolYears.started(), schoolYearId);
+        return new Entries(entries.writableForFamily(year), entries.ofFamily(familyId, year.id()));
     }
 
     /** Without an id the current school year (5.5 rule 4); school years that have not started are not visible. */
