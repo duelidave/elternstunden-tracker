@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Elternstunden API
-  version: 0.6.0
+  version: 0.6.1
   description: |
     API-Vertrag der Elternstunden-Zeiterfassung und Quelle der Wahrheit für Backend und Frontend
     (Lastenheft D-25). Jede API-Änderung beginnt hier, danach wird auf beiden Seiten neu generiert.
@@ -549,7 +549,7 @@ paths:
       operationId: createFamilyEntry
       summary: Stunden eintragen
       description: >-
-        Neuer Eintrag mit Status OPEN (FS-ENTRY 7.4). Fehler: Zukunft 400 DATE_IN_FUTURE, kein Schuljahr 400 NO_SCHOOL_YEAR, abgeschlossenes Schuljahr 409 SCHOOL_YEAR_CLOSED, gleicher Eintrag innerhalb von 2 Minuten 409 DUPLICATE_ENTRY.
+        Neuer Eintrag mit Status OPEN (FS-ENTRY 7.4), nur im laufenden Schuljahr (D-29). Fehler: Zukunft 400 DATE_IN_FUTURE, kein Schuljahr 400 NO_SCHOOL_YEAR, abgeschlossenes Schuljahr 409 SCHOOL_YEAR_CLOSED, anderes Schuljahr als das laufende 400 DATE_OUTSIDE_CURRENT_SCHOOL_YEAR, gleicher Eintrag innerhalb von 2 Minuten 409 DUPLICATE_ENTRY.
       x-roles: [F]
       requestBody:
         required: true
@@ -582,7 +582,7 @@ paths:
       operationId: updateFamilyEntry
       summary: Eigenen Eintrag ändern
       description: >-
-        Nur offene Einträge der eigenen Familie (INV-05, INV-06). Nur angegebene Felder ändern sich; ein leerer Text bei startTime entfernt die Uhrzeit. Bestätigt: 409 ENTRY_CONFIRMED, veraltete version: 409 CONCURRENT_MODIFICATION, fremde Familie: 404 (SEC-08).
+        Nur offene Einträge der eigenen Familie im laufenden Schuljahr (INV-05, INV-06, INV-14). Nur angegebene Felder ändern sich; ein leerer Text bei startTime entfernt die Uhrzeit. Veraltete version: 409 CONCURRENT_MODIFICATION, bestätigt: 409 ENTRY_CONFIRMED, Eintrag aus einem anderen Schuljahr: 409 SCHOOL_YEAR_NOT_CURRENT, neues Datum außerhalb des laufenden Schuljahres: 400 DATE_OUTSIDE_CURRENT_SCHOOL_YEAR, fremde Familie: 404 (SEC-08).
       x-roles: [F]
       parameters:
         - $ref: '#/components/parameters/EntryId'
@@ -616,7 +616,7 @@ paths:
       operationId: deleteFamilyEntry
       summary: Eigenen Eintrag löschen
       description: >-
-        Soft-Delete, nur offene Einträge der eigenen Familie. Bestätigt: 409 ENTRY_CONFIRMED, fremde Familie: 404.
+        Soft-Delete, nur offene Einträge der eigenen Familie im laufenden Schuljahr (INV-14). Bestätigt: 409 ENTRY_CONFIRMED, Eintrag aus einem anderen Schuljahr: 409 SCHOOL_YEAR_NOT_CURRENT, fremde Familie: 404.
       x-roles: [F]
       parameters:
         - $ref: '#/components/parameters/EntryId'
@@ -2521,8 +2521,10 @@ components:
           type: string
         canEdit:
           type: boolean
+          description: Offen, Schuljahr nicht abgeschlossen und das laufende (7.3 Regel 5, INV-14).
         canDelete:
           type: boolean
+          description: Wie canEdit.
         version:
           type: integer
           format: int32
