@@ -38,8 +38,10 @@ export function TimeField({ label, value, onChange, onBlur, name, error }: TimeF
           onChange(event.target.value)
         }}
         onBlur={(event) => {
-          const normalized = normalizeTime(value)
-          if (normalized !== undefined && normalized !== value) {
+          // The field itself, not the last render: a blur may follow the last keystroke at once
+          const typed = event.currentTarget.value
+          const normalized = normalizeTime(typed)
+          if (normalized !== undefined && normalized !== typed) {
             onChange(normalized)
           }
           onBlur?.(event)
