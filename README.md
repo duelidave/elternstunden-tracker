@@ -49,6 +49,13 @@ Am besten mit Chrome oder Firefox: Beide akzeptieren das `Secure`-Session-Cookie
   gibst du als „user/subject" einfach eine Adresse ein, etwa `anna@gmail.com`. Neue Adressen landen auf „Noch ein
   Schritt", bekannte melden sich direkt an. Nur `@gmail.com`-Adressen werden mit einem bestehenden Konto verknüpft
   (7.1.5); andere verknüpfst du im Profil.
+- **Mit netID anmelden (GMX, WEB.DE):** Der OIDC-Mock steht lokal auch für netID (Issuer `/netid`). Als Nutzer eine
+  Adresse wie `anna@gmx.de` eingeben. GMX- und WEB.DE-Adressen werden mit einem bestehenden Konto verknüpft, andere
+  nur über das Profil. Für das echte netID braucht es `NETID_CLIENT_ID` und `NETID_CLIENT_SECRET` aus dem
+  netID-Entwicklerportal und eine HTTPS-Adresse.
+- **Passkeys:** Im Profil „Passkey hinzufügen“ (direkt nach der Anmeldung, sonst erst neu anmelden). Danach auf
+  `/login` „Mit Passkey anmelden“. Lokal geht das in Chrome über den Passwortmanager, ein Handy per QR-Code oder in
+  den DevTools unter „WebAuthn“ mit einem virtuellen Authenticator.
 - **Zweiter Faktor für Admins:** Im Profil „Einrichten", QR-Code mit einer Authenticator-App scannen. Danach fragt die
   Anmeldung per E-Mail-Link oder Google nach dem Code. Die Dev-Leiste überspringt ihn (D-26).
 - **Admin-Bereich:** Über die Dev-Leiste als Admin anmelden, dann "Zum Admin-Bereich". Die Übersicht zeigt

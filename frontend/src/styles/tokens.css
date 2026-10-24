@@ -49,12 +49,17 @@
   --color-google-green: #34a853;
   --color-google-yellow: #fbbc05;
   --color-google-red: #ea4335;
+  /* netID button: colour prescribed by the netID styleguide (UI-06); white text only as brand name "netID" */
+  --color-netid: #76b82a;
+  --color-netid-text: #ffffff;
   --color-danger: #b3261e;
   --color-danger-surface: #fdecea;
 
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   /* Headings in the handwriting of the website, bundled locally (OFL, SEC-10) */
   --font-display: 'Indie Flower', ui-rounded, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* netID button font from the netID styleguide, bundled locally (OFL, SEC-10) */
+  --font-netid: 'IBM Plex Sans', system-ui, sans-serif;
   --text-title: 1.875rem;
   --text-heading: 1.75rem;
   --radius-card: 1rem;

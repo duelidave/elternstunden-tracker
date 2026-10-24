@@ -2,7 +2,7 @@ import { fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Me } from '../api/generated/model'
 import { texts } from '../i18n/de'
-import { familyMember, problem, signedOut, stubApi } from '../test/api'
+import { familyMember, loginProviders, problem, signedOut, stubApi } from '../test/api'
 import { FakeCaptcha } from '../test/captcha'
 import { renderRoute } from '../test/render'
 
@@ -13,8 +13,8 @@ function fill(label: string, value: string) {
 }
 
 describe('LoginPage with Google', () => {
-  it('offers Google as a plain link and explains a refused provider login', async () => {
-    stubApi(() => signedOut)
+  it('offers Google and netID as plain links and explains a refused provider login', async () => {
+    stubApi(({ url }) => (url === '/api/v1/auth/providers' ? loginProviders : signedOut))
 
     renderRoute('/login?error=OIDC_NOT_AUTHORITATIVE')
 
@@ -22,6 +22,12 @@ describe('LoginPage with Google', () => {
     expect(google).toHaveAttribute('href', '/oauth2/authorization/google')
     expect(screen.getByText(texts.login.errors.OIDC_NOT_AUTHORITATIVE)).toHaveAttribute('role', 'alert')
     expect(screen.getByText(texts.google.hint)).toBeInTheDocument()
+    // netID: the brand name as visible text, the full name for screen readers (UI-06, UI-09)
+    expect(screen.getByRole('link', { name: texts.netid.login })).toHaveAttribute(
+      'href',
+      '/oauth2/authorization/netid',
+    )
+    expect(screen.getByText(texts.netid.hint)).toBeInTheDocument()
   })
 })
 
@@ -40,7 +46,7 @@ describe('OidcClaimPage', () => {
     })
 
     renderRoute('/register/claim')
-    expect(await screen.findByText(texts.oidcClaim.account('mia@gmail.com'))).toBeInTheDocument()
+    expect(await screen.findByText(texts.oidcClaim.account('Google', 'mia@gmail.com'))).toBeInTheDocument()
     expect(screen.getByLabelText(texts.register.displayName)).toHaveValue('Mia Muster')
     fill(texts.register.childFirstName, 'Lena')
     fill(texts.register.childLastName, 'Muster')
@@ -107,7 +113,7 @@ describe('ProfilePage', () => {
     const main = within(await screen.findByRole('main'))
     expect(await main.findByText(admin.email)).toBeInTheDocument()
     expect(main.getByRole('heading', { name: texts.totp.title })).toBeInTheDocument()
-    fireEvent.click(main.getByRole('button', { name: texts.profile.linkProvider('Google') }))
+    fireEvent.click(await main.findByRole('button', { name: texts.profile.linkProvider('Google') }))
 
     await vi.waitFor(() => {
       expect(assign).toHaveBeenCalledWith('/oauth2/authorization/google')

@@ -3,7 +3,11 @@ import { Controller, useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router'
 import { z } from 'zod'
 import { errorText } from '../api/errors'
-import { useCompleteOidcRegistration, useGetOidcPending } from '../api/generated/endpoints/auth/auth'
+import {
+  useCompleteOidcRegistration,
+  useGetOidcPending,
+  useListLoginProviders,
+} from '../api/generated/endpoints/auth/auth'
 import type { OidcPending } from '../api/generated/model'
 import { CompleteOidcRegistrationBody } from '../api/generated/zod/auth/auth.zod'
 import { useRefreshSession } from '../api/session'
@@ -52,6 +56,8 @@ function ClaimFormView({ pending }: { pending: OidcPending }) {
       child: { firstName: '', lastName: '', birthDate: '' },
     },
   })
+  const providers = useListLoginProviders({ query: { staleTime: Infinity } })
+  const providerName = (id: string) => providers.data?.find((provider) => provider.id === id)?.name ?? id
   const errors = form.formState.errors
 
   const submit = form.handleSubmit(async (values) => {
@@ -67,7 +73,7 @@ function ClaimFormView({ pending }: { pending: OidcPending }) {
   return (
     <section className="card">
       <h2>{texts.oidcClaim.title}</h2>
-      <p className="text-muted">{texts.oidcClaim.account(pending.email)}</p>
+      <p className="text-muted">{texts.oidcClaim.account(providerName(pending.provider), pending.email)}</p>
       <p>{texts.oidcClaim.intro}</p>
       <form onSubmit={(event) => void submit(event)} noValidate>
         <TextField

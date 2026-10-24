@@ -8,7 +8,7 @@ import { useRegisterAccount } from '../api/generated/endpoints/auth/auth'
 import { RegisterAccountBody } from '../api/generated/zod/auth/auth.zod'
 import { Captcha, type CaptchaHandle } from '../components/Captcha'
 import { DateField } from '../components/DateField'
-import { GoogleButton, OrDivider } from '../components/GoogleButton'
+import { SignInOptions } from '../components/SignInOptions'
 import { MailIcon } from '../components/Icons'
 import { TextField } from '../components/TextField'
 import { texts } from '../i18n/de'
@@ -62,8 +62,7 @@ export function RegisterPage() {
   return (
     <section className="card">
       <h2>{texts.register.title}</h2>
-      <GoogleButton label={texts.google.register} />
-      <OrDivider />
+      <SignInOptions purpose="register" />
       <p>{texts.register.intro}</p>
       <form onSubmit={(event) => void submit(event)} noValidate>
         <TextField

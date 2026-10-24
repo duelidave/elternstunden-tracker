@@ -1,24 +1,38 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import {
+  browserSupportsWebAuthn,
+  startRegistration,
+  type PublicKeyCredentialCreationOptionsJSON,
+} from '@simplewebauthn/browser'
+import { useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Navigate, useNavigate, useSearchParams } from 'react-router'
 import type { z } from 'zod'
 import { errorText } from '../api/errors'
-import { useLogout } from '../api/generated/endpoints/auth/auth'
+import { useListLoginProviders, useLogout } from '../api/generated/endpoints/auth/auth'
 import {
+  getListPasskeysQueryKey,
   useDeleteIdentity,
+  useDeletePasskey,
   useDisableTotp,
+  useListPasskeys,
+  useRegisterPasskey,
   useStartIdentityLink,
+  useStartPasskeyRegistration,
   useUpdateMe,
 } from '../api/generated/endpoints/me/me'
-import type { Me } from '../api/generated/model'
+import type { Me, WebAuthnJson } from '../api/generated/model'
+import { ApiProblem } from '../api/http'
 import { UpdateMeBody } from '../api/generated/zod/me/me.zod'
 import { useRefreshSession, useSession } from '../api/session'
 import { GoogleLogo } from '../components/GoogleButton'
+import { NetIdLogo } from '../components/NetIdButton'
+import { KeyIcon } from '../components/PasskeyLogin'
 import { TextField } from '../components/TextField'
 import { TotpSetup } from '../components/TotpSetup'
 import { texts } from '../i18n/de'
-
-const GOOGLE = { id: 'google', name: 'Google' } as const
+import { formatDateTime } from '../time'
 
 /** Profile (13.1): display name, e-mail, linked providers, admin TOTP, logout. */
 export function ProfilePage() {
@@ -61,6 +75,7 @@ function Profile({ me }: { me: Me }) {
       </section>
       {/* INV-12: the master signs in with password and TOTP only */}
       {me.role !== 'MASTER_ADMIN' && <Providers me={me} />}
+      {me.role !== 'MASTER_ADMIN' && <Passkeys />}
       {me.role === 'ADMIN' && <SecondFactor me={me} />}
     </>
   )
@@ -107,18 +122,19 @@ function NameForm({ me }: { me: Me }) {
   )
 }
 
+/** Linked providers (7.2 "Profil"): one entry per active provider, linking needs a fresh login. */
 function Providers({ me }: { me: Me }) {
   const [params] = useSearchParams()
+  const providers = useListLoginProviders({ query: { staleTime: Infinity } })
   const start = useStartIdentityLink()
   const remove = useDeleteIdentity()
   const refreshSession = useRefreshSession()
-  const identity = me.identities?.find((entry) => entry.provider === GOOGLE.id)
   const linkError = params.get('error')
   const error = start.error ?? remove.error
 
-  const link = async () => {
+  const link = async (provider: string) => {
     try {
-      const { redirectUrl } = await start.mutateAsync({ provider: GOOGLE.id })
+      const { redirectUrl } = await start.mutateAsync({ provider })
       // Top-level navigation to the provider (SEC-10: no form post)
       window.location.assign(redirectUrl)
     } catch {
@@ -150,33 +166,169 @@ function Providers({ me }: { me: Me }) {
             : texts.login.errors.OIDC_FAILED}
         </p>
       )}
-      {identity === undefined ? (
-        <button type="button" className="google-button w-full" disabled={start.isPending} onClick={() => void link()}>
-          <GoogleLogo />
-          <span>{texts.profile.linkProvider(GOOGLE.name)}</span>
-        </button>
-      ) : (
-        <div className="panel">
-          <p className="m-0 font-semibold">{texts.profile.providerLinked(GOOGLE.name)}</p>
-          {identity.emailAtLink !== undefined && (
-            <p className="m-0 text-muted break-all">{texts.profile.providerSince(identity.emailAtLink)}</p>
-          )}
-          <button
-            type="button"
-            className="button button--secondary mt-3"
-            disabled={remove.isPending}
-            onClick={() => void unlink(identity.id)}
-          >
-            {texts.profile.unlink}
-          </button>
-        </div>
-      )}
+      <ul className="stack">
+        {(providers.data ?? []).map((provider) => {
+          const identity = me.identities?.find((entry) => entry.provider === provider.id)
+          return (
+            <li key={provider.id}>
+              {identity === undefined ? (
+                <button
+                  type="button"
+                  className={provider.id === 'google' ? 'google-button w-full' : 'button button--secondary w-full'}
+                  disabled={start.isPending}
+                  onClick={() => void link(provider.id)}
+                >
+                  {provider.id === 'google' && <GoogleLogo />}
+                  {provider.id === 'netid' && <NetIdLogo />}
+                  <span>{texts.profile.linkProvider(provider.name)}</span>
+                </button>
+              ) : (
+                <div className="panel">
+                  <p className="m-0 font-semibold">{texts.profile.providerLinked(provider.name)}</p>
+                  {identity.emailAtLink !== undefined && (
+                    <p className="m-0 text-muted break-all">{texts.profile.providerSince(identity.emailAtLink)}</p>
+                  )}
+                  <button
+                    type="button"
+                    className="button button--secondary mt-3"
+                    disabled={remove.isPending}
+                    onClick={() => void unlink(identity.id)}
+                  >
+                    {texts.profile.unlink}
+                  </button>
+                </div>
+              )}
+            </li>
+          )
+        })}
+      </ul>
       <p className="text-sm text-muted">{texts.profile.emailLinkStays}</p>
       {error && (
         <p className="alert" role="alert">
           {errorText(error)}
         </p>
       )}
+    </section>
+  )
+}
+
+/** Passkeys (7.2, D-30): create with a fresh login, list, remove. Not for the master (INV-12). */
+function Passkeys() {
+  const passkeys = useListPasskeys()
+  const start = useStartPasskeyRegistration()
+  const register = useRegisterPasskey()
+  const remove = useDeletePasskey()
+  const client = useQueryClient()
+  const [label, setLabel] = useState('')
+  const [message, setMessage] = useState<string | undefined>()
+  const [error, setError] = useState<string | undefined>()
+
+  if (!browserSupportsWebAuthn()) {
+    return (
+      <section className="card">
+        <h2>{texts.passkey.title}</h2>
+        <p className="text-muted">{texts.passkey.unsupported}</p>
+      </section>
+    )
+  }
+
+  const reload = async () => {
+    await client.invalidateQueries({ queryKey: getListPasskeysQueryKey() })
+  }
+
+  const add = async () => {
+    setMessage(undefined)
+    setError(undefined)
+    try {
+      const { challengeId, options } = await start.mutateAsync()
+      const credential = await startRegistration({
+        optionsJSON: options as unknown as PublicKeyCredentialCreationOptionsJSON,
+      })
+      await register.mutateAsync({
+        data: {
+          challengeId,
+          credential: credential as unknown as WebAuthnJson,
+          ...(label.trim() === '' ? {} : { label: label.trim() }),
+        },
+      })
+      setLabel('')
+      setMessage(texts.passkey.added)
+      await reload()
+    } catch (failure) {
+      // Cancelled in the browser's dialog: nothing to say
+      if (failure instanceof Error && failure.name === 'NotAllowedError') {
+        return
+      }
+      setError(failure instanceof ApiProblem ? errorText(failure) : texts.errors.PASSKEY_INVALID)
+    }
+  }
+
+  const removePasskey = async (id: string) => {
+    if (!window.confirm(texts.passkey.confirmRemove)) {
+      return
+    }
+    setMessage(undefined)
+    setError(undefined)
+    try {
+      await remove.mutateAsync({ passkeyId: id })
+      setMessage(texts.passkey.removed)
+      await reload()
+    } catch (failure) {
+      setError(errorText(failure))
+    }
+  }
+
+  return (
+    <section className="card">
+      <h2>{texts.passkey.title}</h2>
+      <p>{texts.passkey.intro}</p>
+      <p aria-live="polite" className="m-0">
+        {message !== undefined && <span className="notice block">{message}</span>}
+      </p>
+      {error !== undefined && (
+        <p className="alert" role="alert">
+          {error}
+        </p>
+      )}
+      {passkeys.data?.length === 0 && <p className="text-muted">{texts.passkey.none}</p>}
+      <ul className="stack">
+        {passkeys.data?.map((passkey) => (
+          <li key={passkey.id} className="panel">
+            <p className="m-0 font-semibold">{passkey.label}</p>
+            <p className="m-0 text-sm text-muted">
+              {texts.passkey.created(formatDateTime(passkey.createdAt))}
+              {passkey.lastUsedAt !== undefined && ` · ${texts.passkey.lastUsed(formatDateTime(passkey.lastUsedAt))}`}
+            </p>
+            <button
+              type="button"
+              className="button button--secondary mt-3"
+              disabled={remove.isPending}
+              onClick={() => void removePasskey(passkey.id)}
+            >
+              {texts.passkey.remove}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <TextField
+        label={texts.passkey.label}
+        placeholder={texts.passkey.labelPlaceholder}
+        maxLength={60}
+        autoComplete="off"
+        value={label}
+        onChange={(event) => {
+          setLabel(event.target.value)
+        }}
+      />
+      <button
+        type="button"
+        className="button"
+        disabled={start.isPending || register.isPending}
+        onClick={() => void add()}
+      >
+        <KeyIcon />
+        <span>{texts.passkey.add}</span>
+      </button>
     </section>
   )
 }

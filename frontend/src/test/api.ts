@@ -18,6 +18,15 @@ export function problem(status: number, code: string, extra: Record<string, unkn
 
 export const signedOut = problem(401, 'UNAUTHORIZED')
 
+/** The active providers (D-30); stubApi answers with them unless a test handles the URL itself. */
+export const loginProviders: Reply = {
+  status: 200,
+  body: [
+    { id: 'google', name: 'Google' },
+    { id: 'netid', name: 'netID' },
+  ],
+}
+
 export const familyMember: Me = {
   id: '00000000-0000-4000-8000-000000000001',
   displayName: 'Mia Muster',
@@ -36,7 +45,8 @@ export function stubApi(handle: (call: ApiCall) => Reply | undefined): ApiCall[]
       body: typeof init.body === 'string' ? parse(init.body) : undefined,
     }
     calls.push(call)
-    const reply = handle(call) ?? problem(404, 'NOT_FOUND')
+    const reply =
+      handle(call) ?? (call.url === '/api/v1/auth/providers' ? loginProviders : undefined) ?? problem(404, 'NOT_FOUND')
     const contentType = reply.status >= 400 ? 'application/problem+json' : 'application/json'
     return Promise.resolve(
       reply.body === undefined

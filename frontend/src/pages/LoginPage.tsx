@@ -6,7 +6,8 @@ import { errorText } from '../api/errors'
 import { useRequestMagicLink } from '../api/generated/endpoints/auth/auth'
 import { RequestMagicLinkBody } from '../api/generated/zod/auth/auth.zod'
 import { Captcha, type CaptchaHandle } from '../components/Captcha'
-import { GoogleButton, OrDivider } from '../components/GoogleButton'
+import { PasskeyLogin } from '../components/PasskeyLogin'
+import { SignInOptions } from '../components/SignInOptions'
 import { MailIcon } from '../components/Icons'
 import { TextField } from '../components/TextField'
 import { texts } from '../i18n/de'
@@ -70,8 +71,9 @@ export function LoginPage() {
             : texts.login.errors.OIDC_FAILED}
         </p>
       )}
-      <GoogleButton label={texts.google.login} />
-      <OrDivider />
+      <SignInOptions purpose="login">
+        <PasskeyLogin />
+      </SignInOptions>
       <p>{texts.login.intro}</p>
       <form onSubmit={(event) => void submit(event)} noValidate>
         <TextField

@@ -1025,3 +1025,40 @@
     }
   }
 }
+
+/* Further sign-in options (D-30): netID button after the netID styleguide, passkey button */
+@layer components {
+  .sign-in-options {
+    display: flex;
+    flex-direction: column;
+    gap: --spacing(4);
+  }
+
+  .netid-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.438em;
+    min-height: var(--spacing-tap);
+    padding: 0 1em 0 0.875em;
+    border-radius: 3px;
+    background: var(--color-netid);
+    color: var(--color-netid-text);
+    font-family: var(--font-netid);
+    font-size: 16px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .netid-button__logo {
+    width: 1.25em;
+    height: 1.25em;
+    flex: none;
+  }
+
+  .netid-button:focus-visible {
+    outline: 3px solid var(--color-text);
+    outline-offset: 2px;
+  }
+}
