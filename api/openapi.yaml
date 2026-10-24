@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Elternstunden API
-  version: 0.6.2
+  version: 0.7.0
   description: |
     API-Vertrag der Elternstunden-Zeiterfassung und Quelle der Wahrheit für Backend und Frontend
     (Lastenheft D-25). Jede API-Änderung beginnt hier, danach wird auf beiden Seiten neu generiert.
@@ -167,6 +167,81 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/OtherDeviceProblem'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/providers:
+    get:
+      tags: [auth]
+      operationId: listLoginProviders
+      summary: Aktive Anmelde-Anbieter
+      description: >-
+        OIDC-Anbieter mit gesetzter Client-ID (7.2, D-30), damit die SPA nur deren Buttons zeigt (UI-06).
+      x-roles: [A]
+      security: []
+      responses:
+        '200':
+          description: Die aktiven Anbieter.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LoginProvider'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/passkey/options:
+    post:
+      tags: [auth]
+      operationId: startPasskeyLogin
+      summary: Passkey-Anmeldung vorbereiten
+      description: >-
+        WebAuthn-Optionen ohne allowCredentials (auffindbare Passkeys) und eine challengeId; die Challenge gilt
+        5 Minuten und einmal (7.2, D-30).
+      x-roles: [A]
+      security: []
+      responses:
+        '200':
+          description: Optionen für navigator.credentials.get().
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasskeyChallenge'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/passkey/login:
+    post:
+      tags: [auth]
+      operationId: loginWithPasskey
+      summary: Mit Passkey anmelden
+      description: >-
+        Prüft die Antwort des Browsers und meldet an wie der E-Mail-Link, Admins mit zweitem Faktor nur halb
+        (MFA_PENDING). Jeder Fehler (Signatur, Origin, Challenge, unbekannter Passkey, Konto nicht aktiv) gibt
+        neutral 401 LOGIN_FAILED (7.2).
+      x-roles: [A]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasskeyLogin'
+      responses:
+        '200':
+          description: Angemeldet oder, bei Admins mit zweitem Faktor, erst halb angemeldet (MFA_PENDING).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
@@ -406,6 +481,101 @@ paths:
       x-roles: [U]
       parameters:
         - $ref: '#/components/parameters/IdentityId'
+      responses:
+        '204':
+          description: Entfernt.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /me/passkeys:
+    get:
+      tags: [me]
+      operationId: listPasskeys
+      summary: Eigene Passkeys
+      x-roles: [U]
+      responses:
+        '200':
+          description: Die Passkeys des Kontos, neueste zuerst.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Passkey'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [me]
+      operationId: registerPasskey
+      summary: Passkey anlegen
+      description: >-
+        Prüft die Antwort des Browsers zur challengeId aus /me/passkeys/options. Ungültige oder fremde Challenge
+        oder fehlgeschlagene Prüfung: 400 PASSKEY_INVALID, mehr als 10 Passkeys: 409 PASSKEY_LIMIT (7.2).
+      x-roles: [U]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasskeyRegistration'
+      responses:
+        '201':
+          description: Angelegt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Passkey'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /me/passkeys/options:
+    post:
+      tags: [me]
+      operationId: startPasskeyRegistration
+      summary: Passkey-Anlage vorbereiten
+      description: >-
+        WebAuthn-Optionen (Resident Key und Nutzerprüfung Pflicht) und eine challengeId, die nur für dieses Konto
+        gilt. Nur mit frischer Anmeldung (403 REAUTH_REQUIRED), nicht für den Master (INV-12), höchstens 10
+        Passkeys (409 PASSKEY_LIMIT).
+      x-roles: [U]
+      responses:
+        '200':
+          description: Optionen für navigator.credentials.create().
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasskeyChallenge'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /me/passkeys/{passkeyId}:
+    delete:
+      tags: [me]
+      operationId: deletePasskey
+      summary: Passkey entfernen
+      description: Nur eigene Passkeys (sonst 404, SEC-08). Der E-Mail-Link bleibt als Anmeldeweg (INV-11).
+      x-roles: [U]
+      parameters:
+        - $ref: '#/components/parameters/PasskeyId'
       responses:
         '204':
           description: Entfernt.
@@ -2320,6 +2490,66 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AutoAssignment'
+    LoginProvider:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          description: Kennung für /oauth2/authorization/{id}, z. B. google oder netid.
+        name:
+          type: string
+    WebAuthnJson:
+      type: object
+      additionalProperties: true
+      description: >-
+        WebAuthn-Daten im JSON-Format von WebAuthn Level 3 (Base64url), unverändert zwischen Browser und Server
+        durchgereicht: Optionen für navigator.credentials oder die Antwort darauf.
+    PasskeyChallenge:
+      type: object
+      required: [challengeId, options]
+      properties:
+        challengeId:
+          type: string
+          format: uuid
+        options:
+          $ref: '#/components/schemas/WebAuthnJson'
+    PasskeyLogin:
+      type: object
+      required: [challengeId, credential]
+      properties:
+        challengeId:
+          type: string
+          format: uuid
+        credential:
+          $ref: '#/components/schemas/WebAuthnJson'
+    PasskeyRegistration:
+      type: object
+      required: [challengeId, credential]
+      properties:
+        challengeId:
+          type: string
+          format: uuid
+        credential:
+          $ref: '#/components/schemas/WebAuthnJson'
+        label:
+          type: string
+          maxLength: 60
+          description: Name, an dem man den Passkey wiedererkennt, z. B. "iPhone". Standard "Passkey".
+    Passkey:
+      type: object
+      required: [id, label, createdAt]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
     LoginResult:
       type: object
       description: Ergebnis einer Anmeldung (7.2). Bei MFA_REQUIRED oder MFA_SETUP_REQUIRED fehlt noch der zweite Faktor.
@@ -2756,6 +2986,14 @@ components:
       schema:
         type: string
         pattern: '^[a-z0-9-]{1,40}$'
+    PasskeyId:
+      name: passkeyId
+      in: path
+      required: true
+      description: Credential-ID des Passkeys (Base64url).
+      schema:
+        type: string
+        pattern: '^[A-Za-z0-9_-]{1,1000}$'
     IdentityId:
       name: identityId
       in: path
