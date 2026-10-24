@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 0.4.7 (Entwurf) |
+| Version | 0.4.8 (Entwurf) |
 | Stand | 2026-10-24 |
 | Einrichtung | Hort an der Montessorischule (Elterninitiative, Verein) |
 | Zielgruppe | Entwickler:innen und KI-Coding-Agents |
@@ -24,6 +24,7 @@
 | 0.4.5 | 2026-10-22 | Höchstens zwei Nutzer pro Familie (D-28, INV-13, 7.1.6, AC-REG-17). |
 | 0.4.6 | 2026-10-22 | OPEN-02 entschieden: Abrechnung je Familie **und** als Gesamtliste (D-12). Endpunkt mit optionalem Parameter `kind` (FS-PDF). |
 | 0.4.7 | 2026-10-24 | Familien erfassen, ändern und löschen nur Einträge im laufenden Schuljahr; andere offene Schuljahre nur Admins (D-29, INV-14, 7.3, 7.4, AC-ENTRY-13). |
+| 0.4.8 | 2026-10-24 | Tätigkeitstext höchstens 255 Zeichen statt 500, mit mitlaufendem Zähler und Pflichtfeld-Markierung in der UI (D-09, 7.4, AC-ENTRY-03). |
 
 ---
 
@@ -107,7 +108,7 @@ Laut Website des Horts: 65 Vollzeitplätze, etwa 70 Kinder in drei Gruppen. Erwa
 | D-06 | Schutz der Registrierung gegen Bots und Ratversuche durch **Captcha** und Rate-Limits. | `[DECIDED]` | Auftraggeber |
 | D-07 | Produkt für Captcha: **ALTCHA** (selbst gehostet, MIT-Lizenz). | `[PROPOSED]` | Recherche, siehe Abschnitt 18 |
 | D-08 | Registrierung und Anmeldung **ohne Passwort**: per **E-Mail-Link** (Magic Link, FS-AUTH 7.2) oder per **OIDC** (Anmeldung mit Google-Konto, "Gmail"). Weitere Anbieter siehe OPEN-15. Beide Wege führen zum selben Nutzerkonto-Modell. Ausnahme Master-Admin: D-22, D-24. | E-Mail-Link `[DECIDED]` (2026-10-20, ersetzt E-Mail + Passwort), OIDC mit Google `[DECIDED]` (Wunsch 2026-10-20), weitere Anbieter `[OPEN]` | Auftraggeber |
-| D-09 | Stundenerfassung: Einheit 15 Minuten. Schnellauswahl (0,5 h, 1 h, 2 h, 3 h) **oder** exakt per Datums- und Uhrzeit-Picker. Kurzer Freitext zur Tätigkeit ist **Pflicht**. | `[DECIDED]` | Auftraggeber |
+| D-09 | Stundenerfassung: Einheit 15 Minuten. Schnellauswahl (0,5 h, 1 h, 2 h, 3 h) **oder** exakt per Datums- und Uhrzeit-Picker. Kurzer Freitext zur Tätigkeit ist **Pflicht**, höchstens 255 Zeichen. | `[DECIDED]` | Auftraggeber, Länge 2026-10-24 |
 | D-10 | Ein Admin **bestätigt** erfasste Stunden. Nur bestätigte Stunden zählen für das Soll. Die Familie sieht bestätigte und offene Stunden **getrennt**. | `[DECIDED]` | Auftraggeber |
 | D-11 | Admin-Übersicht: dauerhaft sichtbarer Hinweis, welche Familien im Schuljahr noch keine 10 h erreicht haben. Liste sortier- und durchsuchbar. | `[DECIDED]` | Auftraggeber |
 | D-12 | Abrechnung als **PDF**: Zwischenstand des laufenden Schuljahres und abgeschlossene Schuljahre, **je Familie und als Gesamtliste** (OPEN-02). | `[DECIDED]` | Auftraggeber, Umfang 2026-10-22 |
@@ -429,7 +430,7 @@ CREATE TABLE time_entry (
     CONSTRAINT time_entry_duration_ck
         CHECK (duration_minutes > 0 AND duration_minutes % 15 = 0 AND duration_minutes <= 720),
     CONSTRAINT time_entry_description_ck
-        CHECK (char_length(btrim(description)) BETWEEN 3 AND 500),
+        CHECK (char_length(btrim(description)) BETWEEN 3 AND 255),   -- D-09: 255 since V6, 500 before
     CONSTRAINT time_entry_confirm_ck
         CHECK ((status = 'CONFIRMED') = (confirmed_at IS NOT NULL AND confirmed_by IS NOT NULL))
 );
@@ -877,12 +878,12 @@ Die Familienübersicht ist die **Startseite nach dem Login** für zugeordnete Fa
 | **Schnell** | Chips `30 min`, `1 h`, `2 h`, `3 h`. Datum standardmäßig heute, änderbar. | `duration_minutes` = 30/60/120/180, `start_time` NULL |
 | **Exakt** | Datum (Picker) + Startzeit (Picker) + Dauer per Stepper in 15-Minuten-Schritten (mindestens 15, höchstens 720). | `start_time` gesetzt |
 
-Gemeinsam: **Freitext "Was hast du gemacht?"** ist Pflicht, 3 bis 500 Zeichen nach Trim (D-09). Ein Chip "Andere Dauer" wechselt in den exakten Modus.
+Gemeinsam: **Freitext "Was hast du gemacht?"** ist Pflicht, 3 bis 255 Zeichen nach Trim (D-09). Das Feld zeigt einen mitlaufenden Zähler ("42/255") und nimmt keine weiteren Zeichen an. Ein leeres oder zu kurzes Feld wird rot markiert und mit Text erklärt (UI-08). Ein Chip "Andere Dauer" wechselt in den exakten Modus.
 
 #### Serverseitige Regeln (alle MÜSSEN erzwungen werden, nie nur im Client)
 
 1. `duration_minutes % 15 == 0`, `15 <= duration <= 720` (OPEN-10 für Obergrenze).
-2. `description` getrimmt, Länge 3 bis 500. HTML wird nicht interpretiert, Ausgabe stets escaped.
+2. `description` getrimmt, Länge 3 bis 255. HTML wird nicht interpretiert, Ausgabe stets escaped.
 3. `work_date` in einem existierenden, nicht abgeschlossenen Schuljahr (INV-01, INV-04), nicht in der Zukunft (INV-03). Fehler: Zukunft `400 DATE_IN_FUTURE`, kein Schuljahr `400 NO_SCHOOL_YEAR`, abgeschlossenes Schuljahr `409 SCHOOL_YEAR_CLOSED`. Über die Familienendpunkte zusätzlich nur im **laufenden** Schuljahr (D-29, INV-14), sonst `400 DATE_OUTSIDE_CURRENT_SCHOOL_YEAR`. Die Prüfungen laufen in dieser Reihenfolge. Admins tragen über `POST /admin/families/{id}/entries` auch in andere offene Schuljahre ein.
 4. Familie des Nutzers (INV-02). `created_by` ist der angemeldete Nutzer.
 5. **Duplikatschutz:** Ein inhaltlich identischer Eintrag (gleiche Familie, Datum, Startzeit, Dauer, Beschreibung) innerhalb von 2 Minuten wird mit `409 DUPLICATE_ENTRY` abgelehnt `[PROPOSED]`. Prüfung und Einfügen laufen unter `pg_advisory_xact_lock` auf die Familie, damit ein Doppelklick nicht zwei Einträge erzeugt.
@@ -1872,7 +1873,7 @@ Notation: Gegeben / Wenn / Dann. Jedes Kriterium MUSS als automatisierter Test e
 |---|---|
 | AC-ENTRY-01 | **Schnellerfassung.** "1 h", heute, Text "Garten aufgeräumt": Eintrag `OPEN`, Familienübersicht zeigt `openMinutes` +60, `confirmedMinutes` unverändert. |
 | AC-ENTRY-02 | **Raster.** Dauer 20 min, 0 min oder 735 min wird abgelehnt. 15 min und 720 min werden akzeptiert. |
-| AC-ENTRY-03 | **Freitext Pflicht.** Leer, nur Leerzeichen oder 2 Zeichen: `400`. 3 Zeichen: ok. 501 Zeichen: `400`. |
+| AC-ENTRY-03 | **Freitext Pflicht.** Leer, nur Leerzeichen oder 2 Zeichen: `400`. 3 und 255 Zeichen: ok. 256 Zeichen: `400`. In der UI ist das leere Feld beim Absenden rot markiert, der Zähler zeigt "n/255", mehr als 255 Zeichen lassen sich nicht eingeben. |
 | AC-ENTRY-04 | **Datum.** Zukunft: `400 DATE_IN_FUTURE`. Datum in keinem Schuljahr: `400 NO_SCHOOL_YEAR`. Datum in abgeschlossenem Schuljahr: `409 SCHOOL_YEAR_CLOSED`. |
 | AC-ENTRY-05 | **Exakt.** 2026-10-14, 15:30, 2 h 15 min wird mit `start_time=15:30` und `duration_minutes=135` gespeichert. |
 | AC-ENTRY-06 | **Duplikat.** Identischer Eintrag innerhalb 2 Minuten: `409 DUPLICATE_ENTRY`. |
