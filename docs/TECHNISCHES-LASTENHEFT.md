@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 0.4.11 (Entwurf) |
+| Version | 0.4.12 (Entwurf) |
 | Stand | 2026-10-25 |
 | Einrichtung | Hort an der Montessorischule (Elterninitiative, Verein) |
 | Zielgruppe | Entwickler:innen und KI-Coding-Agents |
@@ -28,6 +28,7 @@
 | 0.4.9 | 2026-10-24 | OPEN-15 teilweise entschieden: netID (Login mit GMX und WEB.DE) als weiterer OIDC-Anbieter und Passkeys als eigener Anmeldeweg, Microsoft folgt später (D-30, 7.2, 5.3, 8.2, 9.1, UI-06, AC-OIDC-14 bis 16, AC-PASSKEY, Meilenstein M6a). |
 | 0.4.10 | 2026-10-25 | Sicherheits-Review (OWASP API Top 10 2023, OWASP Top 10 2025) und Architektur-Review eingearbeitet. Sicherheit: globale Limits erst nach gültigem Captcha und mit Alarm, TOTP-Fehlversuche pro Konto begrenzt, Größenlimit für Requests, OIDC-Einstieg begrenzt, gleichzeitige Passwortprüfungen begrenzt, Schlüssellänge beim Start geprüft (9.1, 12.4), OPEN-22 und OPEN-23 neu. Architektur: Bestätigen nur mit der gesehenen `version` (7.5, AC-CONF-06), Beförderung zum Admin mit zweitem Faktor beendet die Session (7.2, AC-AUTH-24), Einträge sperren ihr Schuljahr gegen paralleles Abschließen (INV-04, INV-09), Fehlercodes als Enum im Vertrag (8.1), Persistenz mit Spring JDBC statt JPA (4.2, 5.1), Indizes für Übersicht und Dashboard (5.3), Merge-Patch-Sonderfall `startTime` (8.1). |
 | 0.4.11 | 2026-10-25 | Lizenz entschieden: AGPL-3.0-or-later, Rechteinhaber David Müller (D-31). Abhängigkeiten müssen AGPL-kompatibel sein (NFR-09), die Fußzeile verlinkt den Quellcode der laufenden Version (UI-13). |
+| 0.4.12 | 2026-10-25 | Release-Management entschieden (D-32): eine Produktversion in `VERSION`, Release per Git-Tag, Images in GHCR, Trivy-Scan und SBOM je Image, der VPS holt neue Versionen selbst (12.5, AC-REL). Impressum und Datenschutz liegen auf der Website des Vereins (D-33, DP-03, UI-13). Fußzeile mit Version. Server mit Debian 13 (12.6). |
 
 ---
 
@@ -134,6 +135,8 @@ Laut Website des Horts: 65 Vollzeitplätze, etwa 70 Kinder in drei Gruppen. Erwa
 | D-29 | Familien erfassen, ändern und löschen Stunden **nur im laufenden Schuljahr** (das heute enthält, 5.5). Einträge in einem anderen, noch nicht abgeschlossenen Schuljahr legen nur Admins an oder ändern sie, z. B. Nachträge im September für das Vorjahr. | `[DECIDED]` | Auftraggeber, 2026-10-24 |
 | D-30 | **Weitere Anmeldewege.** Zusätzlich zu E-Mail-Link und Google: **netID** (Login mit dem GMX- oder WEB.DE-Konto, OIDC) und **Passkeys** (WebAuthn: Face ID, Fingerabdruck, Windows Hello, Sicherheitsschlüssel). Microsoft folgt später, Apple ist zurückgestellt. Der E-Mail-Link bleibt immer erhalten (INV-11). | `[DECIDED]` | Auftraggeber, 2026-10-24 |
 | D-31 | **Lizenz:** GNU Affero General Public License, Version 3 oder später (`AGPL-3.0-or-later`). Rechteinhaber: David Müller. Lizenztext in `LICENSE`, Hinweis im README und im API-Vertrag (`info.license`). Wer eine veränderte Fassung als Webdienst betreibt, muss den Quellcode dieser Fassung anbieten (§ 13), deshalb verlinkt die App ihn (UI-13). | `[DECIDED]` | Auftraggeber, 2026-10-25 |
+| D-32 | **Versionierung und Release.** Eine Produktversion für App, Web und Backup in der Datei `VERSION` (SemVer). Bis zum Go-live `0.<Meilenstein>.<Patch>` (Start: 0.6.0), der Go-live ist 1.0.0. Ein Release entsteht durch den Git-Tag `vX.Y.Z`, die Pipeline baut, prüft und veröffentlicht die Images in GHCR (12.5). Der VPS holt neue Versionen selbst: `APP_VERSION` in der `.env`, dann `docker compose pull` und `up -d`. GitHub braucht dafür keinen Zugang zum Server. Changelog (`CHANGELOG.md`) ab 1.0.0, davor erzeugt GitHub die Release-Notes. Der API-Vertrag behält seine eigene Version. | `[DECIDED]` | Auftraggeber, 2026-10-25 |
+| D-33 | **Impressum und Datenschutz** liegen auf der Website des Vereins (`https://hort-an-der-montessorischule.de/impressum/` und eine eigene Seite mit den Datenschutzhinweisen der App, Entwurf aus diesem Projekt). Die App verlinkt beide. Textänderungen brauchen kein Release. | `[DECIDED]` | Auftraggeber, 2026-10-25 |
 
 ---
 
@@ -203,7 +206,7 @@ Alle Container laufen auf **einem** VPS per Docker Compose. Nur Caddy veröffent
 | Captcha | ALTCHA (Widget lokal gebündelt, Verifikation serverseitig mit offizieller Java-Bibliothek) | `[PROPOSED]` |
 | Backup | `pg_dump` plus restic (S3, SFTP, rclone-Backends), optional borgmatic für das Borg-Bucket | `[PROPOSED]` |
 | Tests | JUnit 5, Testcontainers (PostgreSQL), Playwright (E2E, Mobile-Viewport), OWASP ZAP Baseline, JaCoCo (Abdeckung, NFR-04). Mails im Test über Mailpit bzw. einen Mail-Mock. ALTCHA im Profil `test` mit fester, niedriger Schwierigkeit, **nicht** abgeschaltet | `[PROPOSED]` |
-| CI/CD | GitHub Actions: Build, Test, Scan, Image nach GHCR, Deployment per SSH | `[PROPOSED]` |
+| CI/CD | GitHub Actions: Build, Test, Scan. Release per Git-Tag mit Images in GHCR, der VPS holt sie selbst (D-32) | `[DECIDED]` |
 
 ### 4.3 Repository-Layout `[PROPOSED]`
 
@@ -1314,7 +1317,7 @@ Hinweis: Dieser Abschnitt beschreibt technische und organisatorische Anforderung
 |---|---|
 | DP-01 | **Datenkategorien:** Kinder (Vorname, Nachname, Geburtsdatum), Eltern (Name, E-Mail, ggf. OIDC-Kennung `sub`), Elternstunden (Datum, Dauer, Freitext), Audit-Log, Sessions, Anmeldetoken (nur Hash, höchstens 15 Minuten gültig, danach gelöscht). Keine besonderen Kategorien nach Art. 9 DSGVO vorgesehen. In der UI steht beim Freitext der Hinweis "Bitte keine sensiblen Daten eintragen." |
 | DP-02 | **Datensparsamkeit und Need-to-know.** Familien sehen nur Vornamen ihrer Kinder und Anzeigenamen der Mitglieder. PDFs enthalten keine Geburtsdaten und keine E-Mail-Adressen. Integrations-Scopes trennen Geburtsdatum von übrigen Kinderdaten. |
-| DP-03 | **Transparenz.** Seiten "Datenschutz" und "Impressum" sind aus jedem Screen erreichbar, auch vor dem Login. Texte liefert der Verein (Platzhalter bis dahin). Bei Registrierung Weg A: Pflicht-Checkbox "Ich habe die Datenschutzhinweise gelesen." Bei Weg B: Hinweis vor dem Redirect, welche Daten der Anbieter erhält und welche zurückkommen (Name, E-Mail). |
+| DP-03 | **Transparenz.** "Datenschutz" und "Impressum" sind aus jedem Screen erreichbar, auch vor dem Login. Beide liegen auf der Website des Vereins (D-33), die App verlinkt sie. Bei Registrierung Weg A: Pflicht-Checkbox "Ich habe die Datenschutzhinweise gelesen." Bei Weg B: Hinweis vor dem Redirect, welche Daten der Anbieter erhält und welche zurückkommen (Name, E-Mail). |
 | DP-04 | **OIDC (Google) datenschutzfreundlich.** Freiwillig, die Anmeldung per E-Mail-Link bleibt gleichwertig verfügbar. **Kein** JavaScript-SDK und keine Ressourcen des Anbieters auf Seiten vor dem Klick. Erst der Klick auf den Button leitet zum Anbieter weiter (Datenübermittlung an einen Anbieter möglicherweise außerhalb der EU). Angeforderte Daten: nur `openid`, `profile`, `email`. Rechtliche Bewertung: OPEN-16. |
 | DP-05 | **Löschung und Anonymisierung.** Es gibt Admin-Funktionen: (a) Nutzer anonymisieren (E-Mail wird `deleted-{id}@invalid`, Name "Gelöschter Nutzer", Identitäten und Tokens gelöscht, Status `DISABLED`; Einträge bleiben erhalten, `created_by` zeigt auf den anonymisierten Nutzer). Unbestätigte Registrierungen, die nie aktiv waren, werden nach 24 Stunden physisch gelöscht (7.1.4 Schritt 9). Kinderdaten in Claims können auch von Unbefugten stammen: Ein Job löscht Claims 30 Tage nach `resolved_at` oder `superseded_at` sowie alle Claims eines anonymisierten Nutzers. Der jeweils gültige Claim eines unzugeordneten Nutzers bleibt, bis ein Admin zuordnet. (b) Kind anonymisieren (Namen auf Initialen, Geburtsdatum auf das Jahr) nach Austritt und Ablauf der Aufbewahrungsfrist. (c) Familie löschen nur, wenn keine Daten in Aufbewahrungsfrist hängen. Fristen: OPEN-16. In Backups wirkt Löschung mit Ablauf der Backup-Aufbewahrung (BAK-02), das ist zu dokumentieren. |
 | DP-06 | **Betroffenenrechte.** Berichtigung durch Admins (FS-ADM). Auskunft und Export: Admin-Funktion "Daten einer Familie exportieren" (JSON und PDF) `[PROPOSED]`, Phase 2. |
@@ -1499,7 +1502,7 @@ x-logging: &logging
 
 services:
   caddy:                                  # enthält zusätzlich den SPA-Build unter /srv/spa
-    image: ghcr.io/OWNER/elternstunden-web:${APP_VERSION}
+    image: ghcr.io/duelidave/elternstunden-tracker-web:${APP_VERSION}
     restart: unless-stopped
     ports:
       - "80:80"
@@ -1520,7 +1523,7 @@ services:
     logging: *logging
 
   app:
-    image: ghcr.io/OWNER/elternstunden-app:${APP_VERSION}
+    image: ghcr.io/duelidave/elternstunden-tracker-app:${APP_VERSION}
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -1590,7 +1593,7 @@ services:
     logging: *logging
 
   backup:
-    image: ghcr.io/OWNER/elternstunden-backup:${APP_VERSION}
+    image: ghcr.io/duelidave/elternstunden-tracker-backup:${APP_VERSION}
     restart: unless-stopped
     environment:
       TZ: Europe/Berlin
@@ -1683,7 +1686,7 @@ Hinweise: `/actuator/*` wird **nicht** durchgereicht (SEC-15, OPS-07). `style-sr
 |---|---|---|
 | `APP_DOMAIN` | Env | Öffentlicher Hostname (OPEN-13) |
 | `APP_BASE_URL` | Env | Basis-URL für Links in Mails, einzige Quelle dafür (SEC-17) |
-| `APP_VERSION` | Env | Image-Tag |
+| `APP_VERSION` | Env | Produktversion `X.Y.Z` als Image-Tag (D-32), nie `latest` |
 | `POSTGRES_DB`, `POSTGRES_USER` | Env | Datenbank und Owner-Rolle (OPS-14) |
 | `db_password` | **Secret** | Passwort der Owner-Rolle (Flyway, Backup, Restore) |
 | `db_app_password` | **Secret** | Passwort der App-Rolle `elternstunden_app` (OPS-14) |
@@ -1703,7 +1706,9 @@ Hinweise: `/actuator/*` wird **nicht** durchgereicht (SEC-15, OPS-07). `style-sr
 
 **OIDC-Voraussetzung:** Für Google muss im Google-Cloud-Projekt ein OAuth-Client samt Zustimmungsbildschirm angelegt werden (Datenschutz-URL und Domain erforderlich, Details bei der Einrichtung prüfen). Die Redirect-URI lautet `https://{APP_DOMAIN}/login/oauth2/code/google`. Sie setzt eine **fertige Domain mit TLS** voraus (OPEN-13). Für die Entwicklung wird ein getrennter Client oder ein lokaler Testanbieter genutzt. Damit der Redirect-URI-Host und das Schema hinter dem Proxy stimmen, MUSS `server.forward-headers-strategy` passend gesetzt sein.
 
-### 12.5 CI/CD (GitHub Actions) `[PROPOSED]`
+### 12.5 CI/CD und Release (GitHub Actions, D-32)
+
+**CI** (`ci.yml`, bei jedem Push und Pull Request):
 
 | Job | Inhalt |
 |---|---|
@@ -1711,15 +1716,27 @@ Hinweise: `/actuator/*` wird **nicht** durchgereicht (SEC-15, OPS-07). `style-sr
 | `backend` | Code-Generierung aus dem Vertrag, Build, Unit- und Integrationstests (Testcontainers mit PostgreSQL), Coverage-Report |
 | `frontend` | Lint, TypeScript strict, Unit-Tests, Build |
 | `e2e` | Playwright gegen `docker compose` (Mobile-Viewport 390×844 und Desktop), inkl. Abnahmekriterien Abschnitt 15 |
-| `security` | gitleaks, Dependency-Check/Trivy (Abhängigkeiten und Images), `npm audit`, SBOM, optional ZAP Baseline gegen die Test-Umgebung |
-| `build-push` | Images `app`, `web`, `backup` nach GHCR, Tags `sha-<commit>` und `vX.Y.Z` |
-| `deploy` | Manuelle Freigabe, dann per SSH: `docker compose pull && docker compose up -d`, danach Health-Check. Rollback: vorherigen Tag setzen und `up -d`. |
+| `security` | gitleaks, Trivy (Abhängigkeiten, Secrets, Konfiguration), `npm audit`, SBOM, optional ZAP Baseline gegen die Test-Umgebung |
+
+**Release** (`release.yml`, beim Push eines Tags `vX.Y.Z`):
+
+1. Der Tag MUSS der Datei `VERSION` entsprechen, sonst bricht die Pipeline ab.
+2. Alle CI-Jobs.
+3. Images `app`, `web` (Caddy mit SPA) und `backup` bauen, mit OCI-Labels für Version, Quelle und Lizenz.
+4. **Trivy-Image-Scan** je Image: Funde `HIGH` oder `CRITICAL` brechen ab, nichts wird veröffentlicht. Ausnahmen nur in `.trivyignore`, jede mit Begründung und Prüfdatum.
+5. **SBOM** je Image (CycloneDX, mit Betriebssystem-Paketen).
+6. Push nach GHCR (`ghcr.io/duelidave/elternstunden-tracker-<image>`) mit Tag `X.Y.Z`. Die SBOM und ein Herkunftsnachweis (Build Provenance) hängen als signierte Attestation am Image. Dafür reicht das `GITHUB_TOKEN`, es gibt keine weiteren Secrets.
+7. GitHub-Release mit Release-Notes und den SBOM-Dateien. Ab 1.0.0 zusätzlich `CHANGELOG.md` (git-cliff aus den Conventional Commits).
+
+**Wöchentlich** (`sbom-scan.yml`): Trivy prüft die SBOMs des neuesten Releases gegen neu bekannte Lücken. Ein Fund `HIGH` oder `CRITICAL` lässt den Lauf scheitern, GitHub benachrichtigt per Mail. Fremde Images (`postgres`) werden mitgeprüft, blockieren aber nichts.
+
+**Deployment** (auf dem VPS, ohne Zugriff von GitHub): `ops/scripts/deploy.sh X.Y.Z` legt ein Backup an (BAK-02), setzt `APP_VERSION` in der `.env`, führt `docker compose pull` und `up -d` aus und wartet auf den Health-Check. Rollback: dasselbe mit der vorherigen Version.
 
 Regeln: Flyway-Migrationen sind **rückwärtskompatibel** (Expand/Contract), damit ein App-Rollback ohne DB-Rollback möglich ist. Vor jedem Deployment mit Migration läuft ein manuelles Backup (BAK-02).
 
 ### 12.6 Server-Einrichtung und -Härtung (SEC-15, OPS-06)
 
-Annahme: Debian oder Ubuntu auf dem VPS. Reihenfolge einhalten: **erst** SSH-Schlüssel des neuen Nutzers prüfen, **dann** Passwort-Login abschalten.
+Betriebssystem: **Debian 13** (trixie), schlank und nur Docker-Host. Sicherheitsupdates laufen automatisch (`unattended-upgrades`), der Wechsel auf die nächste Debian-Version steht spätestens mit dem Ende der regulären Sicherheitsunterstützung an. Reihenfolge einhalten: **erst** SSH-Schlüssel des neuen Nutzers prüfen, **dann** Passwort-Login abschalten.
 
 ```bash
 # als root, einmalig
@@ -1790,7 +1807,7 @@ Wichtig: **Docker umgeht `ufw`** für veröffentlichte Ports. Deshalb veröffent
 | UI-10 | **PWA.** Manifest (Name, Icons, Theme-Farbe), installierbar. Service Worker cacht nur die App-Hülle, **nie** API-Antworten. Update-Hinweis bei neuer Version. Kein Push. |
 | UI-11 | **Admin-Listen.** Suchfeld oben (Debounce 250 ms, mindestens 2 Zeichen), sortierbare Spaltenköpfe, Filter und Suche in der URL (teilbar, Zurück-Button funktioniert), Sammelaktionen mit Mehrfachauswahl. Hinweisleiste (FS-ADMOV) auf allen Admin-Seiten. |
 | UI-12 | **Datum und Uhrzeit.** Datumsfelder als eigenes Eingabefeld im Format `TT.MM.JJJJ` (Punkte werden beim Tippen ergänzt) mit deutschem Kalender zum Aufklappen, unabhängig von der Browsersprache (D-27). Uhrzeiten als Textfeld im 24-Stunden-Format `HH:MM`. Eingaben wie `9`, `9:00`, `9.30`, `930` oder `1530` werden beim Verlassen des Felds zu `09:00`, `09:30` bzw. `15:30` ergänzt, auch über den Ziffernblock ohne Doppelpunkt. Anzeige de-DE. Datumsgrenzen (`min`, `max`) aus dem Schuljahr und "nicht in der Zukunft". |
-| UI-13 | **Datenschutz und Impressum** aus jedem Screen erreichbar (Fußzeile), auch ohne Login. Die Fußzeile verlinkt außerdem den Quellcode der laufenden Version (AGPL § 13, D-31). |
+| UI-13 | **Datenschutz und Impressum** aus jedem Screen erreichbar (Fußzeile), auch ohne Login, als Links auf die Website des Vereins (D-33). Die Fußzeile zeigt dezent die Version (D-32) und verlinkt den Quellcode genau dieser Version (AGPL § 13, D-31). |
 
 ### 13.1 Screens (UI-05)
 
@@ -1817,7 +1834,6 @@ Wichtig: **Docker umgeht `ufw`** für veröffentlichte Ports. Deshalb veröffent
 | `/admin/audit` | Admin | Audit-Log |
 | `/master/backup` | Master | Backup-Status (11.6) |
 | `/master/api-clients` | Master | API-Clients (FS-INT) |
-| `/legal/privacy`, `/legal/imprint` | alle | Datenschutz, Impressum |
 
 ### 13.2 Technische Vorgaben Frontend `[PROPOSED]`
 
@@ -2075,6 +2091,16 @@ Notation: Gegeben / Wenn / Dann. Jedes Kriterium MUSS als automatisierter Test e
 | AC-DEV-02 | **Wechsel.** Im Profil `dev` meldet `POST /dev/login-as` für jedes Demo-Konto an. `GET /me` zeigt danach die passende Rolle. Ein weiterer Aufruf wechselt das Konto mit neuer Session-ID. |
 | AC-DEV-03 | **Kein Frontend-Rest.** Der Produktions-Build des Frontends enthält keinen Code der Dev-Leiste (Suche nach einem eindeutigen Marker im Bundle). |
 
+
+### 15.16 Release (12.5, D-32)
+
+| ID | Kriterium |
+|---|---|
+| AC-REL-01 | Ein Tag, der nicht der Datei `VERSION` entspricht, bricht die Release-Pipeline ab. |
+| AC-REL-02 | Ein Fund `HIGH` oder `CRITICAL` im Trivy-Scan eines eigenen Images verhindert die Veröffentlichung, ohne Eintrag in `.trivyignore`. |
+| AC-REL-03 | Jedes veröffentlichte Image hat den Tag `X.Y.Z`, eine SBOM-Attestation und einen Herkunftsnachweis. Das GitHub-Release enthält die SBOMs. |
+| AC-REL-04 | Die Fußzeile zeigt die Version aus `VERSION` und verlinkt den Quellcode genau dieser Version, dazu Impressum und Datenschutz auf der Website des Vereins (UI-13). |
+| AC-REL-05 | `deploy.sh` mit einer neuen Version legt zuerst ein Backup an und meldet Erfolg erst nach bestandenem Health-Check. |
 ---
 
 ## 16. Offene Fragen (Register)
@@ -2123,7 +2149,7 @@ Jeder Meilenstein ist erst fertig, wenn die zugehörigen Abnahmekriterien (Absch
 | M5 | Admin-Übersicht | Hinweisleiste, Liste mit Suche, Sortierung, Paging, Familiendetail, Dashboard | AC-OV |
 | M6 | Abrechnung | PDF `ALL` und `FAMILY` (ohne externe Ressourcen), Audit | AC-PDF, AC-SEC-12 |
 | M6a | Weitere Anmeldewege | netID als OIDC-Anbieter, Passkeys (D-30) | AC-OIDC-14 bis 16, AC-PASSKEY |
-| M7 | Betrieb und Backup | Dockerfiles, Prod-Compose (DB-Rollen nach OPS-14), Caddy, Backup-Sidecar, Restore-Skript, Restore-Test, Server-Härtung, Deploy-Pipeline, Monitoring inkl. Mailversand (OPS-13), Runbooks | AC-BAK, AC-SEC-07 |
+| M7 | Betrieb und Backup | Dockerfiles, Prod-Compose (DB-Rollen nach OPS-14), Caddy, Backup-Sidecar, Restore-Skript, Restore-Test, Server-Härtung, Release-Pipeline mit Image-Scan und SBOM (12.5), Deploy-Skript, Monitoring inkl. Mailversand (OPS-13), Runbooks | AC-BAK, AC-REL, AC-SEC-07 |
 | M8 | Integration | API-Clients, Integrations-API | AC-INT |
 | M9 | Härtung und Abnahme | ZAP, Barrierefreiheits-Audit, Lasttest, Datenschutzdokumente mit dem Verein, Pilot mit einer Testgruppe, Go-live | AC-SEC-08, AC-UI, manuelle Abnahme |
 
