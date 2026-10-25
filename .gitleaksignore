@@ -1,0 +1,2 @@
+# False positive: a test value for the key length check (StartupChecksTest), replaced in the next commit
+c59a29f2f4a63c1ba253411a056a582eaa862641:backend/src/test/java/de/elternstunden/common/config/StartupChecksTest.java:generic-api-key:17
