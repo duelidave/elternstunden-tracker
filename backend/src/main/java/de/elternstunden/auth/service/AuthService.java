@@ -87,14 +87,32 @@ public class AuthService {
     public LoginFlow.Status verifyMfa(String code, HttpServletRequest request, HttpServletResponse response) {
         MfaPending pending = CurrentUser.mfaPending();
         rateLimiter.acquireOrThrow("mfa-ip", ClientIp.rateLimitKey(request), limits.mfaPerIp());
+        // Per account as well, so changing IPs does not help guessing the code (9.1)
+        rateLimiter.acquireOrThrow("mfa-user", pending.userId().toString(), limits.mfaPerUser());
         if (pending.setupRequired() || !totp.verify(pending.userId(), code.strip())) {
             audit.user(pending.userId(), "MFA_FAILED", "app_user", pending.userId());
+            if (tooManyFailures(request)) {
+                // The half login ends; the next try needs the first factor again
+                request.getSession().invalidate();
+                throw new ApiException(ErrorCode.UNAUTHORIZED);
+            }
             throw new ApiException(ErrorCode.MFA_INVALID);
         }
         AppUser user = users.findById(pending.userId()).orElseThrow(() -> new ApiException(ErrorCode.UNAUTHORIZED));
         sessionLogin.login(user, request, response);
         audit.user(user.id(), "MFA_VERIFIED", "app_user", user.id());
         return LoginFlow.Status.LOGGED_IN;
+    }
+
+    static final int MFA_FAILURES_PER_PENDING = 5;
+    private static final String MFA_FAILURES = "mfa-failures";
+
+    /** Counts a wrong code in this MFA_PENDING session; true from the fifth one on (9.1). */
+    private static boolean tooManyFailures(HttpServletRequest request) {
+        HttpSession session = request.getSession();
+        int failures = session.getAttribute(MFA_FAILURES) instanceof Integer count ? count + 1 : 1;
+        session.setAttribute(MFA_FAILURES, failures);
+        return failures >= MFA_FAILURES_PER_PENDING;
     }
 
     /** Confirms a TOTP setup; in the MFA_PENDING state this completes the login (7.2). */
@@ -104,6 +122,7 @@ public class AuthService {
                 ? CurrentUser.mfaPending().userId()
                 : CurrentUser.principal().userId();
         rateLimiter.acquireOrThrow("mfa-ip", ClientIp.rateLimitKey(request), limits.mfaPerIp());
+        rateLimiter.acquireOrThrow("mfa-user", userId.toString(), limits.mfaPerUser());
         List<String> codes = totp.confirm(userId, code.strip());
         if (pending) {
             AppUser user = users.findById(userId).orElseThrow(() -> new ApiException(ErrorCode.UNAUTHORIZED));

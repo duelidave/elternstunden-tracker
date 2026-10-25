@@ -24,6 +24,7 @@ import de.elternstunden.auth.oidc.NoOpAuthorizedClientRepository;
 import de.elternstunden.auth.oidc.OidcCallbackRateLimitFilter;
 import de.elternstunden.auth.oidc.OidcLoginHandler;
 import de.elternstunden.auth.repo.AppUserRepository;
+import de.elternstunden.auth.service.AdminTotpService;
 import de.elternstunden.common.config.AppProperties;
 import de.elternstunden.common.ratelimit.RateLimiter;
 import de.elternstunden.common.web.ApiPaths;
@@ -37,6 +38,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.client.web.OAuth2LoginAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
@@ -75,6 +77,7 @@ public class ApiSecurityConfig {
             SessionLogin sessionLogin,
             OidcLoginHandler oidcHandler,
             OAuth2AuthorizationRequestResolver authorizationRequestResolver,
+            AdminTotpService totp,
             RateLimiter rateLimiter,
             AppProperties properties,
             Clock clock)
@@ -236,7 +239,8 @@ public class ApiSecurityConfig {
                 // Sessions are created only by an explicit login (SessionLogin); anonymous requests never get one
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.NEVER))
                 .addFilterBefore(
-                        new SessionAccountFilter(users, sessionLogin, contextRepository, properties, clock),
+                        new SessionAccountFilter(
+                                users, sessionLogin, contextRepository, properties, clock, totp::needsSecondFactor),
                         AuthorizationFilter.class)
                 // OIDC (7.2): PKCE from the client settings, no provider tokens anywhere, our own principal only
                 .oauth2Login(oauth2 -> oauth2.authorizedClientRepository(new NoOpAuthorizedClientRepository())
@@ -255,7 +259,9 @@ public class ApiSecurityConfig {
                             }
                         }))
                 .addFilterBefore(
-                        new OidcCallbackRateLimitFilter(rateLimiter, properties), OAuth2LoginAuthenticationFilter.class)
+                        // Before the entry (redirect) filter, so entry and callback are both limited
+                        new OidcCallbackRateLimitFilter(rateLimiter, properties),
+                        OAuth2AuthorizationRequestRedirectFilter.class)
                 .headers(headers -> headers.contentSecurityPolicy(csp -> csp.policyDirectives(CONTENT_SECURITY_POLICY))
                         .referrerPolicy(referrer -> referrer.policy(ReferrerPolicy.SAME_ORIGIN))
                         .permissionsPolicyHeader(permissions -> permissions.policy(PERMISSIONS_POLICY)))

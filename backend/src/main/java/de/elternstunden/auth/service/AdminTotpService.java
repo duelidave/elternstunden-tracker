@@ -10,6 +10,7 @@ import de.elternstunden.common.crypto.Hashing;
 import de.elternstunden.common.crypto.SecretCipher;
 import de.elternstunden.common.error.ApiException;
 import de.elternstunden.common.error.ErrorCode;
+import de.elternstunden.common.security.AdminOnly;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -152,6 +153,7 @@ public class AdminTotpService {
 
     /** An admin resets the TOTP of another admin, e.g. after a lost phone (7.2). */
     @Transactional
+    @AdminOnly
     public void reset(UUID actor, UUID userId) {
         AppUser user = users.findByIdForUpdate(userId).orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
         if (user.isMaster()) {

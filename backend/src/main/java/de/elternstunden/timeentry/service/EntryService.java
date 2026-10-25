@@ -21,7 +21,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -166,25 +166,30 @@ public class EntryService {
         delete(actor, lock(id), false);
     }
 
-    /** Idempotent (7.5 point 3); closed school year: 409 (7.5 point 7). */
+    /**
+     * Idempotent (7.5 point 3), only the version the admin saw (AC-CONF-06); closed school year: 409 (7.5 point 7).
+     * A confirmed entry with a newer version is already what the admin wants, so it stays a success.
+     */
     @Transactional
     @AdminOnly
-    public EntryView confirm(UUID actor, UUID id) {
+    public EntryView confirm(UUID actor, UUID id, int version) {
         TimeEntry entry = lock(id);
         requireYearOpen(entry.schoolYearId());
         if (entry.status() == EntryStatus.OPEN) {
-            entries.confirm(List.of(id), actor, clock.instant());
+            requireVersion(entry, version);
+            entries.confirm(List.of(new TimeEntryRepository.Seen(id, version)), actor, clock.instant());
             audit.user(actor, "ENTRY_CONFIRMED", "time_entry", id);
         }
         return view(id);
     }
 
-    /** Already confirmed, unknown and entries of closed years are skipped (7.5 point 4). */
+    /** Already confirmed, changed since seen, unknown and entries of closed years are skipped (7.5 point 4). */
     @Transactional
     @AdminOnly
-    public Confirmation confirm(UUID actor, List<UUID> ids) {
-        List<UUID> distinct = List.copyOf(new LinkedHashSet<>(ids));
-        List<UUID> confirmed = entries.confirm(distinct, actor, clock.instant());
+    public Confirmation confirm(UUID actor, List<TimeEntryRepository.Seen> seen) {
+        Map<UUID, TimeEntryRepository.Seen> distinct = new LinkedHashMap<>();
+        seen.forEach(entry -> distinct.putIfAbsent(entry.id(), entry));
+        List<UUID> confirmed = entries.confirm(List.copyOf(distinct.values()), actor, clock.instant());
         confirmed.forEach(id -> audit.user(actor, "ENTRY_CONFIRMED", "time_entry", id));
         return new Confirmation(confirmed.size(), distinct.size() - confirmed.size());
     }
@@ -268,14 +273,14 @@ public class EntryService {
     }
 
     private void requireYearOpen(UUID schoolYearId) {
-        if (schoolYears.get(schoolYearId).closed()) {
+        if (schoolYears.lockForEntry(schoolYearId).closed()) {
             throw new ApiException(ErrorCode.SCHOOL_YEAR_CLOSED);
         }
     }
 
     /** INV-04 for everyone; families additionally only in the running school year (INV-14). */
     private void requireWritable(TimeEntry entry, boolean family) {
-        SchoolYear year = schoolYears.get(entry.schoolYearId());
+        SchoolYear year = schoolYears.lockForEntry(entry.schoolYearId());
         if (year.closed()) {
             throw new ApiException(ErrorCode.SCHOOL_YEAR_CLOSED);
         }
@@ -292,7 +297,12 @@ public class EntryService {
         if (workDate.isAfter(BusinessTime.today(clock))) {
             throw new ApiException(ErrorCode.DATE_IN_FUTURE);
         }
-        SchoolYear year = schoolYears.forDate(workDate).orElseThrow(() -> new ApiException(ErrorCode.NO_SCHOOL_YEAR));
+        SchoolYear found = schoolYears.forDate(workDate).orElseThrow(() -> new ApiException(ErrorCode.NO_SCHOOL_YEAR));
+        // Locked shared and checked again on the locked state: a parallel close or re-dating waits (INV-04, INV-09)
+        SchoolYear year = schoolYears.lockForEntry(found.id());
+        if (!year.contains(workDate)) {
+            throw new ApiException(ErrorCode.NO_SCHOOL_YEAR);
+        }
         if (year.closed()) {
             throw new ApiException(ErrorCode.SCHOOL_YEAR_CLOSED);
         }

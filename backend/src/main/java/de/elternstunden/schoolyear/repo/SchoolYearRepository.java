@@ -40,6 +40,14 @@ public class SchoolYearRepository {
                 .optional();
     }
 
+    /** Entries lock their school year shared, so closing or re-dating it waits for them (INV-04, INV-09). */
+    public Optional<SchoolYear> findByIdForShare(UUID id) {
+        return jdbc.sql("SELECT " + COLUMNS + " FROM school_year WHERE id = :id FOR SHARE")
+                .param("id", id)
+                .query(SchoolYearRepository::map)
+                .optional();
+    }
+
     public Optional<SchoolYear> findByIdForUpdate(UUID id) {
         return jdbc.sql("SELECT " + COLUMNS + " FROM school_year WHERE id = :id FOR UPDATE")
                 .param("id", id)

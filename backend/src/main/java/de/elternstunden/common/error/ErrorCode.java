@@ -51,6 +51,7 @@ public enum ErrorCode {
     DUPLICATE_ENTRY(HttpStatus.CONFLICT, "The same entry was just created."),
     ENTRY_CONFIRMED(HttpStatus.CONFLICT, "Confirmed entries cannot be changed by families."),
     CONCURRENT_MODIFICATION(HttpStatus.CONFLICT, "The entry was changed meanwhile."),
+    CONFLICT(HttpStatus.CONFLICT, "The request conflicts with stored data."),
     RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "Too many requests."),
     REQUEST_REJECTED(HttpStatus.BAD_REQUEST, "Request rejected."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error.");

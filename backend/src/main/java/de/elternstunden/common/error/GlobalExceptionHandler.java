@@ -9,6 +9,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSourceResolvable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
@@ -75,6 +76,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                         violation.getMessage()))
                 .toList();
         return respond(problems.validation(errors));
+    }
+
+    /**
+     * A database constraint caught a conflict the service did not see coming, e.g. two parallel writes: 409 instead of
+     * 500. Constraint messages may contain values, so they are not logged.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<ProblemDetail> handleDataIntegrity(DataIntegrityViolationException ex) {
+        log.warn("Database constraint rejected a write ({})", ex.getClass().getSimpleName());
+        return respond(problems.create(ErrorCode.CONFLICT));
     }
 
     @ExceptionHandler(AuthenticationException.class)

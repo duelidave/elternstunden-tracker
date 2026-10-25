@@ -14,12 +14,6 @@ spring:
     password: ${FLYWAY_PASSWORD}
     placeholders:
       appRole: ${DB_USER:elternstunden_app}
-  jpa:
-    open-in-view: false
-    hibernate:
-      ddl-auto: validate
-    properties:
-      hibernate.jdbc.time_zone: UTC
   jackson:
     time-zone: UTC
     # Optional fields of the contract are left out instead of sent as null (OpenAPI 3.0, not nullable)
@@ -109,6 +103,7 @@ app:
     oidc-callback-per-ip: { max: 30, window: 1m }
     passkey-per-ip: { max: 30, window: 1m }
     mfa-per-ip: { max: 5, window: 15m }
+    mfa-per-user: { max: 10, window: 1h }
     entry-per-user: { max: 60, window: 1h }
   # D-20
   sessions:

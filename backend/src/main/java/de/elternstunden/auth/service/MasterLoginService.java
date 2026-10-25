@@ -8,12 +8,15 @@ import de.elternstunden.common.config.AppProperties;
 import de.elternstunden.common.crypto.Hashing;
 import de.elternstunden.common.error.ApiException;
 import de.elternstunden.common.error.ErrorCode;
+import de.elternstunden.common.error.RateLimitedException;
 import de.elternstunden.common.mail.MailService;
 import de.elternstunden.common.ratelimit.RateLimiter;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
@@ -45,6 +48,8 @@ public class MasterLoginService {
     private final String dummyHash;
     private final AtomicLong lastUsedStep = new AtomicLong(-1);
     private final AtomicReference<Instant> lastAlarm = new AtomicReference<>();
+    static final int PARALLEL_HASHES = 4;
+    private final Semaphore hashing = new Semaphore(PARALLEL_HASHES);
 
     public MasterLoginService(
             AppProperties properties,
@@ -73,7 +78,7 @@ public class MasterLoginService {
         boolean emailMatches =
                 configured && Hashing.normalizeEmail(email).equals(Hashing.normalizeEmail(master.email()));
         // Always verify a hash, so unknown e-mails take as long as wrong passwords
-        boolean passwordMatches = encoder.matches(password, configured ? master.passwordHash() : dummyHash);
+        boolean passwordMatches = matches(password, configured ? master.passwordHash() : dummyHash);
         long step = configured ? Totp.matchingStep(Totp.decodeBase32(master.totpSecret()), totp, clock.instant()) : -1;
 
         if (emailMatches && passwordMatches && step >= 0 && consumeStep(step)) {
@@ -90,6 +95,21 @@ public class MasterLoginService {
         }
         failed();
         throw new ApiException(ErrorCode.LOGIN_FAILED);
+    }
+
+    /**
+     * Argon2id needs about 19 MiB per check; at most {@value #PARALLEL_HASHES} at a time, others get 429 at once
+     * (9.1), so many IPs together cannot exhaust the memory.
+     */
+    private boolean matches(String password, String hash) {
+        if (!hashing.tryAcquire()) {
+            throw new RateLimitedException(Duration.ofSeconds(1));
+        }
+        try {
+            return encoder.matches(password, hash);
+        } finally {
+            hashing.release();
+        }
     }
 
     /** A TOTP step counts once; parallel logins with the same code cannot both win. */

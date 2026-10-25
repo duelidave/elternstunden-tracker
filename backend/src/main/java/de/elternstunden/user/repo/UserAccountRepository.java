@@ -2,7 +2,6 @@ package de.elternstunden.user.repo;
 
 import de.elternstunden.auth.domain.UserRole;
 import de.elternstunden.auth.domain.UserStatus;
-import de.elternstunden.auth.passkey.PasskeyService;
 import de.elternstunden.user.domain.UserAccount;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -79,17 +78,6 @@ public class UserAccountRepository {
                             anonymized_at = :now, updated_at = :now
                         WHERE id = :id
                         """).param("id", id).param("now", utc(now)).update();
-        jdbc.sql("DELETE FROM user_token WHERE user_id = :id").param("id", id).update();
-        jdbc.sql("DELETE FROM user_identity WHERE user_id = :id")
-                .param("id", id)
-                .update();
-        jdbc.sql("DELETE FROM user_recovery_code WHERE user_id = :id")
-                .param("id", id)
-                .update();
-        // Passkeys go with the user entity (cascade, DP-05)
-        jdbc.sql("DELETE FROM user_entities WHERE id = :entityId")
-                .param("entityId", PasskeyService.userEntityId(id).toBase64UrlString())
-                .update();
     }
 
     private static OffsetDateTime utc(Instant instant) {

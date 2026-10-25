@@ -57,10 +57,8 @@ class PasskeyChallenges {
         return id;
     }
 
-    /** Usable once; an expired one is gone. */
+    /** Usable once, also with parallel requests (atomic remove); an expired one is gone. */
     private Object take(UUID id) {
-        Object value = open.getIfPresent(id);
-        open.invalidate(id);
-        return value;
+        return open.asMap().remove(id);
     }
 }

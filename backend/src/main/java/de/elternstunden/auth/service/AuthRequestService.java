@@ -10,6 +10,7 @@ import de.elternstunden.common.config.AppProperties;
 import de.elternstunden.common.crypto.Hashing;
 import de.elternstunden.common.error.ApiException;
 import de.elternstunden.common.error.ErrorCode;
+import de.elternstunden.common.error.RateLimitedException;
 import de.elternstunden.common.ratelimit.RateLimiter;
 import de.elternstunden.common.time.BusinessTime;
 import de.elternstunden.common.web.ClientIp;
@@ -39,6 +40,7 @@ public class AuthRequestService {
     private final CaptchaService captcha;
     private final BindingCookie bindingCookie;
     private final RateLimiter rateLimiter;
+    private final GlobalLimitAlarm alarm;
     private final AppProperties.RateLimits limits;
     private final JsonMapper json;
     private final Clock clock;
@@ -48,6 +50,7 @@ public class AuthRequestService {
             CaptchaService captcha,
             BindingCookie bindingCookie,
             RateLimiter rateLimiter,
+            GlobalLimitAlarm alarm,
             AppProperties properties,
             JsonMapper json,
             Clock clock) {
@@ -55,6 +58,7 @@ public class AuthRequestService {
         this.captcha = captcha;
         this.bindingCookie = bindingCookie;
         this.rateLimiter = rateLimiter;
+        this.alarm = alarm;
         this.limits = properties.rateLimits();
         this.json = json;
         this.clock = clock;
@@ -65,8 +69,9 @@ public class AuthRequestService {
         String ip = ClientIp.rateLimitKey(http);
         rateLimiter.acquireOrThrow("register-ip-hour", ip, limits.registerPerIpHour());
         rateLimiter.acquireOrThrow("register-ip-day", ip, limits.registerPerIpDay());
-        rateLimiter.acquireOrThrow("register-global", GLOBAL, limits.registerGlobal());
+        // Global budget only for solved captchas, so free requests cannot use it up for everyone (9.1)
         captcha.verify(request.getCaptcha());
+        acquireGlobal("register-global", limits.registerGlobal());
 
         String bindingHash = bindingCookie.ensureHash(http, response);
         Map<String, Object> child = new LinkedHashMap<>();
@@ -87,12 +92,21 @@ public class AuthRequestService {
     public void requestMagicLink(MagicLinkRequestDto request, HttpServletRequest http, HttpServletResponse response) {
         String ip = ClientIp.rateLimitKey(http);
         rateLimiter.acquireOrThrow("magic-link-ip", ip, limits.magicLinkPerIp());
-        rateLimiter.acquireOrThrow("magic-link-global", GLOBAL, limits.magicLinkGlobal());
         captcha.verify(request.getCaptcha());
+        acquireGlobal("magic-link-global", limits.magicLinkGlobal());
 
         String bindingHash = bindingCookie.ensureHash(http, response);
         requests.insert(
                 Kind.MAGIC_LINK, Hashing.normalizeEmail(request.getEmail()), null, bindingHash, clock.instant());
+    }
+
+    private void acquireGlobal(String bucket, AppProperties.Limit limit) {
+        try {
+            rateLimiter.acquireOrThrow(bucket, GLOBAL, limit);
+        } catch (RateLimitedException ex) {
+            alarm.reached(bucket);
+            throw ex;
+        }
     }
 
     /** Rules beyond the contract's schema (7.1.2, DP-03). Checked before anything else, independent of accounts. */

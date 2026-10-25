@@ -211,12 +211,12 @@ class EntryIT extends IntegrationTest {
         JsonEntry entry = JsonEntry.of(member.post(ENTRIES, entry(TODAY, 120, "Bestätigt")));
         ApiClient admin = signedInAs("ADMIN");
 
-        ApiClient.Response confirmed = admin.post("/api/v1/admin/entries/" + entry.id() + "/confirm");
+        ApiClient.Response confirmed = confirm(admin, entry.id(), entry.version());
         assertThat(confirmed.status()).isEqualTo(200);
         assertThat(confirmed.json().get("status").asString()).isEqualTo("CONFIRMED");
         assertThat(confirmed.json().get("confirmedAt")).isNotNull();
         assertThat(confirmed.json().get("version").asInt()).isEqualTo(entry.version() + 1);
-        ApiClient.Response twice = admin.post("/api/v1/admin/entries/" + entry.id() + "/confirm");
+        ApiClient.Response twice = confirm(admin, entry.id(), entry.version());
         assertThat(twice.status()).isEqualTo(200);
         assertThat(twice.json().get("version").asInt()).isEqualTo(entry.version() + 1);
         assertThat(member.get(OVERVIEW).json().get("confirmedMinutes").asInt()).isEqualTo(120);
@@ -311,7 +311,7 @@ class EntryIT extends IntegrationTest {
     @Test
     void patchAfterBulkConfirmationIsAConflict() {
         JsonEntry entry = JsonEntry.of(member.post(ENTRIES, entry(TODAY, 60, "Vor der Bestätigung")));
-        signedInAs("ADMIN").post("/api/v1/admin/entries/confirm", Map.of("ids", List.of(entry.id())));
+        confirmAll(signedInAs("ADMIN"), entry.id());
 
         ApiClient.Response stale =
                 member.patch(ENTRIES + "/" + entry.id(), Map.of("version", entry.version(), "durationMinutes", 30));
@@ -336,20 +336,43 @@ class EntryIT extends IntegrationTest {
         UUID inClosedYear = insertEntry(closedYear, "2060-06-01");
         ApiClient admin = signedInAs("ADMIN");
 
-        var all = admin.post("/api/v1/admin/entries/confirm", Map.of("ids", List.of(first, second, third)))
-                .json();
+        var all = confirmAll(admin, first, second, third).json();
         assertThat(all.get("confirmed").asInt()).isEqualTo(3);
         assertThat(all.get("skipped").asInt()).isZero();
 
-        var again = admin.post("/api/v1/admin/entries/confirm", Map.of("ids", List.of(first, inClosedYear)))
-                .json();
+        var again = confirmAll(admin, first, inClosedYear).json();
         assertThat(again.get("confirmed").asInt()).isZero();
         assertThat(again.get("skipped").asInt()).isEqualTo(2);
-        assertThat(code(admin.post("/api/v1/admin/entries/" + inClosedYear + "/confirm")))
-                .isEqualTo("SCHOOL_YEAR_CLOSED");
+        assertThat(code(confirm(admin, inClosedYear, 0))).isEqualTo("SCHOOL_YEAR_CLOSED");
         assertThat(jdbc.queryForObject("SELECT status::text FROM time_entry WHERE id = ?", String.class, inClosedYear))
                 .isEqualTo("OPEN");
         assertThat(member.get(OVERVIEW).json().get("confirmedMinutes").asInt()).isEqualTo(180);
+    }
+
+    /** AC-CONF-06: only the version the admin saw is confirmed; a changed entry stays open with its new content. */
+    @Test
+    void onlyTheSeenVersionIsConfirmed() {
+        JsonEntry entry = JsonEntry.of(member.post(ENTRIES, entry(TODAY, 60, "Gesehen")));
+        JsonEntry other = JsonEntry.of(member.post(ENTRIES, entry(TODAY, 30, "Auch gesehen")));
+        ApiClient admin = signedInAs("ADMIN");
+        Map<String, Object> seenEntry = seen(entry.id());
+        Map<String, Object> seenOther = seen(other.id());
+
+        // The family changes both entries after the admin loaded the list
+        member.patch(ENTRIES + "/" + entry.id(), Map.of("version", entry.version(), "durationMinutes", 720));
+        member.patch(ENTRIES + "/" + other.id(), Map.of("version", other.version(), "durationMinutes", 600));
+
+        ApiClient.Response single = confirm(admin, entry.id(), entry.version());
+        assertThat(single.status()).isEqualTo(409);
+        assertThat(code(single)).isEqualTo("CONCURRENT_MODIFICATION");
+        var bulk = admin.post("/api/v1/admin/entries/confirm", Map.of("entries", List.of(seenEntry, seenOther)))
+                .json();
+        assertThat(bulk.get("confirmed").asInt()).isZero();
+        assertThat(bulk.get("skipped").asInt()).isEqualTo(2);
+        assertThat(jdbc.queryForMap(
+                        "SELECT status::text AS status, duration_minutes FROM time_entry WHERE id = ?", entry.id()))
+                .containsEntry("status", "OPEN")
+                .containsEntry("duration_minutes", 720);
     }
 
     /** AC-CONF-03: an admin changing a confirmed entry reopens it, with an audit entry. */
@@ -357,7 +380,7 @@ class EntryIT extends IntegrationTest {
     void adminChangeReopensAConfirmedEntry() {
         JsonEntry entry = JsonEntry.of(member.post(ENTRIES, entry(TODAY, 120, "Zu lang")));
         ApiClient admin = signedInAs("ADMIN");
-        int version = admin.post("/api/v1/admin/entries/" + entry.id() + "/confirm")
+        int version = confirm(admin, entry.id(), entry.version())
                 .json()
                 .get("version")
                 .asInt();
@@ -383,12 +406,8 @@ class EntryIT extends IntegrationTest {
     void familyMembersCannotConfirm() {
         JsonEntry entry = JsonEntry.of(member.post(ENTRIES, entry(TODAY, 60, "Selbst bestätigt")));
 
-        assertThat(member.post("/api/v1/admin/entries/" + entry.id() + "/confirm")
-                        .status())
-                .isEqualTo(403);
-        assertThat(member.post("/api/v1/admin/entries/confirm", Map.of("ids", List.of(entry.id())))
-                        .status())
-                .isEqualTo(403);
+        assertThat(confirm(member, entry.id(), entry.version()).status()).isEqualTo(403);
+        assertThat(confirmAll(member, entry.id()).status()).isEqualTo(403);
     }
 
     /** AC-SEC-10: no mass assignment, unknown or read-only fields are rejected and nothing changes. */
@@ -506,6 +525,23 @@ class EntryIT extends IntegrationTest {
                 schoolYearId,
                 createdBy,
                 date);
+    }
+
+    private static ApiClient.Response confirm(ApiClient client, UUID id, int version) {
+        return client.post("/api/v1/admin/entries/" + id + "/confirm", Map.of("version", version));
+    }
+
+    /** Bulk confirmation of entries in their current version, as the admin list shows them. */
+    private ApiClient.Response confirmAll(ApiClient client, UUID... ids) {
+        return client.post(
+                "/api/v1/admin/entries/confirm",
+                Map.of("entries", java.util.Arrays.stream(ids).map(this::seen).toList()));
+    }
+
+    private Map<String, Object> seen(UUID id) {
+        return Map.of(
+                "id", id.toString(),
+                "version", jdbc.queryForObject("SELECT version FROM time_entry WHERE id = ?", Integer.class, id));
     }
 
     private int minutes(UUID entryId) {

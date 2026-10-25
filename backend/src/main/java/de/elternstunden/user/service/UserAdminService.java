@@ -3,6 +3,7 @@ package de.elternstunden.user.service;
 import de.elternstunden.audit.AuditLog;
 import de.elternstunden.auth.domain.UserRole;
 import de.elternstunden.auth.domain.UserStatus;
+import de.elternstunden.auth.service.AccountCredentials;
 import de.elternstunden.common.error.ApiException;
 import de.elternstunden.common.error.ErrorCode;
 import de.elternstunden.common.security.AdminOnly;
@@ -46,6 +47,7 @@ public class UserAdminService {
     private final FamilyService families;
     private final AssignmentService assignments;
     private final SessionTerminator sessions;
+    private final AccountCredentials credentials;
     private final AuditLog audit;
     private final Clock clock;
 
@@ -56,6 +58,7 @@ public class UserAdminService {
             FamilyService families,
             AssignmentService assignments,
             SessionTerminator sessions,
+            AccountCredentials credentials,
             AuditLog audit,
             Clock clock) {
         this.accounts = accounts;
@@ -64,6 +67,7 @@ public class UserAdminService {
         this.families = families;
         this.assignments = assignments;
         this.sessions = sessions;
+        this.credentials = credentials;
         this.audit = audit;
         this.clock = clock;
     }
@@ -176,6 +180,7 @@ public class UserAdminService {
         if (account.anonymizedAt() == null) {
             Instant now = clock.instant();
             claims.deleteAllOf(id);
+            credentials.deleteAll(id);
             accounts.anonymize(id, now);
             audit.user(actor, "USER_ANONYMIZED", "app_user", id);
         }

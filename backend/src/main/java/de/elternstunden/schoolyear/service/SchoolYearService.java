@@ -70,6 +70,14 @@ public class SchoolYearService {
                 .toList();
     }
 
+    /**
+     * For writing an entry: the year locked shared until the transaction ends, so closing it or changing its dates
+     * waits (INV-04, INV-09). Callers check closed and the dates on this locked state.
+     */
+    public SchoolYear lockForEntry(UUID id) {
+        return schoolYears.findByIdForShare(id).orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
+    }
+
     /** The school year a work date belongs to (5.5 rule 2, INV-01). */
     public Optional<SchoolYear> forDate(LocalDate date) {
         return schoolYears.findAll().stream()

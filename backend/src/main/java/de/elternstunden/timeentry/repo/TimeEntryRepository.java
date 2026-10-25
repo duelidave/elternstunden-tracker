@@ -40,6 +40,9 @@ public class TimeEntryRepository {
             WHERE te.deleted_at IS NULL
             """;
 
+    /** An entry with the version an admin saw before confirming it (7.5 point 3). */
+    public record Seen(UUID id, int version) {}
+
     /** Confirmed and open minutes of a family in a school year. */
     public record Sums(int confirmedMinutes, int openMinutes) {}
 
@@ -164,20 +167,22 @@ public class TimeEntryRepository {
     }
 
     /**
-     * Confirms open entries of open school years in one statement (7.5 point 4); returns the confirmed ids. Already
-     * confirmed entries and entries of closed years stay unchanged.
+     * Confirms open entries of open school years in one statement (7.5 point 4), only in the version the admin saw;
+     * returns the confirmed ids. Already confirmed, changed entries and entries of closed years stay unchanged.
      */
-    public List<UUID> confirm(List<UUID> ids, UUID adminId, Instant now) {
+    public List<UUID> confirm(List<Seen> seen, UUID adminId, Instant now) {
         return jdbc.sql("""
                         UPDATE time_entry te
                            SET status = 'CONFIRMED', confirmed_by = :adminId, confirmed_at = :now,
                                updated_at = :now, version = te.version + 1
-                          FROM school_year sy
-                         WHERE te.id = ANY(:ids) AND te.status = 'OPEN' AND te.deleted_at IS NULL
+                          FROM school_year sy, unnest(CAST(:ids AS uuid[]), CAST(:versions AS integer[])) AS seen (id, version)
+                         WHERE te.id = seen.id AND te.version = seen.version
+                           AND te.status = 'OPEN' AND te.deleted_at IS NULL
                            AND sy.id = te.school_year_id AND sy.closed_at IS NULL
                         RETURNING te.id
                         """)
-                .param("ids", ids.toArray(UUID[]::new))
+                .param("ids", seen.stream().map(Seen::id).toArray(UUID[]::new))
+                .param("versions", seen.stream().map(Seen::version).toArray(Integer[]::new))
                 .param("adminId", adminId)
                 .param("now", utc(now))
                 .query(UUID.class)

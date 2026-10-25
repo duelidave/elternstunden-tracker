@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,6 +38,7 @@ public class SessionAccountFilter extends OncePerRequestFilter {
     private final Duration oidcPendingTtl;
     private final Duration mfaPendingTtl;
     private final Clock clock;
+    private final Predicate<AppUser> needsSecondFactor;
     private final SecurityContextHolderStrategy holder = SecurityContextHolder.getContextHolderStrategy();
 
     public SessionAccountFilter(
@@ -44,7 +46,9 @@ public class SessionAccountFilter extends OncePerRequestFilter {
             SessionLogin sessionLogin,
             SecurityContextRepository contextRepository,
             AppProperties properties,
-            Clock clock) {
+            Clock clock,
+            Predicate<AppUser> needsSecondFactor) {
+        this.needsSecondFactor = needsSecondFactor;
         this.users = users;
         this.sessionLogin = sessionLogin;
         this.contextRepository = contextRepository;
@@ -93,6 +97,11 @@ public class SessionAccountFilter extends OncePerRequestFilter {
             return;
         }
         AppUser current = user.get();
+        // A promotion to admin with a second factor needs a new login with the code (7.2, AC-AUTH-24)
+        if (current.role() == UserRole.ADMIN && principal.role() != UserRole.ADMIN && needsSecondFactor.test(current)) {
+            endSession(session);
+            return;
+        }
         AppUserPrincipal updated =
                 new AppUserPrincipal(current.id(), current.role(), current.familyId(), principal.authenticatedAt());
         Authentication fresh = SessionLogin.authentication(updated);

@@ -78,6 +78,21 @@ public class AuthMails {
                 List.of());
     }
 
+    public MailMessage globalLimitAlarm(String to, String limit) {
+        return mail(
+                to,
+                "Globales Limit erreicht",
+                List.of(
+                        "Hallo,",
+                        "das globale Limit \"" + limit
+                                + "\" ist erreicht. Bis zum Ende der Stunde lehnt die App weitere"
+                                + " Anfragen dieser Art für alle ab. Das kann ein Angriff oder ein fehlerhafter"
+                                + " Client sein. Prüfe bitte die Logs auf dem Server."),
+                "Zur Anmeldung",
+                base() + "/login/master",
+                List.of());
+    }
+
     public MailMessage masterLoginAlarm(String to, int failures) {
         return mail(
                 to,

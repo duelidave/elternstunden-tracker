@@ -8,11 +8,13 @@ import de.elternstunden.api.model.EntryCreateDto;
 import de.elternstunden.api.model.EntryPageDto;
 import de.elternstunden.api.model.EntryStatusDto;
 import de.elternstunden.api.model.EntryUpdateDto;
+import de.elternstunden.api.model.EntryVersionDto;
 import de.elternstunden.common.security.CurrentUser;
 import de.elternstunden.common.web.Paging;
 import de.elternstunden.family.service.FamilyService;
 import de.elternstunden.timeentry.domain.EntryStatus;
 import de.elternstunden.timeentry.domain.EntryView;
+import de.elternstunden.timeentry.repo.TimeEntryRepository;
 import de.elternstunden.timeentry.service.EntryService;
 import java.time.LocalDate;
 import java.util.List;
@@ -60,14 +62,17 @@ public class EntryController implements EntriesApi {
 
     @Override
     public ResponseEntity<ConfirmationResultDto> confirmEntries(EntryConfirmationDto body) {
-        EntryService.Confirmation result =
-                entries.confirm(CurrentUser.principal().userId(), body.getIds());
+        EntryService.Confirmation result = entries.confirm(
+                CurrentUser.principal().userId(),
+                body.getEntries().stream()
+                        .map(seen -> new TimeEntryRepository.Seen(seen.getId(), seen.getVersion()))
+                        .toList());
         return ResponseEntity.ok(new ConfirmationResultDto(result.confirmed(), result.skipped()));
     }
 
     @Override
-    public ResponseEntity<AdminEntryDto> confirmEntry(UUID entryId) {
-        return ResponseEntity.ok(admin(entries.confirm(CurrentUser.principal().userId(), entryId)));
+    public ResponseEntity<AdminEntryDto> confirmEntry(UUID entryId, EntryVersionDto body) {
+        return ResponseEntity.ok(admin(entries.confirm(CurrentUser.principal().userId(), entryId, body.getVersion())));
     }
 
     @Override

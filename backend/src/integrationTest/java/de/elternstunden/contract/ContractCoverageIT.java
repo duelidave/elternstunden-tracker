@@ -149,4 +149,16 @@ class ContractCoverageIT extends IntegrationTest {
                 ? list.stream().map(String::valueOf).toList()
                 : List.of();
     }
+
+    /** 8.1: every error code of the backend is in the contract's ProblemCode enum and the other way round. */
+    @Test
+    void errorCodesMatchTheContract() {
+        Object codes = contract.getComponents().getSchemas().get("ProblemCode").getEnum();
+        assertThat(codes)
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .containsExactlyInAnyOrderElementsOf(
+                        java.util.Arrays.stream(de.elternstunden.common.error.ErrorCode.values())
+                                .map(Enum::name)
+                                .toList());
+    }
 }
