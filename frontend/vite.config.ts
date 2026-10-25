@@ -1,33 +1,30 @@
 /// <reference types="vitest/config" />
-import tailwindcss from "@tailwindcss/vite";
-import react from "@vitejs/plugin-react";
-import { readFileSync } from "node:fs";
-import { defineConfig } from "vite";
+import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
+import { readFileSync } from 'node:fs'
+import { defineConfig } from 'vite'
 
 // The backend from docker compose listens on 127.0.0.1:8088 (APP_PORT in .env)
-const apiTarget = process.env.API_PROXY_TARGET ?? "http://localhost:8088";
+const apiTarget = process.env.API_PROXY_TARGET ?? 'http://localhost:8088'
 // One product version for app, web and backup (D-32), shown in the footer
-const version = readFileSync(
-  new URL("../VERSION", import.meta.url),
-  "utf8",
-).trim();
+const version = readFileSync(new URL('../VERSION', import.meta.url), 'utf8').trim()
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   define: { __APP_VERSION__: JSON.stringify(version) },
   server: {
     proxy: {
-      "/api": { target: apiTarget, changeOrigin: false },
+      '/api': { target: apiTarget, changeOrigin: false },
       // OIDC entry and callback of the backend (7.2); in production Caddy routes them (M7)
-      "/oauth2": { target: apiTarget, changeOrigin: false },
-      "/login/oauth2": { target: apiTarget, changeOrigin: false },
+      '/oauth2': { target: apiTarget, changeOrigin: false },
+      '/login/oauth2': { target: apiTarget, changeOrigin: false },
     },
   },
   test: {
-    environment: "jsdom",
-    setupFiles: ["src/test/setup.ts"],
+    environment: 'jsdom',
+    setupFiles: ['src/test/setup.ts'],
     restoreMocks: true,
     // The first test of a file may transform a lazily loaded chunk (admin area, date picker) under full load
     testTimeout: 15_000,
   },
-});
+})
