@@ -1277,7 +1277,7 @@ Grundhaltung: Die App verarbeitet Daten von Minderjährigen. Sicherheit hat Vorr
 | OIDC-Einstieg und -Callback | IP | 30 pro Minute. Die Session, die der Einstieg für `state` und PKCE anlegt, verfällt nach 10 Minuten. |
 | Passkey-Anmeldung (Optionen und Prüfung) | IP | 30 pro Minute |
 | Master-Login und MFA-Prüfung | IP | 5 pro 15 Minuten, danach `429` bis zum Ablauf des Fensters |
-| MFA-Prüfung (Admin-TOTP) | Konto | 10 Fehlversuche pro Stunde, danach `429`. Nach 5 Fehlversuchen in einem `MFA_PENDING`-Zustand endet dieser, die Anmeldung beginnt neu. |
+| MFA-Prüfung (Admin-TOTP) | Konto | 10 Versuche pro Stunde (auch Einrichten), danach `429`. Nach 5 Fehlversuchen in einem `MFA_PENDING`-Zustand endet dieser, die Anmeldung beginnt neu. |
 | Master-Login | global | höchstens 4 gleichzeitige Passwortprüfungen (Argon2id braucht viel Speicher), sonst sofort `429` |
 | Request-Größe | – | JSON-Bodies höchstens 64 KB, CSV-Import höchstens 1 MB, Bodies ohne Längenangabe (chunked) unter `/api` werden abgelehnt: `413 PAYLOAD_TOO_LARGE`, bevor der Body gelesen wird |
 | Master-Login | Konto | Keine Sperre (Notzugang). Ab 10 Fehlversuchen pro Stunde Alarm-Mail an den Master (7.2). |
