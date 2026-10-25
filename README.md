@@ -95,3 +95,11 @@ docs/       Lastenheft und Spezifikation
 ```
 
 Hinweise für KI-Agents und Mitwirkende: [`AGENTS.md`](AGENTS.md).
+
+## Lizenz
+
+Copyright (C) 2026 David Müller <david@myllers-online.de>
+
+Freie Software unter der [GNU Affero General Public License](LICENSE), Version 3 oder (nach deiner Wahl) jeder späteren Version (`AGPL-3.0-or-later`), ohne jede Gewährleistung. Wer eine veränderte Fassung als Webdienst betreibt, muss ihren Nutzer:innen den Quellcode dieser Fassung anbieten (AGPL § 13).
+
+Die Schriften (Noto Sans, Indie Flower, IBM Plex Sans) stehen unter der SIL Open Font License 1.1.

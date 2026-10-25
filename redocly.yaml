@@ -7,8 +7,6 @@ extends:
   - recommended
 
 rules:
-  # Internal application, no license statement in the contract
-  info-license: off
   # Shared responses are prepared for upcoming endpoints (M1 and later)
   no-unused-components: off
 
