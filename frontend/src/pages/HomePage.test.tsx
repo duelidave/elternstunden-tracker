@@ -1,82 +1,131 @@
-import { fireEvent, screen, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
-import { texts } from '../i18n/de'
-import { FakeCaptcha } from '../test/captcha'
-import { familyMember, problem, signedOut, stubApi } from '../test/api'
-import { renderRoute } from '../test/render'
+import { fireEvent, screen, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { texts } from "../i18n/de";
+import { links } from "../links";
+import { FakeCaptcha } from "../test/captcha";
+import { familyMember, problem, signedOut, stubApi } from "../test/api";
+import { renderRoute } from "../test/render";
 
-vi.mock('../components/Captcha', () => ({ Captcha: FakeCaptcha }))
+vi.mock("../components/Captcha", () => ({ Captcha: FakeCaptcha }));
 
-describe('HomePage', () => {
-  it('sends visitors without session to the login', async () => {
-    stubApi(({ url }) => (url === '/api/v1/me' ? signedOut : undefined))
+describe("HomePage", () => {
+  it("sends visitors without session to the login", async () => {
+    stubApi(({ url }) => (url === "/api/v1/me" ? signedOut : undefined));
 
-    const router = renderRoute('/')
+    const router = renderRoute("/");
 
-    expect(await screen.findByRole('heading', { name: texts.login.title })).toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/login')
-  })
+    expect(
+      await screen.findByRole("heading", { name: texts.login.title }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/login");
+  });
 
-  it('sends family members without family to the waiting screen', async () => {
+  it("sends family members without family to the waiting screen", async () => {
     stubApi(({ url }) =>
-      url === '/api/v1/me' ? { status: 200, body: { ...familyMember, assignedToFamily: false } } : undefined,
-    )
+      url === "/api/v1/me"
+        ? { status: 200, body: { ...familyMember, assignedToFamily: false } }
+        : undefined,
+    );
 
-    const router = renderRoute('/')
+    const router = renderRoute("/");
 
-    expect(await screen.findByRole('heading', { name: texts.pending.enterTitle })).toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/pending')
-  })
+    expect(
+      await screen.findByRole("heading", { name: texts.pending.enterTitle }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/pending");
+  });
 
   it.each([
-    [{ ...familyMember, role: 'ADMIN', assignedToFamily: false }, texts.home.admin],
-    [{ ...familyMember, role: 'MASTER_ADMIN', assignedToFamily: false }, texts.home.master],
-  ])('greets admins without family (%#)', async (me, text) => {
-    stubApi(({ url }) => (url === '/api/v1/me' ? { status: 200, body: me } : undefined))
+    [
+      { ...familyMember, role: "ADMIN", assignedToFamily: false },
+      texts.home.admin,
+    ],
+    [
+      { ...familyMember, role: "MASTER_ADMIN", assignedToFamily: false },
+      texts.home.master,
+    ],
+  ])("greets admins without family (%#)", async (me, text) => {
+    stubApi(({ url }) =>
+      url === "/api/v1/me" ? { status: 200, body: me } : undefined,
+    );
 
-    renderRoute('/')
+    renderRoute("/");
 
-    expect(await screen.findByText(texts.home.greeting('Mia Muster'))).toBeInTheDocument()
-    expect(screen.getByText(text)).toBeInTheDocument()
-  })
+    expect(
+      await screen.findByText(texts.home.greeting("Mia Muster")),
+    ).toBeInTheDocument();
+    expect(screen.getByText(text)).toBeInTheDocument();
+  });
 
-  it('logs out and returns to the login', async () => {
-    let signedIn = true
+  it("logs out and returns to the login", async () => {
+    let signedIn = true;
     const calls = stubApi(({ method, url }) => {
-      if (url === '/api/v1/me') {
-        return signedIn ? { status: 200, body: { ...familyMember, role: 'ADMIN', assignedToFamily: false } } : signedOut
+      if (url === "/api/v1/me") {
+        return signedIn
+          ? {
+              status: 200,
+              body: { ...familyMember, role: "ADMIN", assignedToFamily: false },
+            }
+          : signedOut;
       }
-      if (method === 'POST' && url === '/api/v1/auth/logout') {
-        signedIn = false
-        return { status: 204 }
+      if (method === "POST" && url === "/api/v1/auth/logout") {
+        signedIn = false;
+        return { status: 204 };
       }
-      return undefined
-    })
+      return undefined;
+    });
 
-    renderRoute('/')
-    const main = within(screen.getByRole('main'))
-    fireEvent.click(await main.findByRole('button', { name: texts.common.logout }))
+    renderRoute("/");
+    const main = within(screen.getByRole("main"));
+    fireEvent.click(
+      await main.findByRole("button", { name: texts.common.logout }),
+    );
 
-    expect(await screen.findByRole('heading', { name: texts.login.title })).toBeInTheDocument()
-    expect(calls).toContainEqual({ method: 'POST', url: '/api/v1/auth/logout', body: undefined })
-  })
+    expect(
+      await screen.findByRole("heading", { name: texts.login.title }),
+    ).toBeInTheDocument();
+    expect(calls).toContainEqual({
+      method: "POST",
+      url: "/api/v1/auth/logout",
+      body: undefined,
+    });
+  });
 
-  it('says so when the server is not reachable', async () => {
-    stubApi(() => problem(500, 'INTERNAL_ERROR'))
+  it("says so when the server is not reachable", async () => {
+    stubApi(() => problem(500, "INTERNAL_ERROR"));
 
-    renderRoute('/')
+    renderRoute("/");
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(texts.errors.UNKNOWN)
-  })
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      texts.errors.UNKNOWN,
+    );
+  });
 
-  it('links privacy notice and imprint on every screen (UI-13)', async () => {
-    stubApi(() => signedOut)
+  it("links privacy notice, imprint and the source of this version on every screen (UI-13, AC-REL-04)", async () => {
+    stubApi(() => signedOut);
 
-    renderRoute('/legal/imprint')
+    renderRoute("/login");
 
-    expect(await screen.findByRole('heading', { name: texts.legal.imprintTitle })).toBeInTheDocument()
-    const footer = within(screen.getByRole('navigation', { name: texts.common.legalNav }))
-    expect(footer.getByRole('link', { name: texts.common.privacy })).toHaveAttribute('href', '/legal/privacy')
-    expect(footer.getByRole('link', { name: texts.common.imprint })).toHaveAttribute('href', '/legal/imprint')
-  })
-})
+    expect(
+      await screen.findByRole("heading", { name: texts.login.title }),
+    ).toBeInTheDocument();
+    const footer = within(
+      screen.getByRole("navigation", { name: texts.common.legalNav }),
+    );
+    expect(
+      footer.getByRole("link", { name: texts.common.privacy }),
+    ).toHaveAttribute("href", links.privacy);
+    expect(
+      footer.getByRole("link", { name: texts.common.imprint }),
+    ).toHaveAttribute("href", links.imprint);
+    expect(
+      footer.getByRole("link", { name: texts.common.source }),
+    ).toHaveAttribute(
+      "href",
+      `https://github.com/duelidave/elternstunden-tracker/tree/v${__APP_VERSION__}`,
+    );
+    expect(
+      screen.getByText(texts.common.version(__APP_VERSION__)),
+    ).toBeInTheDocument();
+  });
+});

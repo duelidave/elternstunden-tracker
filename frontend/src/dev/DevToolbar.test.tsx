@@ -24,7 +24,7 @@ describe('DevToolbar', () => {
       return me === undefined ? signedOut : { status: 200, body: me }
     })
 
-    renderRoute('/legal/privacy')
+    renderRoute('/login')
     const toolbar = within(await screen.findByRole('complementary', { name: 'Dev: Rolle wechseln' }))
     expect(toolbar.getByText('Nicht angemeldet', { exact: false })).toBeInTheDocument()
 

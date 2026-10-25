@@ -1,7 +1,6 @@
 import { Navigate, type RouteObject } from 'react-router'
 import { Layout } from './Layout'
 import { HomePage } from './pages/HomePage'
-import { LegalPage } from './pages/LegalPage'
 
 const admin = () => import('./admin')
 
@@ -54,8 +53,6 @@ export const routes: RouteObject[] = [
           { path: 'reports', lazy: async () => ({ Component: (await admin()).ReportsPage }) },
         ],
       },
-      { path: 'legal/privacy', element: <LegalPage kind="privacy" /> },
-      { path: 'legal/imprint', element: <LegalPage kind="imprint" /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

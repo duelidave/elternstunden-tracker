@@ -10,7 +10,9 @@ export const texts = {
     backToLogin: 'Zur Anmeldung',
     privacy: 'Datenschutz',
     imprint: 'Impressum',
+    source: 'Quellcode',
     legalNav: 'Rechtliches',
+    version: (version: string) => `Version ${version}`,
     email: 'E-Mail',
     offline: 'Keine Verbindung',
   },
@@ -439,12 +441,6 @@ export const texts = {
       confirmClose: 'Das Schuljahr abschließen? Danach ist es schreibgeschützt.',
       empty: 'Noch keine Schuljahre.',
     },
-  },
-  legal: {
-    privacyTitle: 'Datenschutz',
-    imprintTitle: 'Impressum',
-    // OPEN-16: the texts are provided by the association
-    placeholder: 'Dieser Text wird vom Verein bereitgestellt.',
   },
   fields: {
     email: 'Bitte gib eine gültige E-Mail-Adresse ein.',
