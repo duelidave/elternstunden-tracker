@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 0.4.10 (Entwurf) |
+| Version | 0.4.11 (Entwurf) |
 | Stand | 2026-10-25 |
 | Einrichtung | Hort an der Montessorischule (Elterninitiative, Verein) |
 | Zielgruppe | Entwickler:innen und KI-Coding-Agents |
@@ -27,6 +27,7 @@
 | 0.4.8 | 2026-10-24 | Tätigkeitstext höchstens 255 Zeichen statt 500, mit mitlaufendem Zähler und Pflichtfeld-Markierung in der UI (D-09, 7.4, AC-ENTRY-03). Uhrzeiten tolerant eingeben, z. B. `9` für `09:00` (UI-12). |
 | 0.4.9 | 2026-10-24 | OPEN-15 teilweise entschieden: netID (Login mit GMX und WEB.DE) als weiterer OIDC-Anbieter und Passkeys als eigener Anmeldeweg, Microsoft folgt später (D-30, 7.2, 5.3, 8.2, 9.1, UI-06, AC-OIDC-14 bis 16, AC-PASSKEY, Meilenstein M6a). |
 | 0.4.10 | 2026-10-25 | Sicherheits-Review (OWASP API Top 10 2023, OWASP Top 10 2025) und Architektur-Review eingearbeitet. Sicherheit: globale Limits erst nach gültigem Captcha und mit Alarm, TOTP-Fehlversuche pro Konto begrenzt, Größenlimit für Requests, OIDC-Einstieg begrenzt, gleichzeitige Passwortprüfungen begrenzt, Schlüssellänge beim Start geprüft (9.1, 12.4), OPEN-22 und OPEN-23 neu. Architektur: Bestätigen nur mit der gesehenen `version` (7.5, AC-CONF-06), Beförderung zum Admin mit zweitem Faktor beendet die Session (7.2, AC-AUTH-24), Einträge sperren ihr Schuljahr gegen paralleles Abschließen (INV-04, INV-09), Fehlercodes als Enum im Vertrag (8.1), Persistenz mit Spring JDBC statt JPA (4.2, 5.1), Indizes für Übersicht und Dashboard (5.3), Merge-Patch-Sonderfall `startTime` (8.1). |
+| 0.4.11 | 2026-10-25 | Lizenz entschieden: AGPL-3.0-or-later, Rechteinhaber David Müller (D-31). Abhängigkeiten müssen AGPL-kompatibel sein (NFR-09), die Fußzeile verlinkt den Quellcode der laufenden Version (UI-13). |
 
 ---
 
@@ -132,6 +133,7 @@ Laut Website des Horts: 65 Vollzeitplätze, etwa 70 Kinder in drei Gruppen. Erwa
 | D-28 | Einer Familie sind **höchstens zwei Nutzer** zugeordnet (z. B. beide Elternteile). Es zählen alle zugeordneten Konten, unabhängig von Rolle und Status. Anonymisierte Konten gehören keiner Familie mehr an (DP-05). | `[DECIDED]` | Auftraggeber, 2026-10-22 |
 | D-29 | Familien erfassen, ändern und löschen Stunden **nur im laufenden Schuljahr** (das heute enthält, 5.5). Einträge in einem anderen, noch nicht abgeschlossenen Schuljahr legen nur Admins an oder ändern sie, z. B. Nachträge im September für das Vorjahr. | `[DECIDED]` | Auftraggeber, 2026-10-24 |
 | D-30 | **Weitere Anmeldewege.** Zusätzlich zu E-Mail-Link und Google: **netID** (Login mit dem GMX- oder WEB.DE-Konto, OIDC) und **Passkeys** (WebAuthn: Face ID, Fingerabdruck, Windows Hello, Sicherheitsschlüssel). Microsoft folgt später, Apple ist zurückgestellt. Der E-Mail-Link bleibt immer erhalten (INV-11). | `[DECIDED]` | Auftraggeber, 2026-10-24 |
+| D-31 | **Lizenz:** GNU Affero General Public License, Version 3 oder später (`AGPL-3.0-or-later`). Rechteinhaber: David Müller. Lizenztext in `LICENSE`, Hinweis im README und im API-Vertrag (`info.license`). Wer eine veränderte Fassung als Webdienst betreibt, muss den Quellcode dieser Fassung anbieten (§ 13), deshalb verlinkt die App ihn (UI-13). | `[DECIDED]` | Auftraggeber, 2026-10-25 |
 
 ---
 
@@ -1788,7 +1790,7 @@ Wichtig: **Docker umgeht `ufw`** für veröffentlichte Ports. Deshalb veröffent
 | UI-10 | **PWA.** Manifest (Name, Icons, Theme-Farbe), installierbar. Service Worker cacht nur die App-Hülle, **nie** API-Antworten. Update-Hinweis bei neuer Version. Kein Push. |
 | UI-11 | **Admin-Listen.** Suchfeld oben (Debounce 250 ms, mindestens 2 Zeichen), sortierbare Spaltenköpfe, Filter und Suche in der URL (teilbar, Zurück-Button funktioniert), Sammelaktionen mit Mehrfachauswahl. Hinweisleiste (FS-ADMOV) auf allen Admin-Seiten. |
 | UI-12 | **Datum und Uhrzeit.** Datumsfelder als eigenes Eingabefeld im Format `TT.MM.JJJJ` (Punkte werden beim Tippen ergänzt) mit deutschem Kalender zum Aufklappen, unabhängig von der Browsersprache (D-27). Uhrzeiten als Textfeld im 24-Stunden-Format `HH:MM`. Eingaben wie `9`, `9:00`, `9.30`, `930` oder `1530` werden beim Verlassen des Felds zu `09:00`, `09:30` bzw. `15:30` ergänzt, auch über den Ziffernblock ohne Doppelpunkt. Anzeige de-DE. Datumsgrenzen (`min`, `max`) aus dem Schuljahr und "nicht in der Zukunft". |
-| UI-13 | **Datenschutz und Impressum** aus jedem Screen erreichbar (Fußzeile), auch ohne Login. |
+| UI-13 | **Datenschutz und Impressum** aus jedem Screen erreichbar (Fußzeile), auch ohne Login. Die Fußzeile verlinkt außerdem den Quellcode der laufenden Version (AGPL § 13, D-31). |
 
 ### 13.1 Screens (UI-05)
 
@@ -1840,7 +1842,7 @@ Wichtig: **Docker umgeht `ufw`** für veröffentlichte Ports. Deshalb veröffent
 | NFR-06 | **Beobachtbarkeit:** JSON-Logs mit `traceId`, Micrometer-Metriken intern, Health-Endpunkte intern (OPS-07). |
 | NFR-07 | **Datenmenge:** wenige MB pro Jahr. Keine Optimierung nötig, Indizes laut Abschnitt 5 genügen. |
 | NFR-08 | **Dokumentation:** README mit Schnellstart (`docker compose up`), ADRs für jede `[DECIDED]`- und `[PROPOSED]`-Abweichung, OpenAPI, Runbooks (OPS-08). Im Repository liegt eine `AGENTS.md`, die auf dieses Dokument verweist und Abschnitt 0.4 wiederholt. |
-| NFR-09 | **Lizenzen:** Nur Abhängigkeiten mit Lizenzen, die für den Betrieb durch einen Verein unkritisch sind (z. B. MIT, Apache-2.0, BSD, LGPL bei dynamischem Einsatz). Stark copyleft-lizenzierte Bibliotheken (z. B. AGPL) nur nach Rückfrage. |
+| NFR-09 | **Lizenzen:** Das Projekt steht unter AGPL-3.0-or-later (D-31). Alles, was im Image oder im SPA-Bundle mit ausgeliefert wird, MUSS damit kompatibel sein: z. B. MIT, BSD, ISC, Apache-2.0, LGPL, MPL-2.0, OFL-1.1 (Schriften), EPL-2.0 nur mit GPL als Secondary License oder mit Classpath Exception. Nicht erlaubt: proprietäre Lizenzen und GPL-2.0-only als Bibliothek. Ausgenommen sind reine Build- und Testwerkzeuge sowie eigenständige Programme des Basis-Images (Aggregat, z. B. BusyBox). |
 | NFR-10 | **Barrierefreiheit:** siehe UI-09. |
 
 ---
