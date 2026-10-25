@@ -22,10 +22,21 @@ export function useSession(): Session {
   }
 }
 
-/** Reloads the account after login, logout or a role switch. */
+/** Reloads the account, e.g. after a change of the name or a linked provider. */
 export function useRefreshSession(): () => Promise<void> {
   const client = useQueryClient()
   return useCallback(async () => {
     await client.resetQueries({ queryKey: getGetMeQueryKey() })
+  }, [client])
+}
+
+/**
+ * After a login, logout or role switch: nothing of the previous account may stay in the cache (family data, admin
+ * lists), so every query starts again.
+ */
+export function useSessionChanged(): () => Promise<void> {
+  const client = useQueryClient()
+  return useCallback(async () => {
+    await client.resetQueries()
   }, [client])
 }

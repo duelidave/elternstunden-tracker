@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { errorText, hasCode } from '../api/errors'
 import { useRedeemMagicLink } from '../api/generated/endpoints/auth/auth'
-import { useRefreshSession } from '../api/session'
+import { useSessionChanged } from '../api/session'
 import { texts } from '../i18n/de'
 import { nextPath } from './loginResult'
 
@@ -24,7 +24,7 @@ export function LinkPage() {
   }, [])
   const [cancelled, setCancelled] = useState(false)
   const redeem = useRedeemMagicLink()
-  const refreshSession = useRefreshSession()
+  const refreshSession = useSessionChanged()
   const navigate = useNavigate()
 
   const signIn = async (confirmOtherDevice: boolean) => {

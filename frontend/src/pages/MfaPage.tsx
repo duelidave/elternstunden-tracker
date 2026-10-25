@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router'
 import { errorText } from '../api/errors'
 import { useVerifyMfa } from '../api/generated/endpoints/auth/auth'
 import { ApiProblem } from '../api/http'
-import { useRefreshSession } from '../api/session'
+import { useSessionChanged } from '../api/session'
 import { TotpSetup } from '../components/TotpSetup'
 import { texts } from '../i18n/de'
 import { nextPath } from './loginResult'
@@ -11,7 +11,7 @@ import { nextPath } from './loginResult'
 /** Second factor for admins (7.2): enter the code, or set TOTP up first when it is required. */
 export function MfaPage() {
   const [params] = useSearchParams()
-  const refreshSession = useRefreshSession()
+  const refreshSession = useSessionChanged()
   const navigate = useNavigate()
 
   const finish = async (path: string) => {

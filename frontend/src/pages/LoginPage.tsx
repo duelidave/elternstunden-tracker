@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useCallback, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useSearchParams } from 'react-router'
-import { errorText } from '../api/errors'
+import { errorText, textFor } from '../api/errors'
 import { useRequestMagicLink } from '../api/generated/endpoints/auth/auth'
 import { RequestMagicLinkBody } from '../api/generated/zod/auth/auth.zod'
 import { Captcha, type CaptchaHandle } from '../components/Captcha'
@@ -66,9 +66,7 @@ export function LoginPage() {
       <h2>{texts.login.title}</h2>
       {providerError !== null && (
         <p className="alert" role="alert">
-          {providerError in texts.login.errors
-            ? texts.login.errors[providerError as keyof typeof texts.login.errors]
-            : texts.login.errors.OIDC_FAILED}
+          {textFor(texts.login.errors, providerError, texts.login.errors.OIDC_FAILED)}
         </p>
       )}
       <SignInOptions purpose="login">

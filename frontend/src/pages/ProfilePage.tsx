@@ -9,7 +9,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Navigate, useNavigate, useSearchParams } from 'react-router'
 import type { z } from 'zod'
-import { errorText } from '../api/errors'
+import { errorText, textFor } from '../api/errors'
 import { useListLoginProviders, useLogout } from '../api/generated/endpoints/auth/auth'
 import {
   getListPasskeysQueryKey,
@@ -25,7 +25,7 @@ import {
 import type { Me, WebAuthnJson } from '../api/generated/model'
 import { ApiProblem } from '../api/http'
 import { UpdateMeBody } from '../api/generated/zod/me/me.zod'
-import { useRefreshSession, useSession } from '../api/session'
+import { useRefreshSession, useSession, useSessionChanged } from '../api/session'
 import { GoogleLogo } from '../components/GoogleButton'
 import { NetIdLogo } from '../components/NetIdButton'
 import { KeyIcon } from '../components/PasskeyLogin'
@@ -47,7 +47,7 @@ export function ProfilePage() {
 }
 
 function Profile({ me }: { me: Me }) {
-  const refreshSession = useRefreshSession()
+  const sessionChanged = useSessionChanged()
   const navigate = useNavigate()
   const logout = useLogout()
 
@@ -57,7 +57,7 @@ function Profile({ me }: { me: Me }) {
     } catch {
       // the session is gone either way
     }
-    await refreshSession()
+    await sessionChanged()
     await navigate('/login', { replace: true })
   }
 
@@ -161,9 +161,7 @@ function Providers({ me }: { me: Me }) {
       )}
       {linkError !== null && (
         <p className="alert" role="alert">
-          {linkError in texts.login.errors
-            ? texts.login.errors[linkError as keyof typeof texts.login.errors]
-            : texts.login.errors.OIDC_FAILED}
+          {textFor(texts.login.errors, linkError, texts.login.errors.OIDC_FAILED)}
         </p>
       )}
       <ul className="stack">

@@ -10,7 +10,7 @@ import {
 } from '../api/generated/endpoints/auth/auth'
 import type { OidcPending } from '../api/generated/model'
 import { CompleteOidcRegistrationBody } from '../api/generated/zod/auth/auth.zod'
-import { useRefreshSession } from '../api/session'
+import { useSessionChanged } from '../api/session'
 import { DateField } from '../components/DateField'
 import { TextField } from '../components/TextField'
 import { texts } from '../i18n/de'
@@ -47,7 +47,7 @@ export function OidcClaimPage() {
 
 function ClaimFormView({ pending }: { pending: OidcPending }) {
   const complete = useCompleteOidcRegistration()
-  const refreshSession = useRefreshSession()
+  const refreshSession = useSessionChanged()
   const navigate = useNavigate()
   const form = useForm<ClaimForm>({
     resolver: zodResolver(schema),

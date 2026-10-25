@@ -5,7 +5,7 @@ import type { z } from 'zod'
 import { errorText, hasCode } from '../api/errors'
 import { useLoginMaster } from '../api/generated/endpoints/auth/auth'
 import { LoginMasterBody } from '../api/generated/zod/auth/auth.zod'
-import { useRefreshSession } from '../api/session'
+import { useSessionChanged } from '../api/session'
 import { TextField } from '../components/TextField'
 import { texts } from '../i18n/de'
 
@@ -14,7 +14,7 @@ type MasterForm = z.input<typeof LoginMasterBody>
 /** Master login with password and TOTP (7.2, 7.9). Not linked from /login. */
 export function MasterLoginPage() {
   const login = useLoginMaster()
-  const refreshSession = useRefreshSession()
+  const refreshSession = useSessionChanged()
   const navigate = useNavigate()
   const form = useForm<MasterForm>({
     resolver: zodResolver(LoginMasterBody),

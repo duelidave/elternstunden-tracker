@@ -43,9 +43,12 @@ export function EntriesPage() {
   const confirmMany = useConfirmEntries()
   const invalidate = useInvalidateAll()
 
+  // Each with the version on screen: an entry the family changed meanwhile is skipped (7.5 point 3, AC-CONF-06)
   const confirm = async (ids: string[]) => {
+    const shown = entries.data?.content ?? []
+    const seen = ids.flatMap((id) => shown.filter((entry) => entry.id === id).map(({ version }) => ({ id, version })))
     try {
-      const result = await confirmMany.mutateAsync({ data: { ids } })
+      const result = await confirmMany.mutateAsync({ data: { entries: seen } })
       setMessage(texts.admin.entries.result(result.confirmed, result.skipped))
       setSelected([])
     } catch {
@@ -280,7 +283,10 @@ export function AdminEntryItem({ entry, selected, onToggle, onMessage }: AdminEn
               className="button"
               disabled={confirmOne.isPending}
               onClick={() =>
-                void run(() => confirmOne.mutateAsync({ entryId: entry.id }), texts.admin.entries.confirmed)
+                void run(
+                  () => confirmOne.mutateAsync({ entryId: entry.id, data: { version: entry.version } }),
+                  texts.admin.entries.confirmed,
+                )
               }
             >
               {texts.admin.entries.confirm}

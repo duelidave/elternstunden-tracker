@@ -87,7 +87,12 @@ describe('confirming entries (FS-CONF)', () => {
     expect(calls).toContainEqual({
       method: 'POST',
       url: '/api/v1/admin/entries/confirm',
-      body: { ids: ['e1', 'e3'] },
+      body: {
+        entries: [
+          { id: 'e1', version: 0 },
+          { id: 'e3', version: 0 },
+        ],
+      },
     })
   })
 
@@ -104,7 +109,12 @@ describe('confirming entries (FS-CONF)', () => {
       expect(calls).toContainEqual({
         method: 'POST',
         url: '/api/v1/admin/entries/confirm',
-        body: { ids: ['e1', 'e3'] },
+        body: {
+        entries: [
+          { id: 'e1', version: 0 },
+          { id: 'e3', version: 0 },
+        ],
+      },
       })
     })
   })
@@ -120,7 +130,7 @@ describe('confirming entries (FS-CONF)', () => {
     fireEvent.click(group.getByRole('button', { name: texts.admin.entries.confirm }))
 
     expect(await view.findByText(texts.admin.entries.confirmed)).toBeInTheDocument()
-    expect(calls).toContainEqual({ method: 'POST', url: '/api/v1/admin/entries/e2/confirm', body: undefined })
+    expect(calls).toContainEqual({ method: 'POST', url: '/api/v1/admin/entries/e2/confirm', body: { version: 0 } })
     expect(calls.some((call) => call.url.includes('familyId=family-2'))).toBe(true)
   })
 

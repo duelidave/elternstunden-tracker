@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useLoginWithPasskey, useStartPasskeyLogin } from '../api/generated/endpoints/auth/auth'
 import type { WebAuthnJson } from '../api/generated/model'
-import { useRefreshSession } from '../api/session'
+import { useSessionChanged } from '../api/session'
 import { texts } from '../i18n/de'
 import { nextPath } from '../pages/loginResult'
 
@@ -11,7 +11,7 @@ import { nextPath } from '../pages/loginResult'
 export function PasskeyLogin() {
   const start = useStartPasskeyLogin()
   const login = useLoginWithPasskey()
-  const refreshSession = useRefreshSession()
+  const refreshSession = useSessionChanged()
   const navigate = useNavigate()
   const [failed, setFailed] = useState(false)
 

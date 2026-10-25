@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router'
 import { useLogout } from '../api/generated/endpoints/auth/auth'
 import { useDevLoginAs } from '../api/generated/endpoints/dev/dev'
 import { DevLoginRequestAccount } from '../api/generated/model'
-import { useRefreshSession, useSession } from '../api/session'
+import { useSessionChanged, useSession } from '../api/session'
 
 // Dev-only texts stay here, so none of them ends up in the production bundle
 const texts = {
@@ -23,7 +23,7 @@ export default function DevToolbar() {
   const session = useSession()
   const loginAs = useDevLoginAs()
   const logout = useLogout()
-  const refreshSession = useRefreshSession()
+  const refreshSession = useSessionChanged()
   const navigate = useNavigate()
   const busy = loginAs.isPending || logout.isPending
 

@@ -1,7 +1,7 @@
 import { Link, Navigate, useNavigate } from 'react-router'
 import { errorText } from '../api/errors'
 import { useLogout } from '../api/generated/endpoints/auth/auth'
-import { useRefreshSession, useSession } from '../api/session'
+import { useSessionChanged, useSession } from '../api/session'
 import { texts } from '../i18n/de'
 import { FamilyHome } from './FamilyHome'
 
@@ -12,7 +12,7 @@ import { FamilyHome } from './FamilyHome'
 export function HomePage() {
   const session = useSession()
   const logout = useLogout()
-  const refreshSession = useRefreshSession()
+  const refreshSession = useSessionChanged()
   const navigate = useNavigate()
 
   if (session.isLoading) {
