@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| Version | 0.4.9 (Entwurf) |
-| Stand | 2026-10-24 |
+| Version | 0.4.10 (Entwurf) |
+| Stand | 2026-10-25 |
 | Einrichtung | Hort an der Montessorischule (Elterninitiative, Verein) |
 | Zielgruppe | Entwickler:innen und KI-Coding-Agents |
 | Fachliche Basis | Lastenheft v0.4 (`docs/lastenheft-elternstunden-v0.4.pdf`, 2 Seiten, für die Abstimmung mit Menschen). Dieses Dokument konkretisiert es technisch. Im Folgenden kurz "Lastenheft (PDF)". |
@@ -26,6 +26,7 @@
 | 0.4.7 | 2026-10-24 | Familien erfassen, ändern und löschen nur Einträge im laufenden Schuljahr; andere offene Schuljahre nur Admins (D-29, INV-14, 7.3, 7.4, AC-ENTRY-13). |
 | 0.4.8 | 2026-10-24 | Tätigkeitstext höchstens 255 Zeichen statt 500, mit mitlaufendem Zähler und Pflichtfeld-Markierung in der UI (D-09, 7.4, AC-ENTRY-03). Uhrzeiten tolerant eingeben, z. B. `9` für `09:00` (UI-12). |
 | 0.4.9 | 2026-10-24 | OPEN-15 teilweise entschieden: netID (Login mit GMX und WEB.DE) als weiterer OIDC-Anbieter und Passkeys als eigener Anmeldeweg, Microsoft folgt später (D-30, 7.2, 5.3, 8.2, 9.1, UI-06, AC-OIDC-14 bis 16, AC-PASSKEY, Meilenstein M6a). |
+| 0.4.10 | 2026-10-25 | Sicherheits-Review (OWASP API Top 10 2023, OWASP Top 10 2025) und Architektur-Review eingearbeitet. Sicherheit: globale Limits erst nach gültigem Captcha und mit Alarm, TOTP-Fehlversuche pro Konto begrenzt, Größenlimit für Requests, OIDC-Einstieg begrenzt, gleichzeitige Passwortprüfungen begrenzt, Schlüssellänge beim Start geprüft (9.1, 12.4), OPEN-22 und OPEN-23 neu. Architektur: Bestätigen nur mit der gesehenen `version` (7.5, AC-CONF-06), Beförderung zum Admin mit zweitem Faktor beendet die Session (7.2, AC-AUTH-24), Einträge sperren ihr Schuljahr gegen paralleles Abschließen (INV-04, INV-09), Fehlercodes als Enum im Vertrag (8.1), Persistenz mit Spring JDBC statt JPA (4.2, 5.1), Indizes für Übersicht und Dashboard (5.3), Merge-Patch-Sonderfall `startTime` (8.1). |
 
 ---
 
@@ -187,7 +188,7 @@ Alle Container laufen auf **einem** VPS per Docker Compose. Nur Caddy veröffent
 | Backend-Framework | Spring Boot (aktuelle stabile Linie zum Projektstart, Version vor Start prüfen). Stand 2026-10: Spring Boot 4.1.x mit Spring Security ≥ 7.1 | `[DECIDED]` |
 | Sprache | Java oder Kotlin, aktuelle LTS-JDK (21 oder neuer) | `[OPEN]` OPEN-08, Interim: Java 25 |
 | Build | Gradle oder Maven | `[OPEN]` OPEN-08, Interim: Gradle |
-| Persistenz | Spring Data JPA (Hibernate) plus Flyway-Migrationen | `[PROPOSED]` |
+| Persistenz | Spring JDBC (`JdbcClient`, SQL im Repository) plus Flyway-Migrationen. Kein JPA/Hibernate: die Abfragen sind klein und gezielt, JPA bringt hier nur Startzeit und Speicherbedarf. | `[PROPOSED]` |
 | Datenbank | PostgreSQL, Major-Version fixieren (aktuelle stabile Major, vom Spring-Boot-Treiber unterstützt). Stand 2026-10: PostgreSQL 18 | `[PROPOSED]` |
 | Security | Spring Security (Session, CSRF), Argon2id nur für das Master-Passwort (D-21), Bucket4j oder gleichwertig für Rate-Limits | `[PROPOSED]` |
 | E-Mail-Link | Eigene Endpunkte und eigener Token-Speicher nach SEC-17 (FS-AUTH 7.2). **Nicht** Spring Security One-Time-Token-Login: `JdbcOneTimeTokenService` speichert den Token im Klartext, nutzt `?token=` im Query-String und war von CVE-2026-22751 betroffen (Mehrfach-Einlösung) | `[PROPOSED]` |
@@ -245,7 +246,7 @@ Regeln: Controller enthalten keine Geschäftslogik. Entitäten verlassen die `we
 - Alle Beträge in **ganzen Minuten** (`integer`). Keine Fließkomma-Stunden.
 - Löschen: `time_entry` per Soft-Delete (`deleted_at`). Kinder, Familien und Nutzer werden nicht physisch gelöscht, sondern über Anonymisierungs-Funktionen behandelt (siehe DP-05). Ausnahme: nie aktivierte Registrierungen (7.1.4 Schritt 9).
 - Zwei DB-Rollen (OPS-14): Flyway läuft als Owner, die App als eingeschränkte Rolle. Rechte stehen in einer Flyway-Migration.
-- Schema-Änderungen ausschließlich per Flyway (`V1__init.sql`, `V2__...`). Hibernate-DDL-Auto ist aus (`validate`).
+- Schema-Änderungen ausschließlich per Flyway (`V1__init.sql`, `V2__...`). Es gibt kein ORM, das ein Schema erzeugen könnte.
 
 ### 5.2 Entitäten (Überblick)
 
@@ -438,6 +439,7 @@ CREATE TABLE time_entry (
 );
 CREATE INDEX time_entry_family_year_idx ON time_entry (family_id, school_year_id) WHERE deleted_at IS NULL;
 CREATE INDEX time_entry_open_idx        ON time_entry (created_at)                WHERE deleted_at IS NULL AND status = 'OPEN';
+CREATE INDEX time_entry_year_idx        ON time_entry (school_year_id)            WHERE deleted_at IS NULL;  -- V8, Übersicht (5.6)
 
 -- ---------------------------------------------------------------
 -- Audit-Log (append-only, siehe SEC-11)
@@ -453,6 +455,7 @@ CREATE TABLE audit_log (
     details       jsonb       NOT NULL DEFAULT '{}'::jsonb   -- nur IDs und technische Werte, keine Freitexte (SEC-12)
 );
 CREATE INDEX audit_log_entity_idx ON audit_log (entity_type, entity_id, occurred_at DESC);
+CREATE INDEX audit_log_action_idx ON audit_log (action, occurred_at DESC);   -- V8, Dashboard-Widgets (7.6)
 
 -- ---------------------------------------------------------------
 -- Passkeys (7.2, D-30): Schema von Spring Security, angelegt mit Migration V7.
@@ -507,7 +510,7 @@ Rechte: Eine eigene Migration vergibt die Rechte an die App-Rolle (OPS-14): DML 
 | INV-01 | `time_entry.school_year_id` MUSS das Schuljahr sein, dessen `[starts_on, ends_on]` das `work_date` enthält. Liegt das Datum in keinem Schuljahr, wird der Eintrag abgelehnt. | Service, Test |
 | INV-02 | `time_entry.family_id` MUSS die Familie des erfassenden Nutzers sein (bei Rolle `FAMILY_MEMBER`). Admins dürfen für jede Familie erfassen oder korrigieren. | Service |
 | INV-03 | `work_date` DARF NICHT in der Zukunft liegen (Zeitzone Europe/Berlin). | Service, `[PROPOSED]` OPEN-10 |
-| INV-04 | Einträge in einem abgeschlossenen Schuljahr (`closed_at` gesetzt) sind unveränderlich. | Service, OPEN-06 |
+| INV-04 | Einträge in einem abgeschlossenen Schuljahr (`closed_at` gesetzt) sind unveränderlich. Erfassen, Ändern, Löschen und Bestätigen sperren dafür die Zeile des Schuljahres (`FOR SHARE`); Abschließen und Stichtagsänderungen sperren sie exklusiv (`FOR UPDATE`) und warten so auf laufende Schreibvorgänge (gilt auch für INV-09). | Service, OPEN-06 |
 | INV-05 | Ein `CONFIRMED`-Eintrag DARF von Familienmitgliedern weder geändert noch gelöscht werden. | Service |
 | INV-06 | Ein `OPEN`-Eintrag DARF von Familienmitgliedern der **eigenen** Familie geändert oder (soft) gelöscht werden, wenn er zum laufenden Schuljahr gehört (INV-14). | Service, `[PROPOSED]` OPEN-11 |
 | INV-07 | Ändert ein Admin einen `CONFIRMED`-Eintrag inhaltlich (Dauer, Datum, Text), wird er wieder `OPEN` und muss neu bestätigt werden. Ein Audit-Eintrag entsteht. | Service, `[PROPOSED]` OPEN-11 |
@@ -863,7 +866,7 @@ app:
 - Alle Werte `[PROPOSED]` und konfigurierbar. Sessions in Spring Session JDBC. Session-Cookie `__Host-SESSION` (SEC-09).
 - Spring Session kennt nur den Leerlauf-Timeout: Er wird beim Login je Rolle gesetzt (`maxInactiveInterval`). Die absolute Dauer prüft ein Filter über die Erstellzeit der Session.
 - Jede Anmeldung (E-Mail-Link, OIDC, Master-Login, MFA-Abschluss) erzeugt eine neue Session-ID. Sessions auf anderen Geräten bleiben bestehen.
-- **Sessions folgen dem Kontozustand:** Jeder Request lädt Status, Rolle und Familie des Nutzers per ID aus der DB (eine kleine Abfrage). Rollen- und Familienwechsel wirken damit sofort. Deaktivieren und Anonymisieren beenden zusätzlich **alle** Sessions des Nutzers (`FindByIndexNameSessionRepository`, Principal-Name = `app_user.id`). Admins können alle Sessions eines Nutzers beenden (FS-ADM).
+- **Sessions folgen dem Kontozustand:** Jeder Request lädt Status, Rolle und Familie des Nutzers per ID aus der DB (eine kleine Abfrage). Rollen- und Familienwechsel wirken damit sofort. Ausnahme: Wird ein Konto während einer Session zum `ADMIN` und braucht es einen zweiten Faktor (Pflicht oder eingerichtet), endet die Session; die nächste Anmeldung fragt nach dem Code. Deaktivieren und Anonymisieren beenden zusätzlich **alle** Sessions des Nutzers (`FindByIndexNameSessionRepository`, Principal-Name = `app_user.id`). Admins können alle Sessions eines Nutzers beenden (FS-ADM).
 
 ---
 
@@ -947,17 +950,18 @@ Ein Standardeintrag ("1 h, heute") MUSS in höchstens **4 Interaktionen** mögli
 
 1. Admin-Ansicht "Zu bestätigen": alle `OPEN`-Einträge, gruppierbar nach Familie, filterbar nach Familie und Zeitraum, sortiert nach Erfassungsdatum (älteste zuerst).
 2. Aktionen: einzeln bestätigen, alle offenen Einträge einer Familie bestätigen, Mehrfachauswahl bestätigen.
-3. Bestätigen setzt `status = CONFIRMED`, `confirmed_by`, `confirmed_at` und schreibt Audit `ENTRY_CONFIRMED`. Die Operation ist **idempotent** (bereits bestätigte Einträge bleiben unverändert, kein Fehler).
-4. Sammelbestätigung als ein SQL-Update, das auch abgeschlossene Schuljahre ausschließt und `version` erhöht:
+3. Bestätigen setzt `status = CONFIRMED`, `confirmed_by`, `confirmed_at` und schreibt Audit `ENTRY_CONFIRMED`. Die Operation ist **idempotent** (bereits bestätigte Einträge bleiben unverändert, kein Fehler). Bestätigt wird nur, was der Admin gesehen hat: Jede Bestätigung nennt die `version` des Eintrags. Hat die Familie den Eintrag inzwischen geändert, wird er nicht bestätigt (einzeln `409 CONCURRENT_MODIFICATION`, gesammelt übersprungen).
+4. Sammelbestätigung mit Paaren aus `id` und `version` als ein SQL-Update, das auch abgeschlossene Schuljahre und geänderte Einträge ausschließt und `version` erhöht:
    ```sql
    UPDATE time_entry te
       SET status = 'CONFIRMED', confirmed_by = :adminId, confirmed_at = :now,
           updated_at = :now, version = te.version + 1
-     FROM school_year sy
-    WHERE te.id = ANY(:ids) AND te.status = 'OPEN' AND te.deleted_at IS NULL
+     FROM school_year sy, unnest(:ids, :versions) AS seen(id, version)
+    WHERE te.id = seen.id AND te.version = seen.version
+      AND te.status = 'OPEN' AND te.deleted_at IS NULL
       AND sy.id = te.school_year_id AND sy.closed_at IS NULL
    ```
-   Einträge aus abgeschlossenen Jahren in der Auswahl bleiben unverändert. Die Antwort nennt die Anzahl bestätigter und übersprungener Einträge.
+   Einträge aus abgeschlossenen Jahren und inzwischen geänderte Einträge bleiben unverändert. Die Antwort nennt die Anzahl bestätigter und übersprungener Einträge.
 5. Admins können Einträge vor der Bestätigung **bearbeiten** oder **löschen** (z. B. falsche Dauer). Ein Ablehnen mit Begründung und Rückfrage an die Familie gibt es zunächst nicht (OPEN-11).
 6. Zähler offener Einträge erscheint als Badge in der Admin-Navigation.
 7. In abgeschlossenen Schuljahren ist Bestätigen gesperrt (INV-04). Einzelbestätigung: `409 SCHOOL_YEAR_CLOSED`.
@@ -1152,10 +1156,10 @@ Ziel: Beim manuellen Testen in Sekunden zwischen den Rollen wechseln, ohne jedes
 | Zeit | Datum RFC 3339 `full-date` (`YYYY-MM-DD`). Zeitstempel RFC 3339 `date-time` in UTC mit `Z`. Uhrzeit als String `HH:mm` mit `pattern: ^([01]\d\|2[0-3]):[0-5]\d$` (bewusst **nicht** `format: time`, das verlangt Sekunden und Offset). Fachliche Datumswerte sind Europe/Berlin-Kalendertage. |
 | Dauer | Immer ganze **Minuten** (`durationMinutes`). |
 | IDs | UUID als String. |
-| Fehlerformat | `application/problem+json` (RFC 9457): `type` = `about:blank`, `title` = HTTP-Statustext, `status`, `detail` (kurzer technischer Text ohne PII). Erweiterungen: `code` (stabiler, maschinenlesbarer Fehlercode, z. B. `LINK_INVALID`), `traceId` und bei Validierungsfehlern `errors: [{field, code, message}]` ohne den abgelehnten Wert. Die UI zeigt Texte aus ihrer Ressourcendatei anhand von `code` (UI-02). Keine Stacktraces. Gilt für **alle** Fehler unter `/api/**`, auch für `401`, `403`, CSRF und `429` aus Security-Filtern und für unbekannte Pfade. |
+| Fehlerformat | `application/problem+json` (RFC 9457): `type` = `about:blank`, `title` = HTTP-Statustext, `status`, `detail` (kurzer technischer Text ohne PII). Erweiterungen: `code` (stabiler, maschinenlesbarer Fehlercode, z. B. `LINK_INVALID`; alle Codes stehen als Enum `ProblemCode` im Vertrag, ein Test gleicht sie mit dem Backend ab, die UI hat für jeden Code einen Text), `traceId` und bei Validierungsfehlern `errors: [{field, code, message}]` ohne den abgelehnten Wert. Die UI zeigt Texte aus ihrer Ressourcendatei anhand von `code` (UI-02). Keine Stacktraces. Gilt für **alle** Fehler unter `/api/**`, auch für `401`, `403`, CSRF und `429` aus Security-Filtern und für unbekannte Pfade. |
 | Statuscodes | `200/201/204` Erfolg, `202` angenommen (neutrale Antworten), `400` Validierung (auch fachliche Regelverletzungen am Request, kein `422`), `401` nicht angemeldet, `403` keine Berechtigung, `404` nicht gefunden (auch bei fremden IDs, kein Existenz-Orakel), `409` Konflikt mit dem Zustand (Version, Duplikat, abgeschlossenes Jahr), `413` Upload zu groß, `429` Rate-Limit mit `Retry-After` in Sekunden. Für `/api/**` gibt es **nie** eine Weiterleitung (`302`) zum Login. |
 | Paging | `page` (ab 0), `size` (Standard 50, höchstens 200, darüber `400 PAGE_SIZE_EXCEEDED`). Antwort als explizites DTO `PageResponse<T>`: `{content: [...], page, size, totalElements, totalPages}`. Spring-`Page` wird nie direkt serialisiert. |
-| PATCH | JSON Merge Patch (RFC 7396, `application/merge-patch+json` oder `application/json`). Nur dokumentierte Felder sind änderbar. Unbekannte Felder führen zu `400` (Jackson `fail-on-unknown-properties=true`, Schutz vor Mass Assignment). |
+| PATCH | JSON Merge Patch (RFC 7396, `application/merge-patch+json` oder `application/json`). Nur dokumentierte Felder sind änderbar. Ein fehlendes Feld bleibt unverändert; zum Leeren eines optionalen Textfelds (z. B. `startTime`, `externalRef`, `label`) dient ein leerer Text, weil `null` und "fehlt" in den generierten DTOs nicht zu unterscheiden sind. Unbekannte Felder führen zu `400` (Jackson `fail-on-unknown-properties=true`, Schutz vor Mass Assignment). |
 | Nebenläufigkeit | Optimistisches Locking über `version` im Request-Body. Konflikt: `409 CONCURRENT_MODIFICATION`. Kein `ETag`/`If-Match`. |
 | Request-Größe | JSON-Bodies höchstens 64 KB, CSV-Import höchstens 1 MB (`413`). |
 | CSRF | Alle zustandsändernden Requests (`POST/PUT/PATCH/DELETE`) tragen den CSRF-Token (Cookie `XSRF-TOKEN`, Header `X-XSRF-TOKEN`), auch anonyme Auth-Endpunkte. |
@@ -1251,7 +1255,7 @@ Grundhaltung: Die App verarbeitet Daten von Minderjährigen. Sicherheit hat Vorr
 
 **Captcha: ALTCHA** `[PROPOSED]` (D-07). Ablauf:
 
-1. `GET /api/v1/auth/captcha` liefert eine signierte Challenge (HMAC-SHA-256 mit `ALTCHA_HMAC_KEY`, mindestens 32 zufällige Byte, nur serverseitig).
+1. `GET /api/v1/auth/captcha` liefert eine signierte Challenge (HMAC-SHA-256 mit `ALTCHA_HMAC_KEY`, mindestens 32 zufällige Byte, nur serverseitig). Im Profil `prod` startet die App nicht, wenn `ALTCHA_HMAC_KEY` oder `APP_ENCRYPTION_KEY` kürzer als 32 Zeichen sind oder einem Beispielwert aus `.env.example` entsprechen. Ohne eines der Profile `dev`, `test` oder `prod` startet sie gar nicht.
 2. Das Widget im Browser löst die Proof-of-Work-Aufgabe (ohne Nutzerinteraktion) und liefert einen Nachweis (`payload`).
 3. Der Server verifiziert **jeden** Nachweis mit der offiziellen ALTCHA-Java-Bibliothek: Signatur gültig, nicht abgelaufen (Gültigkeit 5 Minuten), **nicht wiederverwendet** (Replay-Schutz: bereits eingelöste Challenges bis zum Ablauf im Speicher oder in der DB vermerken).
 4. Schwierigkeit (`maxNumber`) so einstellen, dass das Lösen auf einem durchschnittlichen Smartphone etwa 1 bis 3 Sekunden dauert. Wert konfigurierbar.
@@ -1263,16 +1267,19 @@ Grundhaltung: Die App verarbeitet Daten von Minderjährigen. Sicherheit hat Vorr
 | Ziel | Schlüssel | Standard |
 |---|---|---|
 | Registrierung Weg A | IP | 30 pro Stunde, 100 pro Tag (großzügig, weil Familien bei einem Elternabend oder im Hort-WLAN aus demselben Netz kommen; der Schutz liegt bei Captcha, Zielkind- und globalem Limit) |
-| Registrierung gesamt | global | 200 pro Stunde, bei Überschreitung Alarm an Master |
+| Registrierung gesamt | global | 200 pro Stunde, gezählt erst nach gültigem Captcha (sonst könnten Anfragen ohne Rechenaufwand das Kontingent für alle aufbrauchen), bei Überschreitung Alarm an Master (höchstens einmal pro Stunde) |
 | **Zuordnungsversuche pro Zielkind** | `claim_key` | **5 pro 24 Stunden**, über alle Wege und IPs (aus `registration_claim`, unter Advisory-Lock gezählt, überlebt Neustarts, 7.1.4 Schritt 5) |
 | **Mails mit E-Mail-Link (Mail-Bombing)** | Ziel-E-Mail, Registrierung und Link-Anfrage zusammen | **5 pro Stunde**. Geprüft im Auth-Worker. Bei Überschreitung kein Token und keine Mail (stilles Verwerfen, Metrik), die Antwort war schon `202`. |
 | Mail "Kein Konto" | Ziel-E-Mail | **1 pro 24 Stunden**, danach still verwerfen (Spam- und Reputationsschutz, OPS-13) |
 | E-Mail-Link anfordern | IP | 20 pro Stunde |
-| E-Mail-Link anfordern | global | 200 pro Stunde, bei Überschreitung Alarm an Master |
+| E-Mail-Link anfordern | global | 200 pro Stunde, gezählt erst nach gültigem Captcha, bei Überschreitung Alarm an Master (höchstens einmal pro Stunde) |
 | E-Mail-Link einlösen | IP | 30 pro 15 Minuten |
-| OIDC-Callback | IP | 30 pro Minute |
+| OIDC-Einstieg und -Callback | IP | 30 pro Minute. Die Session, die der Einstieg für `state` und PKCE anlegt, verfällt nach 10 Minuten. |
 | Passkey-Anmeldung (Optionen und Prüfung) | IP | 30 pro Minute |
 | Master-Login und MFA-Prüfung | IP | 5 pro 15 Minuten, danach `429` bis zum Ablauf des Fensters |
+| MFA-Prüfung (Admin-TOTP) | Konto | 10 Fehlversuche pro Stunde, danach `429`. Nach 5 Fehlversuchen in einem `MFA_PENDING`-Zustand endet dieser, die Anmeldung beginnt neu. |
+| Master-Login | global | höchstens 4 gleichzeitige Passwortprüfungen (Argon2id braucht viel Speicher), sonst sofort `429` |
+| Request-Größe | – | JSON-Bodies höchstens 64 KB, CSV-Import höchstens 1 MB, Bodies ohne Längenangabe (chunked) unter `/api` werden abgelehnt: `413 PAYLOAD_TOO_LARGE`, bevor der Body gelesen wird |
 | Master-Login | Konto | Keine Sperre (Notzugang). Ab 10 Fehlversuchen pro Stunde Alarm-Mail an den Master (7.2). |
 | Eintrag erfassen | Nutzer | 60 pro Stunde |
 | Integration API | Client | 60 pro Minute |
@@ -1918,6 +1925,7 @@ Notation: Gegeben / Wenn / Dann. Jedes Kriterium MUSS als automatisierter Test e
 | AC-AUTH-21 | **Aufräum-Job gegen Einlösen.** Ein Einlösen parallel zum Job führt nie zu einem gelöschten aktiven Konto. Ein unbestätigtes Konto mit noch gültigem Token wird nicht gelöscht. |
 | AC-AUTH-22 | **Anderes Gerät.** Ohne passendes `auth_binding`-Cookie liefert `redeem` `409 OTHER_DEVICE_CONFIRMATION_REQUIRED` mit maskierter Adresse, der Token bleibt gültig. Mit `confirmOtherDevice: true` wird angemeldet. Im selben Browser gibt es keine Rückfrage. |
 | AC-AUTH-23 | **Admin-TOTP.** Ein Admin mit eingerichtetem TOTP hat nach E-Mail-Link oder OIDC nur `MFA_PENDING` und erhält auf allen Endpunkten außer `/auth/mfa/verify` und `/auth/logout` `401`. Ein gültiger Code führt zur vollen Session mit neuer Session-ID, ein Wiederherstellungscode funktioniert genau einmal. Mit `admin-totp-required=true` muss ein Admin ohne TOTP es zuerst einrichten. |
+| AC-AUTH-24 | **Beförderung mit zweitem Faktor.** Ist TOTP für Admins Pflicht oder hat das Konto TOTP eingerichtet, endet eine bestehende Familien-Session mit `401`, sobald das Konto zum Admin wird. Ohne zweiten Faktor gelten die neuen Rechte sofort (AC-AUTH-18). |
 
 ### 15.4 Stunden erfassen und bestätigen (FS-ENTRY, FS-CONF)
 
@@ -1941,6 +1949,7 @@ Notation: Gegeben / Wenn / Dann. Jedes Kriterium MUSS als automatisierter Test e
 | AC-CONF-03 | **Änderung nach Bestätigung.** Ändert ein Admin Dauer, Datum oder Text eines bestätigten Eintrags, wird er wieder `OPEN`, die bestätigte Summe sinkt, ein Audit-Eintrag entsteht. |
 | AC-CONF-04 | Ein Familienmitglied, das einen Eintrag bestätigen will, erhält `403`. |
 | AC-CONF-05 | In einem abgeschlossenen Schuljahr ist Bestätigen gesperrt: einzeln `409 SCHOOL_YEAR_CLOSED`, in der Sammelbestätigung werden solche Einträge übersprungen und als übersprungen gezählt. |
+| AC-CONF-06 | **Nur Gesehenes bestätigen.** Ändert die Familie einen Eintrag, nachdem der Admin die Liste geladen hat, liefert die Einzelbestätigung mit der alten `version` `409 CONCURRENT_MODIFICATION`, die Sammelbestätigung überspringt ihn. Der Eintrag bleibt `OPEN` mit dem neuen Inhalt. |
 
 ### 15.5 Schuljahr (5.5)
 
@@ -2093,6 +2102,8 @@ Regel für KI-Agents: Bei jedem Punkt gilt der **Interim-Default**, bis der Auft
 | OPEN-19 | Offizielle Design-Werte des Horts (Farben, Schrift, Logo als Vektordatei). | Palette, Überschriften-Schrift und Logo-Zeichen von der Website übernommen (UI-01, 2026-10-22). Das Logo-Zeichen ist nachgezeichnet, bis eine Vektordatei vorliegt. | UI-01, FS-PDF |
 | OPEN-20 | Soll die Mail mit dem E-Mail-Link zusätzlich einen 6-stelligen Code enthalten, für den Gerätewechsel (Mail am Handy, Anmeldung am PC)? Ein Code bräuchte eigene, strenge Versuchslimits je Token. | Nein. Nur der Link. | FS-AUTH, SEC-17 |
 | OPEN-21 | Soll der Link an den anfragenden Browser gebunden werden (z. B. Zufallswert im Cookie beim Anfordern, Einlösen nur im selben Browser)? Das schützt auch gegen untergeschobene fremde Links (9.1), scheitert aber, wenn die Mail auf einem anderen Gerät geöffnet wird. | Weiche Bindung: geräteübergreifend erlaubt, aber mit Rückfrage und maskierter Kontoadresse, wenn das `auth_binding`-Cookie nicht passt (7.2). Kinderdaten aus der Registrierung gelten nur im selben Browser (7.1.4). | FS-AUTH, SEC-17 |
+| OPEN-22 | Registrierung per OIDC, wenn der Anbieter für die E-Mail nicht autoritativ ist (z. B. Google-Konto mit einer outlook.com-Adresse): Soll das Konto erst nach Bestätigung per E-Mail-Link aktiv werden? Sonst könnte jemand mit einer bei Google hinterlegten fremden oder recycelten Adresse ein Konto vorab anlegen (Pre-Hijacking). | Wie bisher sofort aktiv (geringes Risiko). Empfehlung: Bestätigung per E-Mail-Link. | FS-REG 7.1.5 |
+| OPEN-23 | Dürfen Admins Einträge ihrer **eigenen** Familie bestätigen? | Ja, jede Bestätigung steht im Audit-Log. Empfehlung: nein, ein anderer Admin bestätigt. | FS-CONF 7.5 |
 
 ---
 
