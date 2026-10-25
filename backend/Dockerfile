@@ -5,7 +5,7 @@
 
 FROM eclipse-temurin:25-jdk-alpine AS build
 WORKDIR /workspace
-COPY gradlew settings.gradle.kts gradle.properties ./
+COPY gradlew settings.gradle.kts gradle.properties VERSION ./
 COPY gradle gradle
 COPY api api
 COPY backend/build.gradle.kts backend/

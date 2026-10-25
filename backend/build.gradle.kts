@@ -12,7 +12,8 @@ plugins {
 }
 
 group = "de.elternstunden"
-version = "0.1.0-SNAPSHOT"
+// One product version for app, web and backup (D-32)
+version = rootProject.file("VERSION").readText().trim()
 
 java {
     toolchain {
