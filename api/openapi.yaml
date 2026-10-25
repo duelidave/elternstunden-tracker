@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Elternstunden API
-  version: 0.7.0
+  version: 0.8.0
   description: |
     API-Vertrag der Elternstunden-Zeiterfassung und Quelle der Wahrheit für Backend und Frontend
     (Lastenheft D-25). Jede API-Änderung beginnt hier, danach wird auf beiden Seiten neu generiert.
@@ -839,7 +839,7 @@ paths:
       operationId: confirmEntries
       summary: Mehrere Einträge bestätigen
       description: >-
-        Sammelbestätigung (7.5 Punkt 4). Bereits bestätigte und Einträge abgeschlossener Schuljahre bleiben unverändert und zählen als übersprungen.
+        Sammelbestätigung (7.5 Punkt 4) mit der version, die der Admin gesehen hat. Bereits bestätigte, inzwischen geänderte und Einträge abgeschlossener Schuljahre bleiben unverändert und zählen als übersprungen.
       x-roles: [AD]
       requestBody:
         required: true
@@ -868,10 +868,16 @@ paths:
       operationId: confirmEntry
       summary: Eintrag bestätigen
       description: >-
-        Idempotent (7.5). Abgeschlossenes Schuljahr: 409 SCHOOL_YEAR_CLOSED.
+        Idempotent (7.5). Bestätigt nur die gesehene version (sonst 409 CONCURRENT_MODIFICATION, AC-CONF-06). Abgeschlossenes Schuljahr: 409 SCHOOL_YEAR_CLOSED.
       x-roles: [AD]
       parameters:
         - $ref: '#/components/parameters/EntryId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntryVersion'
       responses:
         '200':
           description: Bestätigt.
@@ -879,6 +885,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2502,6 +2510,7 @@ components:
     WebAuthnJson:
       type: object
       additionalProperties: true
+      maxProperties: 20
       description: >-
         WebAuthn-Daten im JSON-Format von WebAuthn Level 3 (Base64url), unverändert zwischen Browser und Server
         durchgereicht: Optionen für navigator.credentials oder die Antwort darauf.
@@ -2866,15 +2875,33 @@ components:
                 $ref: '#/components/schemas/AdminEntry'
     EntryConfirmation:
       type: object
-      required: [ids]
+      required: [entries]
       properties:
-        ids:
+        entries:
           type: array
           minItems: 1
           maxItems: 500
           items:
-            type: string
-            format: uuid
+            $ref: '#/components/schemas/EntryVersionRef'
+    EntryVersionRef:
+      type: object
+      description: Ein Eintrag mit der version, die der Admin gesehen hat (7.5 Punkt 3).
+      required: [id, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          format: int32
+    EntryVersion:
+      type: object
+      required: [version]
+      properties:
+        version:
+          type: integer
+          format: int32
+          description: Die version, die der Admin gesehen hat (7.5 Punkt 3).
     ConfirmationResult:
       type: object
       required: [confirmed, skipped]
@@ -2921,10 +2948,7 @@ components:
           description: Pfad des Requests, auf den sich der Fehler bezieht.
           example: /api/v1/status
         code:
-          type: string
-          description: Stabiler, maschinenlesbarer Fehlercode. Die UI zeigt Texte anhand dieses Codes.
-          pattern: '^[A-Z][A-Z0-9_]*$'
-          example: VALIDATION_FAILED
+          $ref: '#/components/schemas/ProblemCode'
         traceId:
           type: string
           description: Korrelations-ID, identisch mit dem Header `X-Trace-Id`.
@@ -2933,6 +2957,59 @@ components:
           description: Nur bei Validierungsfehlern. Enthält nie den abgelehnten Wert.
           items:
             $ref: '#/components/schemas/ValidationError'
+    ProblemCode:
+      type: string
+      description: >-
+        Stabiler, maschinenlesbarer Fehlercode (8.1). Die UI zeigt Texte anhand dieses Codes, ein Test gleicht die
+        Liste mit dem Backend ab.
+      enum:
+        - VALIDATION_FAILED
+        - CAPTCHA_INVALID
+        - LINK_INVALID
+        - LOGIN_FAILED
+        - OTHER_DEVICE_CONFIRMATION_REQUIRED
+        - MALFORMED_REQUEST
+        - UNAUTHORIZED
+        - FORBIDDEN
+        - CSRF_INVALID
+        - NOT_FOUND
+        - METHOD_NOT_ALLOWED
+        - NOT_ACCEPTABLE
+        - PAYLOAD_TOO_LARGE
+        - UNSUPPORTED_MEDIA_TYPE
+        - PAGE_SIZE_EXCEEDED
+        - ALREADY_ASSIGNED
+        - CLAIM_CORRECTION_LIMIT
+        - SCHOOL_YEAR_OVERLAP
+        - SCHOOL_YEAR_LABEL_TAKEN
+        - SCHOOL_YEAR_CLOSED
+        - ENTRIES_OUTSIDE_RANGE
+        - EXTERNAL_REF_TAKEN
+        - ACCOUNT_MANAGED_BY_CONFIG
+        - OWN_ACCOUNT
+        - USER_ANONYMIZED
+        - MFA_INVALID
+        - REAUTH_REQUIRED
+        - PASSKEY_INVALID
+        - PASSKEY_LIMIT
+        - TOTP_REQUIRED
+        - TOTP_SETUP_MISSING
+        - TOTP_ALREADY_ENABLED
+        - FAMILY_ASSIGNMENT_PENDING
+        - FAMILY_FULL
+        - SCHOOL_YEAR_NOT_FINISHED
+        - NO_CURRENT_SCHOOL_YEAR
+        - DATE_IN_FUTURE
+        - NO_SCHOOL_YEAR
+        - DATE_OUTSIDE_CURRENT_SCHOOL_YEAR
+        - SCHOOL_YEAR_NOT_CURRENT
+        - DUPLICATE_ENTRY
+        - ENTRY_CONFIRMED
+        - CONCURRENT_MODIFICATION
+        - CONFLICT
+        - RATE_LIMITED
+        - REQUEST_REJECTED
+        - INTERNAL_ERROR
     ValidationError:
       type: object
       required: [field, code, message]
