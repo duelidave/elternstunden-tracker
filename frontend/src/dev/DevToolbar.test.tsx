@@ -21,6 +21,10 @@ describe('DevToolbar', () => {
         me = admin
         return { status: 200, body: admin }
       }
+      // The login page asks for the providers, stubApi knows them
+      if (url === '/api/v1/auth/providers') {
+        return undefined
+      }
       return me === undefined ? signedOut : { status: 200, body: me }
     })
 
