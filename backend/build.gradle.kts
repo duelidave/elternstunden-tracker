@@ -105,7 +105,8 @@ dependencies {
     // Argon2id for the master password (D-21)
     implementation(libs.bouncycastle)
     // Billing PDF (FS-PDF): HTML template with auto-escaping, rendered without any external resource
-    implementation("org.thymeleaf:thymeleaf")
+    // SpEL instead of OGNL as expression language (CVE-2026-113730 in OGNL, Thymeleaf 3.1 cannot use the fix)
+    implementation("org.thymeleaf:thymeleaf-spring6") { exclude(group = "ognl") }
     implementation(libs.openhtmltopdf)
     // Passkeys (WebAuthn): relying party operations and JDBC storage from Spring Security, webauthn4j inside
     implementation("org.springframework.security:spring-security-webauthn")

@@ -11,8 +11,8 @@ import java.util.Locale;
 import java.util.Map;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
-import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
+import org.thymeleaf.spring6.SpringTemplateEngine;
 import org.thymeleaf.templatemode.TemplateMode;
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver;
 
@@ -30,7 +30,8 @@ public class PdfRenderer {
         {"fonts/IndieFlower-Regular.ttf", "Indie Flower", "400"},
     };
 
-    private final TemplateEngine templates = new TemplateEngine();
+    // SpEL as expression language, without an application context: templates cannot reach beans
+    private final SpringTemplateEngine templates = new SpringTemplateEngine();
 
     public PdfRenderer() {
         ClassLoaderTemplateResolver resolver = new ClassLoaderTemplateResolver();
