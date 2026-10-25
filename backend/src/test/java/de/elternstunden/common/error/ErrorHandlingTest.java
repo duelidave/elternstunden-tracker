@@ -1,6 +1,7 @@
 package de.elternstunden.common.error;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -36,7 +37,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -91,6 +91,7 @@ class ErrorHandlingTest {
     void beanValidationListsErrorsWithoutTheRejectedValue() throws Exception {
         MvcResult result = expectProblem(
                         mvc.perform(post("/api/v1/test/validated")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"description\":\"zq\"}")),
                         400,
@@ -107,6 +108,7 @@ class ErrorHandlingTest {
     void unknownFieldsAreRejected() throws Exception {
         expectProblem(
                         mvc.perform(post("/api/v1/test/validated")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"description\":\"Garten\",\"status\":\"CONFIRMED\"}")),
                         400,
@@ -118,6 +120,7 @@ class ErrorHandlingTest {
     void malformedJsonIsRejected() throws Exception {
         expectProblem(
                 mvc.perform(post("/api/v1/test/validated")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"description\":")),
                 400,
@@ -126,7 +129,7 @@ class ErrorHandlingTest {
 
     @Test
     void wrongMethodIsRejected() throws Exception {
-        expectProblem(mvc.perform(delete("/api/v1/test/validated")), 405, "METHOD_NOT_ALLOWED")
+        expectProblem(mvc.perform(delete("/api/v1/test/validated").with(csrf())), 405, "METHOD_NOT_ALLOWED")
                 .andExpect(header().exists("Allow"));
     }
 
@@ -134,6 +137,7 @@ class ErrorHandlingTest {
     void wrongMediaTypeIsRejected() throws Exception {
         expectProblem(
                 mvc.perform(post("/api/v1/test/validated")
+                        .with(csrf())
                         .contentType(MediaType.TEXT_PLAIN)
                         .content("Garten")),
                 415,
@@ -207,8 +211,7 @@ class ErrorHandlingTest {
         @Order(0)
         SecurityFilterChain probeSecurity(HttpSecurity http) throws Exception {
             http.securityMatcher("/api/v1/test/**")
-                    .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-                    .csrf(AbstractHttpConfigurer::disable);
+                    .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
             return http.build();
         }
     }

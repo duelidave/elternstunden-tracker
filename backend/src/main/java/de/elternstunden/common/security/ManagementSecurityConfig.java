@@ -10,7 +10,10 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
-/** Actuator runs on the internal management port (OPS-07); only health is exposed and reachable. */
+/**
+ * Actuator runs on the internal management port (OPS-07); only health is exposed and reachable. CSRF stays on: health
+ * is a GET, everything else is denied anyway.
+ */
 @Configuration(proxyBeanMethods = false)
 public class ManagementSecurityConfig {
 
@@ -22,7 +25,6 @@ public class ManagementSecurityConfig {
                         .permitAll()
                         .anyRequest()
                         .denyAll())
-                .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable);
