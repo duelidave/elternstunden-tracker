@@ -35,6 +35,13 @@ spring:
 server:
   port: 8080
   shutdown: graceful
+  # SEC-04, 9.1: behind the reverse proxy (Caddy, Traefik) the client address comes from X-Forwarded-For, but only
+  # when the request arrives from TRUSTED_PROXY_REGEX (the proxy). The default (?!) matches nothing, so without the
+  # setting the header is ignored and clients cannot forge it.
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      internal-proxies: '${TRUSTED_PROXY_REGEX:(?!)}'
   error:
     whitelabel:
       enabled: false

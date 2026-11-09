@@ -5,9 +5,9 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 /**
- * Client address for rate limits (9.1). It comes from {@code getRemoteAddr()}: behind Caddy the container
- * configuration makes that the proxied client address (M7), client-sent {@code X-Forwarded-For} headers are never
- * read here. IPv6 is keyed by its /64 prefix, because a single client usually controls a whole /64.
+ * Client address for rate limits (9.1). It comes from {@code getRemoteAddr()}: behind the reverse proxy Tomcat's
+ * remote IP valve makes that the proxied client address, but only for requests from {@code TRUSTED_PROXY_REGEX}
+ * (see application.yaml). Client-sent {@code X-Forwarded-For} headers are never read here. IPv6 is keyed by its /64 prefix, because a single client usually controls a whole /64.
  */
 public final class ClientIp {
 
