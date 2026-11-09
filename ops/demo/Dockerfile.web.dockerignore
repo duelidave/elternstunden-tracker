@@ -1,0 +1,11 @@
+# The root .dockerignore excludes frontend/ for the backend image; the web image needs it
+**/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/src/api/generated/
+backend/
+build/
+docs/
+.git/
+.env
+secrets/

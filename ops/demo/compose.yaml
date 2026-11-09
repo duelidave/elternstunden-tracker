@@ -1,0 +1,144 @@
+# Demo stack behind an existing Traefik (not the production setup, that follows in M7 with Caddy, OPS-02).
+# Profile prod, never dev: dev has demo accounts and the role switcher (D-26). Memory and CPU limits are chosen for
+# a 2 GB, 1 vCore server so the setup can be tested for the IONOS VPS S+. Start: see README.md.
+name: elternstunden-demo
+
+x-security-headers: &security-headers
+  # 12.3 and SEC-10, same headers as the Caddyfile of the production setup
+  traefik.http.middlewares.es-headers.headers.customresponseheaders.Strict-Transport-Security: "max-age=31536000"
+  traefik.http.middlewares.es-headers.headers.customresponseheaders.X-Content-Type-Options: "nosniff"
+  traefik.http.middlewares.es-headers.headers.customresponseheaders.Referrer-Policy: "same-origin"
+  traefik.http.middlewares.es-headers.headers.customresponseheaders.Permissions-Policy: "camera=(), microphone=(), geolocation=()"
+  traefik.http.middlewares.es-headers.headers.customresponseheaders.Content-Security-Policy: "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+  traefik.http.middlewares.es-headers.headers.customresponseheaders.Server: ""
+
+services:
+  db:
+    image: postgres:18.6-alpine
+    restart: unless-stopped
+    command:
+      - postgres
+      - -c
+      - shared_buffers=64MB
+      - -c
+      - max_connections=20
+      - -c
+      - work_mem=2MB
+      - -c
+      - maintenance_work_mem=32MB
+      - -c
+      - effective_cache_size=256MB
+      - -c
+      - wal_compression=on
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # Used once by the init script to create the app role (OPS-14)
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?set DB_APP_PASSWORD in .env}
+      TZ: Europe/Berlin
+    volumes:
+      # postgres:18 keeps PGDATA below /var/lib/postgresql/18/docker
+      - pgdata:/var/lib/postgresql
+      - ../db/init:/docker-entrypoint-initdb.d:ro
+    networks: [data]
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:v1.31.6
+    restart: unless-stopped
+    environment:
+      MP_MAX_MESSAGES: "200"
+    ports:
+      # Web UI for the SSH tunnel only, SMTP stays inside the stack
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+    networks: [internal]
+    mem_limit: 64m
+
+  app:
+    build:
+      context: ../..
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      TZ: Europe/Berlin
+      JAVA_TOOL_OPTIONS: -XX:+UseSerialGC -Xss512k -XX:MaxMetaspaceSize=128m
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "5"
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: elternstunden_app
+      DB_PASSWORD: ${DB_APP_PASSWORD}
+      FLYWAY_USER: ${POSTGRES_USER}
+      FLYWAY_PASSWORD: ${POSTGRES_PASSWORD}
+      APP_BASE_URL: ${APP_BASE_URL:?set APP_BASE_URL in .env}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?set APP_ENCRYPTION_KEY in .env}
+      ALTCHA_HMAC_KEY: ${ALTCHA_HMAC_KEY:?set ALTCHA_HMAC_KEY in .env}
+      TRUSTED_PROXY_REGEX: ${TRUSTED_PROXY_REGEX:?set TRUSTED_PROXY_REGEX in .env}
+      MAIL_FROM: ${MAIL_FROM:?set MAIL_FROM in .env}
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      MASTER_ADMIN_EMAIL: ${MASTER_ADMIN_EMAIL:?set MASTER_ADMIN_EMAIL in .env}
+      MASTER_ADMIN_PASSWORD_HASH: ${MASTER_ADMIN_PASSWORD_HASH:?set MASTER_ADMIN_PASSWORD_HASH in .env}
+      MASTER_ADMIN_TOTP_SECRET: ${MASTER_ADMIN_TOTP_SECRET:?set MASTER_ADMIN_TOTP_SECRET in .env}
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    networks: [data, internal, traefik]
+    mem_limit: 640m
+    cpus: 1
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/actuator/health/readiness"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    labels:
+      <<: *security-headers
+      traefik.enable: "true"
+      traefik.docker.network: ${TRAEFIK_NETWORK:?set TRAEFIK_NETWORK in .env}
+      # Only the backend paths of the Caddyfile (12.3); /actuator is never routed (SEC-15, OPS-07)
+      traefik.http.routers.es-api.rule: Host(`${APP_DOMAIN:?set APP_DOMAIN in .env}`) && (PathPrefix(`/api/`) || PathPrefix(`/oauth2/`) || PathPrefix(`/login/oauth2/`))
+      traefik.http.routers.es-api.priority: "20"
+      traefik.http.routers.es-api.entrypoints: ${TRAEFIK_ENTRYPOINT:?set TRAEFIK_ENTRYPOINT in .env}
+      traefik.http.routers.es-api.tls.certresolver: ${TRAEFIK_CERTRESOLVER:?set TRAEFIK_CERTRESOLVER in .env}
+      traefik.http.routers.es-api.middlewares: es-headers
+      traefik.http.services.es-api.loadbalancer.server.port: "8080"
+
+  web:
+    build:
+      context: ../..
+      dockerfile: ops/demo/Dockerfile.web
+    restart: unless-stopped
+    networks: [traefik]
+    mem_limit: 32m
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: ${TRAEFIK_NETWORK}
+      traefik.http.routers.es-web.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.es-web.priority: "10"
+      traefik.http.routers.es-web.entrypoints: ${TRAEFIK_ENTRYPOINT}
+      traefik.http.routers.es-web.tls.certresolver: ${TRAEFIK_CERTRESOLVER}
+      traefik.http.routers.es-web.middlewares: es-headers@docker
+      traefik.http.services.es-web.loadbalancer.server.port: "80"
+
+networks:
+  # The database is reachable for the app only (OPS-02)
+  data:
+    internal: true
+  # App and Mailpit (a published port needs a network that is not internal)
+  internal:
+  traefik:
+    name: ${TRAEFIK_NETWORK:?set TRAEFIK_NETWORK in .env}
+    external: true
+
+volumes:
+  pgdata:
