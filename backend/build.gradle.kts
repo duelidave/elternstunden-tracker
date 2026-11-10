@@ -28,6 +28,17 @@ extra["tomcat.version"] = "11.0.25"
 extra["jackson-bom.version"] = "3.1.7"
 extra["jackson-2-bom.version"] = "2.21.7"
 
+// Guava only comes in through build and test tooling (Error Prone, swagger-parser), not into app.jar. The Trivy SBOM
+// scan reports it anyway (CVE-2026-102554, fixed in 33.7.2). Remove once those tools bring a fixed version.
+configurations.configureEach {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "com.google.guava" && requested.name == "guava") {
+            useVersion("33.7.2-jre")
+            because("CVE-2026-102554")
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // API-first (D-25): interfaces and DTOs are generated from the shared contract
 // ---------------------------------------------------------------------------
