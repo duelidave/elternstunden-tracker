@@ -128,7 +128,7 @@ services:
       traefik.http.routers.es-web.entrypoints: ${TRAEFIK_ENTRYPOINT}
       traefik.http.routers.es-web.tls.certresolver: ${TRAEFIK_CERTRESOLVER}
       traefik.http.routers.es-web.middlewares: es-headers@docker
-      traefik.http.services.es-web.loadbalancer.server.port: "80"
+      traefik.http.services.es-web.loadbalancer.server.port: "8080"
 
 networks:
   # The database is reachable for the app only (OPS-02)
